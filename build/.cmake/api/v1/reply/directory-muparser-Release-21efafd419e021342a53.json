@@ -1,0 +1,130 @@
+{
+	"backtraceGraph" : 
+	{
+		"commands" : 
+		[
+			"install"
+		],
+		"files" : 
+		[
+			"muparser/CMakeLists.txt"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 94,
+				"parent" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 102,
+				"parent" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 125,
+				"parent" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 130,
+				"parent" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 144,
+				"parent" : 0
+			}
+		]
+	},
+	"installers" : 
+	[
+		{
+			"backtrace" : 1,
+			"component" : "Development",
+			"destination" : "lib",
+			"paths" : 
+			[
+				"H:/Data/C++/CBG/bin/Release/muparser.lib"
+			],
+			"targetId" : "muparser::@6f46e1c3a54ac5aad0e5",
+			"targetIndex" : 12,
+			"type" : "target"
+		},
+		{
+			"backtrace" : 2,
+			"component" : "Development",
+			"destination" : "include",
+			"paths" : 
+			[
+				"muparser/include/muParser.h",
+				"muparser/include/muParserBase.h",
+				"muparser/include/muParserBytecode.h",
+				"muparser/include/muParserCallback.h",
+				"muparser/include/muParserDLL.h",
+				"muparser/include/muParserDef.h",
+				"muparser/include/muParserError.h",
+				"muparser/include/muParserFixes.h",
+				"muparser/include/muParserInt.h",
+				"muparser/include/muParserTemplateMagic.h",
+				"muparser/include/muParserTest.h",
+				"muparser/include/muParserToken.h",
+				"muparser/include/muParserTokenReader.h"
+			],
+			"type" : "file"
+		},
+		{
+			"backtrace" : 3,
+			"component" : "Unspecified",
+			"destination" : "lib/cmake/muparser",
+			"exportName" : "muparser-export",
+			"exportTargets" : 
+			[
+				{
+					"id" : "muparser::@6f46e1c3a54ac5aad0e5",
+					"index" : 12
+				}
+			],
+			"paths" : 
+			[
+				"muparser/CMakeFiles/Export/lib/cmake/muparser/muparser-targets.cmake"
+			],
+			"type" : "export"
+		},
+		{
+			"backtrace" : 4,
+			"component" : "Development",
+			"destination" : "lib/cmake/muparser",
+			"paths" : 
+			[
+				"build/muparser/muparserConfig.cmake",
+				"build/muparser/muparserConfigVersion.cmake"
+			],
+			"type" : "file"
+		},
+		{
+			"backtrace" : 5,
+			"component" : "Unspecified",
+			"destination" : "lib/pkgconfig",
+			"paths" : 
+			[
+				"build/muparser.pc"
+			],
+			"type" : "file"
+		}
+	],
+	"paths" : 
+	{
+		"build" : "muparser",
+		"source" : "muparser"
+	}
+}

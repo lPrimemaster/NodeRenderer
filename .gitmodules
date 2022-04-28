@@ -1,0 +1,15 @@
+[submodule "glfw"]
+	path = glfw
+	url = git@github.com:glfw/glfw.git
+[submodule "mathpresso"]
+	path = mathpresso
+	url = git@github.com:tartakynov/mathpresso.git
+[submodule "asmjit"]
+	path = asmjit
+	url = git@github.com:asmjit/asmjit.git
+[submodule "muparser"]
+	path = muparser
+	url = git@github.com:beltoforion/muparser.git
+[submodule "glm"]
+	path = glm
+	url = git@github.com:g-truc/glm.git
