@@ -20,7 +20,7 @@ struct IOIdxData
     unsigned char self_idx;
     unsigned char other_idx;
 
-    bool operator<(const IOIdxData &o) const 
+    bool operator<(const IOIdxData &o) const
     {
         return (int)(self_idx + (int)(other_idx << 8)) < (int)(o.self_idx + (int)(o.other_idx << 8));
     }
@@ -32,6 +32,7 @@ struct PropertyGenericData
     PropertyGenericData(T value) : type(typeid(T))
     {
         data = new T(value);
+        _data_changed = true;
     }
 
     template<typename T, size_t N>
@@ -41,10 +42,11 @@ struct PropertyGenericData
         data = new T[N];
         memcpy(data, arr, N * sizeof(T));
         is_fixed_array = true;
+        _data_changed = true;
     }
 
     ~PropertyGenericData()
-    {      
+    {
         if(data)
         {
             if(!is_fixed_array)
@@ -67,7 +69,7 @@ struct PropertyGenericData
     template<typename T, typename U, typename... Args>
     inline bool isOfType()
     {
-        return std::type_index(typeid(T)) == type || std::type_index(typeid(U)) == type || isOfType<Args...>();
+        return std::type_index(typeid(T)) == type || isOfType<U, Args...>();
     }
 
     template<typename T, typename = std::enable_if_t<!std::is_pointer<T>::value>>
@@ -98,6 +100,13 @@ struct PropertyGenericData
         }
     }
 
+    // NOTE: May be unsafe. Use with caution.
+    template<typename T>
+    inline T* getValuePtr()
+    {
+        return ((T*)data);
+    }
+
     template<typename T>
     inline void setValue(T value)
     {
@@ -106,6 +115,7 @@ struct PropertyGenericData
             if(!is_fixed_array)
             {
                 (*(T*)data) = value;
+                _data_changed = true;
             }
             else
             {
@@ -127,6 +137,7 @@ struct PropertyGenericData
             is_fixed_array = false;
             data = new T(value);
             type = std::type_index(typeid(T));
+            _data_changed = true;
         }
     }
 
@@ -139,6 +150,7 @@ struct PropertyGenericData
             {
                 size = N;
                 memcpy(data, arr, N * sizeof(T));
+                _data_changed = true;
             }
             else
             {
@@ -161,14 +173,30 @@ struct PropertyGenericData
             memcpy(data, arr, N * sizeof(T));
             is_fixed_array = true;
             type = std::type_index(typeid(T*));
+            _data_changed = true;
         }
     }
 
+    inline bool dataChanged() const
+    {
+        return _data_changed;
+    }
+
+    inline void resetDataUpdate()
+    {
+        _data_changed = false;
+    }
+
+    inline void setDataChanged()
+    {
+        _data_changed = true;
+    }
 
     std::type_index type;
     void* data = nullptr;
     size_t size = 0ULL;
     bool is_fixed_array = false;
+    bool _data_changed = false;
 };
 
 // TODO: Node and in/out types color
@@ -194,6 +222,7 @@ struct PropertyNode
     float _input_max_pad_px = 0.0f;
     inline static constexpr float _text_pad_pad_px = 20.0f;
     std::map<IOIdxData, PropertyNode*> inputs;
+    std::map<std::string, PropertyNode*> inputs_named;
     
     // Outputs
     int _output_count = 0;
@@ -203,6 +232,36 @@ struct PropertyNode
 
     // Display
     NodeRenderData _render_data;
+
+    template<typename... Args>
+    inline void disconnectInputIfNotOfType(const std::string& inputName)
+    {
+        auto input = inputs_named.find(inputName);
+        if(input != inputs_named.end())
+        {
+            PropertyNode* other = input->second;
+            if(!other->data.isOfType<Args...>())
+            {
+                // Clear the input dependencies of the node links
+                for(IOIdxData out_dep : other->output_dependencies)
+                {
+                    auto fit = inputs.find(out_dep);
+                    if(fit != inputs.end())
+                    {
+                        inputs.erase(fit);
+                        inputs_named.erase(inputName);
+                    }
+                }
+
+                L_WARNING("This node requires an input with types:");
+                for(auto tid : { std::type_index(typeid(Args))... })
+                {
+                    L_WARNING("%s", tid.name());
+                }
+                L_WARNING("Supplied type: %s", other->data.type.name());
+            }
+        }
+    }
 
     inline void setInputsOrdered(std::vector<std::string> in)
     {

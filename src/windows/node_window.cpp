@@ -187,6 +187,7 @@ void NodeWindow::render()
                         idxd.other_idx = link_output_slot;
                         idxd.self_idx = slot_idx;
                         node->inputs.emplace(idxd, nodes[link_from_id]);
+                        node->inputs_named.emplace(node->_input_labels[slot_idx], nodes[link_from_id]);
                         nodes[link_from_id]->output_dependencies.push_back(idxd);
                     }
                 }
@@ -293,6 +294,32 @@ void NodeWindow::render()
                 if (ImGui::MenuItem("Time Node"))
                 {
                     newNode = new TimeNode();
+                }
+                if (ImGui::MenuItem("WorldPos Node"))
+                {
+                    newNode = new WorldPosNode();
+                }
+                if (ImGui::MenuItem("Render Node"))
+                {
+                    // TODO: We can allow more than one render node in fact
+                    if(render_output_node == nullptr)
+                    {
+                        newNode = new RenderNode();
+                        render_output_node = newNode;
+                        render_output_node_changed = true;
+                    }
+                    else
+                    {
+                        L_WARNING("There can only be one render node.");
+                    }
+                }
+                if (ImGui::MenuItem("List Node"))
+                {
+                    newNode = new ListNode();
+                }
+                if (ImGui::MenuItem("List Access Node"))
+                {
+                    newNode = new ListAccessNode();
                 }
 
                 if(newNode)

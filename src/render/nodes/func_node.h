@@ -30,6 +30,12 @@ struct FunctionNode final : public PropertyNode
 
     inline virtual void render() override
     {
+        data.resetDataUpdate();
+
+        disconnectInputIfNotOfType<float>("x");
+        disconnectInputIfNotOfType<float>("y");
+        disconnectInputIfNotOfType<float>("z");
+
         static const char* const mode_names[] = {
             "float -> float",
             "Vec2  -> float",

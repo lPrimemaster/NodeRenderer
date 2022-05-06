@@ -30,6 +30,8 @@ struct MathNode final : public PropertyNode
 
     inline virtual void render() override
     {
+        data.resetDataUpdate();
+
         // TODO: Add the following operations: pow / abs / mod / exp / log / sin / cos / sinh / cosh
         static const char* const mode_names[] = {
             "A+B",
@@ -40,6 +42,9 @@ struct MathNode final : public PropertyNode
 
         ImGui::Combo("Mode", &currentmodeid, mode_names, sizeof(mode_names) / sizeof(mode_names[0]));
         mode = static_cast<Mode>(currentmodeid);
+
+        disconnectInputIfNotOfType<float, Vector4>("A");
+        disconnectInputIfNotOfType<float, Vector4>("B");
 
         if(!inputs.empty())
         {   

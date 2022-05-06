@@ -2,59 +2,80 @@
 #include <glad/glad.h>
 #include <vector>
 #include <unordered_map>
+#include "../../glm/glm/glm.hpp"
+#include "../windows/node_window.h"
 
 namespace Renderer
 {
     struct DrawInstance
     {
-        DrawInstance()
-        {
-            glGenVertexArrays(1, &_vao);
-            glBindVertexArray(_vao);
-            glGenBuffers(1, &_vbo);
-            glBindBuffer(GL_ARRAY_BUFFER, _vbo);
-
-            static const float vertices[] = {
-                -.5f, -.5f, -.5f,
-                 .5f, -.5f, -.5f,
-                -.5f,  .5f, -.5f,
-                 .5f,  .5f, -.5f,
-
-                -.5f, -.5f,  .5f,
-                 .5f, -.5f,  .5f,
-                -.5f,  .5f,  .5f,
-                 .5f,  .5f,  .5f,
-            };
-
-            glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-            glEnableVertexAttribArray(0);
-
-            glGenBuffers(1, &_ebo);
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _ebo);
-
-            static const unsigned int indices[] = {
-                0, 1, 2,
-                2, 3, 1
-            };
-
-            glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-
-            _instanceCount = 1;
-            glBindVertexArray(0);
-        }
-
-        ~DrawInstance()
-        {
-            glDeleteVertexArrays(1, &_vao);
-            glDeleteBuffers(1, &_vbo);
-            glDeleteBuffers(1, &_ebo);
-        }
+        DrawInstance();
+        ~DrawInstance();
 
         GLuint _vao;
         GLuint _vbo;
         GLuint _ebo;
+        GLsizei _idxcount;
+
+        GLuint _imb;
+        glm::mat4** _intanceModelMatrixPtr;
+
         unsigned int _instanceCount;
+    };
+
+    struct Camera
+    {
+        typedef int DirectionFlags;
+        struct DirectionFlag
+        {
+
+            DirectionFlag(DirectionFlags flag)
+            {
+                _flags = flag;
+            }
+            union
+            {
+                struct
+                {
+                    unsigned int FORWARD  : 1;
+                    unsigned int BACKWARD : 1;
+                    unsigned int LEFT     : 1;
+                    unsigned int RIGHT    : 1;
+                };
+                unsigned int _flags;
+            };
+        };
+
+        enum DirectionFlag_
+        {
+            DirectionFlag_FORWARD  = 0x1,
+            DirectionFlag_BACKWARD = 0x2,
+            DirectionFlag_LEFT     = 0x4,
+            DirectionFlag_RIGHT    = 0x8
+        };
+
+        Camera(float fov);
+
+        static constexpr float aspectRatio = 16.0f/9.0f;
+
+        void update(float frame_mouse_scroll, float frame_mouse_x, float frame_mouse_y, DirectionFlag dir, float dt);
+
+
+        glm::mat4 modelMatrix;
+        glm::mat4 viewMatrix;
+        glm::mat4 projectionMatrix;
+
+    private:
+        glm::vec3 position;
+        glm::vec3 up;
+        glm::vec3 right;
+        glm::vec3 front;
+
+        float yaw   = -90.0f;
+        float pitch = 0.0f;
+        float move_speed = 2.5f;
+        float look_speed = 0.1f;
+        float zoom = 45.0f; // NOTE: Not currently in use
     };
 
     struct DrawList
@@ -62,15 +83,24 @@ namespace Renderer
         DrawList();
         ~DrawList();
 
-        std::vector<DrawInstance> instances;
+        std::vector<DrawInstance*> instances;
 
-        inline void addInstance(DrawInstance instance)
+        inline void addInstance(DrawInstance* instance)
         {
             instances.push_back(instance);
         }
 
-        void render();
+        void render(NodeWindow* nodeWindow);
 
         GLuint _program;
+
+        struct
+        {
+            GLuint projectionMatrix;
+            GLuint viewMatrix;
+            GLuint modelMatrix;
+        } _uniforms;
+
+        Camera* camera;
     };
 }

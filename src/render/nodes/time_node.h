@@ -15,6 +15,8 @@ struct TimeNode final : public PropertyNode
 
     inline virtual void render() override
     {
+        data.resetDataUpdate();
+        
         ImGui::BeginDisabled();
         float s = NodeWindow::GetApptimeMs() / 1000.0f;
         s = std::ceil(s * 100.0f) / 100.0f;

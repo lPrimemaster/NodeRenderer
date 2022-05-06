@@ -41,3 +41,8 @@ add_executable(cbg64
 
 target_include_directories(cbg64 PRIVATE glad/include glfw/include)
 target_link_libraries(cbg64 glfw ${GLFW_LIBRARIES} muparser)
+
+add_custom_target(copy-runtime-files ALL
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/src/shader ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Release/shader
+    DEPENDS cbg64
+)

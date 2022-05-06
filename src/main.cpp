@@ -42,7 +42,7 @@ int main(int argc, char* argv[])
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO(); (void)io;
+    ImGuiIO& io = ImGui::GetIO();
 
     // Setup Dear ImGui style
     ImGui::StyleColorsDark();
@@ -52,7 +52,7 @@ int main(int argc, char* argv[])
     ImGui_ImplOpenGL3_Init("#version 130");
 
     WindowManager& windowManager = WindowManager::Instance();
-
+    NodeWindow* nodeWindow = WindowManager::GetNodeWindow();
     Renderer::DrawList dl;
 
     while (!glfwWindowShouldClose(window))
@@ -60,7 +60,7 @@ int main(int argc, char* argv[])
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         // Render to the screen
         // TODO: Render to a texture and display it on an ImGui window
-        dl.render();
+        dl.render(nodeWindow);
 
         // Render the UI
         ImGui_ImplOpenGL3_NewFrame();

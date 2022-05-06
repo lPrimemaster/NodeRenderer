@@ -16,6 +16,10 @@ struct ColorNode final : public PropertyNode
 
     inline virtual void render() override
     {
-        ImGui::ColorPicker4("Color", data.getValue<Vector4>().data);
+        data.resetDataUpdate();
+        if(ImGui::ColorPicker4("Color", data.getValue<Vector4>().data))
+        {
+            data.setDataChanged();
+        }
     }
 };

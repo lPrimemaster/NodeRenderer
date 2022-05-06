@@ -19,12 +19,34 @@ public:
 
     static const long long GetApptimeMs();
 
+    inline PropertyNode* getRenderOutputNode()
+    {
+        return render_output_node;
+    }
+
+    inline bool isRenderOutputNodeChanged()
+    {
+        if(render_output_node_changed)
+        {
+            render_output_node_changed = false;
+            return true;
+        }
+
+        return false;
+    }
+
     virtual void render() override;
 
     inline void deleteNode(int idx)
     {
         PropertyNode* node = *(nodes.data() + idx);
         nodes.erase(nodes.begin() + idx);
+
+        // Check if it is a global render node
+        if(node == render_output_node)
+        {
+            render_output_node = nullptr;
+        }
 
         // Clear the input dependencies of the node links
         for(IOIdxData out_dep : node->output_dependencies)
@@ -33,7 +55,7 @@ public:
             {
                 auto fit = other->inputs.find(out_dep);
 
-                if(fit !=  other->inputs.end())
+                if(fit != other->inputs.end())
                 {
                     other->inputs.erase(fit);
                 }
@@ -45,6 +67,9 @@ public:
 
 private:
     std::vector<PropertyNode*> nodes;
+
+    PropertyNode* render_output_node = nullptr;
+    bool render_output_node_changed = false;
 
     ImVec2 scrolling = ImVec2(0.0f, 0.0f);
     bool show_grid = true;

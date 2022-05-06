@@ -5,3 +5,7 @@
 #include "math_node.h"
 #include "func_node.h"
 #include "time_node.h"
+#include "worldpos_node.h"
+#include "render_node.h"
+#include "list_node.h"
+#include "list_access_node.h"

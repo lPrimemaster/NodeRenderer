@@ -19,6 +19,11 @@ public:
         return _wmaganer;
     }
 
+    static NodeWindow* GetNodeWindow()
+    {
+        return dynamic_cast<NodeWindow*>(Instance().windows[0]);
+    }
+
 private:
     WindowManager() = default;
     ~WindowManager()
