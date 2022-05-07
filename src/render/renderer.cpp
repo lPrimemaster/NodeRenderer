@@ -4,6 +4,87 @@
 #include "../log/logger.h"
 #include "../../glm/glm/gtx/transform.hpp"
 #include "nodes/render_node.h"
+#include "../../imgui/imgui_impl_glfw.h"
+
+static float screen_halfsize[2];
+static float mouse_delta[2];
+static float mouse_scroll;
+static bool holding_mouse_right;
+static Renderer::Camera::DirectionFlags cam_dir_f;
+
+static void _key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+    ImGuiIO& io = ImGui::GetIO();
+    ImGui_ImplGlfw_KeyCallback(window, key, scancode, action, mods);
+
+    if(!io.WantCaptureKeyboard)
+    {
+        if(action == GLFW_PRESS)
+        {
+            if(key == GLFW_KEY_W) cam_dir_f |= Renderer::Camera::DirectionFlag_FORWARD;
+            if(key == GLFW_KEY_A) cam_dir_f |= Renderer::Camera::DirectionFlag_LEFT;
+            if(key == GLFW_KEY_S) cam_dir_f |= Renderer::Camera::DirectionFlag_BACKWARD;
+            if(key == GLFW_KEY_D) cam_dir_f |= Renderer::Camera::DirectionFlag_RIGHT;
+        }
+        else if(action == GLFW_RELEASE)
+        {
+            if(key == GLFW_KEY_W) cam_dir_f &= ~Renderer::Camera::DirectionFlag_FORWARD;
+            if(key == GLFW_KEY_A) cam_dir_f &= ~Renderer::Camera::DirectionFlag_LEFT;
+            if(key == GLFW_KEY_S) cam_dir_f &= ~Renderer::Camera::DirectionFlag_BACKWARD;
+            if(key == GLFW_KEY_D) cam_dir_f &= ~Renderer::Camera::DirectionFlag_RIGHT;
+        }
+    }
+}
+
+// TODO: Check if we are in the screen region or not
+static void _mouse_pos_callback(GLFWwindow* window, double xpos, double ypos)
+{
+    ImGuiIO& io = ImGui::GetIO();
+    io.AddMousePosEvent(xpos, ypos);
+
+    if(holding_mouse_right)
+    {
+        mouse_delta[0] = screen_halfsize[0] - (float)xpos;
+        mouse_delta[1] = screen_halfsize[1] - (float)ypos;
+        glfwSetCursorPos(window, screen_halfsize[0], screen_halfsize[1]);
+    }
+    else
+    {
+        mouse_delta[0] = 0.0f;
+        mouse_delta[1] = 0.0f;
+    }
+}
+
+static void _mouse_scr_callback(GLFWwindow* window, double xoffset, double yoffset)
+{
+    mouse_scroll = (float)yoffset;
+}
+
+static void _mouse_btn_callback(GLFWwindow* window, int button, int action, int mods)
+{
+    ImGuiIO& io = ImGui::GetIO();
+    io.AddMouseButtonEvent(button, (action == GLFW_PRESS || action == GLFW_REPEAT));
+
+    if (!io.WantCaptureMouse)
+    {
+        if(button == GLFW_MOUSE_BUTTON_RIGHT && (action == GLFW_PRESS || action == GLFW_REPEAT))
+        {
+            holding_mouse_right = true;
+        }
+        else if(button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_RELEASE)
+        {
+            holding_mouse_right = false;
+        }
+    }
+}
+
+static void _framebuffer_size_callback(GLFWwindow* window, int width, int height)
+{
+    glViewport(0, 0, width, height);
+
+    screen_halfsize[0] = width  / 2.0f;
+    screen_halfsize[1] = height / 2.0f;
+}
 
 static int LoadShaderFromFile(GLuint shadertype, std::string file, GLuint* program)
 {
@@ -199,7 +280,7 @@ void Renderer::Camera::update(float frame_mouse_scroll, float frame_mouse_x, flo
     frame_mouse_x *= look_speed;
     frame_mouse_y *= look_speed;
 
-    yaw   += frame_mouse_x;
+    yaw   -= frame_mouse_x;
     pitch += frame_mouse_y;
 
     if(pitch > 89.0f) pitch = 89.0f;
@@ -223,8 +304,17 @@ void Renderer::Camera::update(float frame_mouse_scroll, float frame_mouse_x, flo
     viewMatrix = glm::lookAt(position, position + front, up);
 }
 
-Renderer::DrawList::DrawList()
+Renderer::DrawList::DrawList(GLFWwindow* window, const int sw, const int sh)
 {
+    glfwSetKeyCallback(window, _key_callback);
+    glfwSetCursorPosCallback(window, _mouse_pos_callback);
+    glfwSetScrollCallback(window, _mouse_scr_callback);
+    glfwSetMouseButtonCallback(window, _mouse_btn_callback);
+    glfwSetFramebufferSizeCallback(window, _framebuffer_size_callback);
+
+    screen_halfsize[0] = sw / 2.0f;
+    screen_halfsize[1] = sh / 2.0f;
+
     _program = CreateDefaultProgram();
     addInstance(new DrawInstance());
 
@@ -253,6 +343,7 @@ Renderer::DrawList::~DrawList()
 
 void Renderer::DrawList::render(NodeWindow* nodeWindow)
 {
+    static float last_time = (float)glfwGetTime();
     RenderNode* outNode = dynamic_cast<RenderNode*>(nodeWindow->getRenderOutputNode());
 
     if(outNode != nullptr)
@@ -282,12 +373,13 @@ void Renderer::DrawList::render(NodeWindow* nodeWindow)
     }
 
     // Update camera
-    Camera::DirectionFlags dir = 0;
-    camera->update(0.0f, 0.0f, 0.0f, dir, 0.0f);
+    float now = (float)glfwGetTime();
+    camera->update(mouse_scroll, mouse_delta[0], mouse_delta[1], cam_dir_f, now - last_time);
+    last_time = now;
 
     glUseProgram(_program);
-    static float angle = 0.1f;
-    camera->modelMatrix = glm::rotate(camera->modelMatrix, angle, glm::vec3(-1, 1, 1));
+    // static float angle = 0.1f;
+    // camera->modelMatrix = glm::rotate(camera->modelMatrix, angle, glm::vec3(-1, 1, 1));
 
     glUniformMatrix4fv(_uniforms.modelMatrix, 1, GL_FALSE, &camera->modelMatrix[0][0]);
     glUniformMatrix4fv(_uniforms.viewMatrix, 1, GL_FALSE, &camera->viewMatrix[0][0]);

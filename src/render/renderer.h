@@ -1,5 +1,6 @@
 #pragma once
 #include <glad/glad.h>
+#include <GLFW/glfw3.h>
 #include <vector>
 #include <unordered_map>
 #include "../../glm/glm/glm.hpp"
@@ -80,7 +81,7 @@ namespace Renderer
 
     struct DrawList
     {
-        DrawList();
+        DrawList(GLFWwindow* window, const int sw, const int sh);
         ~DrawList();
 
         std::vector<DrawInstance*> instances;

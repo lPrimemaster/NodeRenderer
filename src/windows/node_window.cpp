@@ -114,7 +114,8 @@ void NodeWindow::render()
 
             // Save the size of what we have emitted and whether any of the widgets are being used
             bool node_widgets_active = (!old_any_active && ImGui::IsAnyItemActive());
-            node->_render_data.size = ImGui::GetItemRectSize() + NODE_WINDOW_PADDING + NODE_WINDOW_PADDING + intext_pad;
+            ImVec2 outtext_pad = ImVec2(node->_output_max_pad_px, 0);
+            node->_render_data.size = ImGui::GetItemRectSize() + NODE_WINDOW_PADDING + NODE_WINDOW_PADDING + intext_pad + outtext_pad;
             ImVec2 node_rect_max = node_rect_min + node->_render_data.size;
 
             // Display node box
@@ -198,6 +199,8 @@ void NodeWindow::render()
             for (int slot_idx = 0; slot_idx < node->_output_count; slot_idx++)
             {
                 ImVec2 offset_out = offset + node->getOutputPos(slot_idx);
+                if(node->_output_labels.size() == node->_output_count) // Draw output text only if it exists
+                    draw_list->AddText(offset_out + ImVec2(7.5f - node->_output_max_pad_px, -ImGui::GetTextLineHeight() / 2), IM_COL32(255, 255, 255, 255), node->_output_labels[slot_idx].c_str());
                 draw_list->AddCircleFilled(offset_out, NODE_SLOT_RADIUS, IM_COL32(150, 150, 150, 150));
                 ImGui::SetCursorScreenPos(offset_out - ImVec2(NODE_SLOT_RADIUS, NODE_SLOT_RADIUS));
                 ImGui::PushID(node->id + node->_input_count + slot_idx + 1);
@@ -320,6 +323,10 @@ void NodeWindow::render()
                 if (ImGui::MenuItem("List Access Node"))
                 {
                     newNode = new ListAccessNode();
+                }
+                if (ImGui::MenuItem("List Join Node"))
+                {
+                    newNode = new ListJoinNode();
                 }
 
                 if(newNode)

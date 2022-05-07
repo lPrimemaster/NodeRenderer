@@ -43,7 +43,7 @@ struct ListNode final : public PropertyNode
     
     ~ListNode()
     {
-
+        
     }
 
     inline virtual void render() override

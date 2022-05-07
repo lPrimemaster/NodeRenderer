@@ -219,7 +219,10 @@ struct PropertyNode
     // Inputs
     int _input_count = 0;
     std::vector<std::string> _input_labels;
+    std::vector<std::string> _output_labels;
+    
     float _input_max_pad_px = 0.0f;
+    float _output_max_pad_px = 0.0f;
     inline static constexpr float _text_pad_pad_px = 20.0f;
     std::map<IOIdxData, PropertyNode*> inputs;
     std::map<std::string, PropertyNode*> inputs_named;
@@ -228,6 +231,7 @@ struct PropertyNode
     int _output_count = 0;
     std::vector<IOIdxData> output_dependencies;
 
+    // This is the "main" output
     PropertyGenericData data;
 
     // Display
@@ -272,6 +276,22 @@ struct PropertyNode
             std::max_element(
                 in.begin(),
                 in.end(),
+                [](const auto& a, const auto& b) {
+                    return a.size() < b.size();
+                }
+            )->c_str()
+        ).x + _text_pad_pad_px;
+    }
+
+    inline void setOutputsOrdered(std::vector<std::string> out)
+    {
+        _output_count = (int)out.size();
+        _output_labels = out;
+
+        _output_max_pad_px = ImGui::CalcTextSize(
+            std::max_element(
+                out.begin(),
+                out.end(),
                 [](const auto& a, const auto& b) {
                     return a.size() < b.size();
                 }

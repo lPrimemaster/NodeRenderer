@@ -9,3 +9,4 @@
 #include "render_node.h"
 #include "list_node.h"
 #include "list_access_node.h"
+#include "list_join_node.h"

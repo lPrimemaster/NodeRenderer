@@ -10,6 +10,9 @@
 
 #include "render/renderer.h"
 
+static constexpr int DEF_SCREEN_PX_W = 1280;
+static constexpr int DEF_SCREEN_PX_H =  720;
+
 int main(int argc, char* argv[])
 {
     GLFWwindow* window;
@@ -23,7 +26,7 @@ int main(int argc, char* argv[])
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
 
-    window = glfwCreateWindow(1280, 720, "CBG", NULL, NULL);
+    window = glfwCreateWindow(DEF_SCREEN_PX_W, DEF_SCREEN_PX_H, "CBG", NULL, NULL);
     if (!window)
     {
         L_ERROR("glfwCreateWindow() error.");
@@ -53,7 +56,7 @@ int main(int argc, char* argv[])
 
     WindowManager& windowManager = WindowManager::Instance();
     NodeWindow* nodeWindow = WindowManager::GetNodeWindow();
-    Renderer::DrawList dl;
+    Renderer::DrawList dl(window, DEF_SCREEN_PX_W, DEF_SCREEN_PX_H);
 
     while (!glfwWindowShouldClose(window))
     {
