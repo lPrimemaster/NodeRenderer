@@ -9,6 +9,7 @@ struct RenderNodeData
 {
     unsigned int _instanceCount = 0;
     glm::mat4**  _worldPositionPtr = nullptr;
+    Vector4** _instanceColorsPtr = nullptr;
 };
 
 struct RenderNode final : public PropertyNode
@@ -20,7 +21,8 @@ struct RenderNode final : public PropertyNode
             {
                 "instanceCount",
                 "worldPosition",
-                "mesh"
+                "mesh",
+                "colors"
             }
         );
         _output_count = 0;
@@ -28,6 +30,10 @@ struct RenderNode final : public PropertyNode
         _renderData._worldPositionPtr = (glm::mat4**)malloc(sizeof(glm::mat4*));
         *(_renderData._worldPositionPtr) = nullptr;
         L_TRACE("_worldPositionPtr : 0x%X", _renderData._worldPositionPtr);
+
+        _renderData._instanceColorsPtr = (Vector4**)malloc(sizeof(Vector4*));
+        *(_renderData._instanceColorsPtr) = nullptr;
+        L_TRACE("_instanceColorsPtr : 0x%X", _renderData._instanceColorsPtr);
 
         name = "Render Node #" + std::to_string(inc++);
 
@@ -40,6 +46,11 @@ struct RenderNode final : public PropertyNode
         if(_renderData._worldPositionPtr != nullptr)
         {
             free(_renderData._worldPositionPtr);
+        }
+
+        if(_renderData._instanceColorsPtr != nullptr)
+        {
+            free(_renderData._instanceColorsPtr);
         }
     }
 
@@ -56,6 +67,7 @@ struct RenderNode final : public PropertyNode
         disconnectInputIfNotOfType<unsigned int>("instanceCount");
         disconnectInputIfNotOfType<std::vector<Vector3>>("worldPosition");
         disconnectInputIfNotOfType<MeshNodeData>("mesh");
+        disconnectInputIfNotOfType<std::vector<Vector4>>("colors");
 
         // Instance Count Handling
         auto instanceCountLocal = inputs_named.find("instanceCount");
@@ -64,9 +76,9 @@ struct RenderNode final : public PropertyNode
             _instanceCountLast = 1;
             if(_instanceCountLast != _renderData._instanceCount)
             {
-                glm::mat4* worldPosLocal = *(_renderData._worldPositionPtr);
                 _renderData._instanceCount = _instanceCountLast;
 
+                glm::mat4* worldPosLocal = *(_renderData._worldPositionPtr);
                 if(worldPosLocal != nullptr)
                 {
                     delete[] worldPosLocal;
@@ -89,8 +101,28 @@ struct RenderNode final : public PropertyNode
                 {
                     worldPosLocal[0] = glm::mat4(1.0f);
                 }
+
+                Vector4* instanceColorLocal = *(_renderData._instanceColorsPtr);
+                if(instanceColorLocal != nullptr)
+                {
+                    delete[] instanceColorLocal;
+                }
+                instanceColorLocal = new Vector4[_instanceCountLast];
+
+                auto colorLocal = inputs_named.find("colors");
+                if(colorLocal != inputs_named.end())
+                {
+                    auto colors = colorLocal->second->data.getValue<std::vector<Vector4>>();
+                    instanceColorLocal[0] = colors[0];
+                }
+                else
+                {
+                    instanceColorLocal[0] = Vector4(1, 1, 1, 1);
+                }
+
                 _render_data_changed = true;
                 *(_renderData._worldPositionPtr) = worldPosLocal;
+                *(_renderData._instanceColorsPtr) = instanceColorLocal;
                 data.setValue(_renderData);
             }
         }
@@ -98,7 +130,27 @@ struct RenderNode final : public PropertyNode
         {
             unsigned int instanceCount = instanceCountLocal->second->data.getValue<unsigned int>();
             auto worldPositionLocal = inputs_named.find("worldPosition");
+            auto colorLocal = inputs_named.find("colors");
             bool worldPositionOkay = true;
+            bool colorOkay = true;
+
+            if(colorLocal == inputs_named.end())
+            {
+                colorOkay = false;
+            }
+            else
+            {
+                if(colorLocal->second->data.dataChanged())
+                {
+                    auto colors = colorLocal->second->data.getValue<std::vector<Vector4>>();
+                    Vector4* color = *(_renderData._instanceColorsPtr);
+
+                    memcpy(color, colors.data(), colors.size() * sizeof(Vector4));
+
+                    *(_renderData._instanceColorsPtr) = color;
+                }
+            }
+
             if(worldPositionLocal == inputs_named.end())
             {
                 worldPositionOkay = false;
@@ -127,9 +179,9 @@ struct RenderNode final : public PropertyNode
 
             if(_instanceCountLast != instanceCount)
             {
-                glm::mat4* worldPosLocal = *(_renderData._worldPositionPtr);
                 _renderData._instanceCount = instanceCount;
-
+                
+                glm::mat4* worldPosLocal = *(_renderData._worldPositionPtr);
                 if(worldPosLocal != nullptr)
                 {
                     delete[] worldPosLocal;
@@ -159,9 +211,30 @@ struct RenderNode final : public PropertyNode
                     }
                 }
 
+                Vector4* colors = *(_renderData._instanceColorsPtr);
+                if(colors != nullptr)
+                {
+                    delete[] colors;
+                }
+                colors = new Vector4[instanceCount];
+
+                if(colorOkay)
+                {
+                    auto color = colorLocal->second->data.getValue<std::vector<Vector4>>();
+                    memcpy(colors, color.data(), color.size() * sizeof(Vector4));
+                }
+                else
+                {
+                    for(int i = 0; i < _renderData._instanceCount; i++)
+                    {
+                        colors[i] = Vector4(1, 1, 1, 1);
+                    }
+                }
+
                 _instanceCountLast = instanceCount;
                 _render_data_changed = true;
                 *(_renderData._worldPositionPtr) = worldPosLocal;
+                *(_renderData._instanceColorsPtr) = colors;
                 data.setValue(_renderData);
             }
         }

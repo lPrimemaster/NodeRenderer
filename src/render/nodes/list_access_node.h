@@ -67,6 +67,7 @@ struct ListAccessNode final : public PropertyNode
 
         if(idx < 0) idx = 0;
 
+        // TODO: Allow modification of the currently accessed index
         auto list_it = inputs_named.find("list");
         if(list_it != inputs_named.end())
         {

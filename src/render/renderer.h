@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include "../../glm/glm/glm.hpp"
 #include "../windows/node_window.h"
+#include "../math/vector.h"
 
 namespace Renderer
 {
@@ -20,6 +21,9 @@ namespace Renderer
 
         GLuint _imb;
         glm::mat4** _intanceModelMatrixPtr;
+
+        GLuint _icb;
+        Vector4** _instanceColorsPtr;
 
         unsigned int _instanceCount;
     };

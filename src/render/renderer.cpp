@@ -230,6 +230,16 @@ Renderer::DrawInstance::DrawInstance()
     glVertexAttribDivisor(3, 1);
     glVertexAttribDivisor(4, 1);
 
+    glGenBuffers(1, &_icb);
+    glBindBuffer(GL_ARRAY_BUFFER, _icb);
+    _instanceColorsPtr = nullptr;
+    glBufferData(GL_ARRAY_BUFFER, _instanceCount * sizeof(Vector4), nullptr, GL_DYNAMIC_DRAW);
+
+    glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, sizeof(Vector4), (void*)0);
+    glEnableVertexAttribArray(5);
+
+    glVertexAttribDivisor(5, 1);
+
     glBindVertexArray(0);
 }
 
@@ -239,6 +249,8 @@ Renderer::DrawInstance::~DrawInstance()
     glDeleteVertexArrays(1, &_vao);
     glDeleteBuffers(1, &_vbo);
     glDeleteBuffers(1, &_ebo);
+    glDeleteBuffers(1, &_imb);
+    glDeleteBuffers(1, &_icb);
 }
 
 Renderer::Camera::Camera(float fov)
@@ -355,6 +367,7 @@ void Renderer::DrawList::render(NodeWindow* nodeWindow)
             RenderNodeData nodeData = outNode->data.getValue<RenderNodeData>();
             instances[0]->_instanceCount = nodeData._instanceCount;
             instances[0]->_intanceModelMatrixPtr = nodeData._worldPositionPtr;
+            instances[0]->_instanceColorsPtr = nodeData._instanceColorsPtr;
         }
 
         if(outNode->renderDataChanged())
@@ -369,6 +382,13 @@ void Renderer::DrawList::render(NodeWindow* nodeWindow)
         {
             glBindBuffer(GL_ARRAY_BUFFER, instances[0]->_imb);
             glBufferData(GL_ARRAY_BUFFER, instances[0]->_instanceCount * sizeof(glm::mat4), pos, GL_DYNAMIC_DRAW);
+        }
+
+        Vector4* col = *(nodeData._instanceColorsPtr);
+        if(col != nullptr)
+        {
+            glBindBuffer(GL_ARRAY_BUFFER, instances[0]->_icb);
+            glBufferData(GL_ARRAY_BUFFER, instances[0]->_instanceCount * sizeof(Vector4), col, GL_DYNAMIC_DRAW);
         }
     }
 
