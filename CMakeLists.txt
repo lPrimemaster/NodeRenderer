@@ -36,6 +36,9 @@ add_executable(cbg64
     src/render/renderer.h
     src/render/renderer.cpp
 
+    src/math/vector.h
+    src/math/vector.cpp
+
     src/main.cpp
 )
 

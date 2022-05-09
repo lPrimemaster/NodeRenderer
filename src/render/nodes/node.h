@@ -26,6 +26,7 @@ struct IOIdxData
     }
 };
 
+// FIXME: Disable copy constructor for PropertyGenericData
 struct PropertyGenericData
 {
     template<typename T>
@@ -238,7 +239,7 @@ struct PropertyNode
     NodeRenderData _render_data;
 
     template<typename... Args>
-    inline void disconnectInputIfNotOfType(const std::string& inputName)
+    inline bool disconnectInputIfNotOfType(const std::string& inputName)
     {
         auto input = inputs_named.find(inputName);
         if(input != inputs_named.end())
@@ -263,8 +264,10 @@ struct PropertyNode
                     L_WARNING("%s", tid.name());
                 }
                 L_WARNING("Supplied type: %s", other->data.type.name());
+                return true;
             }
         }
+        return false;
     }
 
     inline void setInputsOrdered(std::vector<std::string> in)

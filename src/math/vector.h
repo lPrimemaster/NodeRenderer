@@ -48,3 +48,10 @@ struct Vector4
         float data[4];
     };
 };
+
+bool operator==(const Vector2& lhs, const Vector2& rhs);
+bool operator==(const Vector3& lhs, const Vector3& rhs);
+bool operator==(const Vector4& lhs, const Vector4& rhs);
+bool operator!=(const Vector2& lhs, const Vector2& rhs);
+bool operator!=(const Vector3& lhs, const Vector3& rhs);
+bool operator!=(const Vector4& lhs, const Vector4& rhs);

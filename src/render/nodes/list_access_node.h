@@ -67,82 +67,170 @@ struct ListAccessNode final : public PropertyNode
 
         if(idx < 0) idx = 0;
 
-        // TODO: Allow modification of the currently accessed index
+        if(ImGui::Checkbox("Modifiable", &mod))
+        {
+            if(mod)
+            {
+                setInputsOrdered(
+                    {
+                        "index",
+                        "list",
+                        "value"
+                    }
+                );
+            }
+            else
+            {
+                disconnectInputIfNotOfType<PropertyNode::EmptyType>("value");
+                setInputsOrdered(
+                    {
+                        "index",
+                        "list"
+                    }
+                );
+            }
+        }
+
         auto list_it = inputs_named.find("list");
+
+        // Is there a value input connected?
+        auto value = inputs_named.find("value");
+        bool val_connected = (value != inputs_named.end());
+
         if(list_it != inputs_named.end())
         {
-            ImGui::BeginDisabled();
+            ImGui::BeginDisabled(!mod && !val_connected);
             if(list_it->second->data.isOfType<std::vector<float>>())
             {
-                auto list = list_it->second->data.getValue<std::vector<float>>();
+                auto& list = list_it->second->data.getValue<std::vector<float>>();
                 if(idx >= list.size())
                 {
                     idx = list.size() - 1;
                 }
 
-                float value = list.at(idx);
-                data.setValue(value);
-                ImGui::InputFloat("Value", &value);
+                data.setValue(list[idx]);
+                ImGui::InputFloat("Value", list.data() + idx);
+
+                if(val_connected && !disconnectInputIfNotOfType<float>("value"))
+                {
+                    auto& valueData = value->second->data;
+                    auto valueValue = valueData.getValue<float>();
+
+                    if(valueData.dataChanged() || (valueValue != list[idx]))
+                    {
+                        list[idx] = valueValue;
+                    }
+                }
             }
             else if(list_it->second->data.isOfType<std::vector<int>>())
             {
-                auto list = list_it->second->data.getValue<std::vector<int>>();
+                auto& list = list_it->second->data.getValue<std::vector<int>>();
                 if(idx >= list.size())
                 {
                     idx = list.size() - 1;
                 }
 
-                int value = list.at(idx);
-                data.setValue(value);
-                ImGui::InputInt("Value", &value);
+                data.setValue(list[idx]);
+                ImGui::InputInt("Value", list.data() + idx);
+
+                if(val_connected && !disconnectInputIfNotOfType<int>("value"))
+                {
+                    auto& valueData = value->second->data;
+                    auto valueValue = valueData.getValue<int>();
+
+                    if(valueData.dataChanged() || (valueValue != list[idx]))
+                    {
+                        list[idx] = valueValue;
+                    }
+                }
             }
             else if(list_it->second->data.isOfType<std::vector<unsigned int>>())
             {
-                auto list = list_it->second->data.getValue<std::vector<unsigned int>>();
+                auto& list = list_it->second->data.getValue<std::vector<unsigned int>>();
                 if(idx >= list.size())
                 {
                     idx = list.size() - 1;
                 }
 
-                unsigned int value = list.at(idx);
-                data.setValue(value);
-                ImGui::InputScalar("Value", ImGuiDataType_U32, &value);
+                data.setValue(list[idx]);
+                ImGui::InputScalar("Value", ImGuiDataType_U32, list.data() + idx);
+
+                if(val_connected && !disconnectInputIfNotOfType<unsigned int>("value"))
+                {
+                    auto& valueData = value->second->data;
+                    auto valueValue = valueData.getValue<unsigned int>();
+
+                    if(valueData.dataChanged() || (valueValue != list[idx]))
+                    {
+                        list[idx] = valueValue;
+                    }
+                }
             }
             else if(list_it->second->data.isOfType<std::vector<Vector2>>())
             {
-                auto list = list_it->second->data.getValue<std::vector<Vector2>>();
+                auto& list = list_it->second->data.getValue<std::vector<Vector2>>();
                 if(idx >= list.size())
                 {
                     idx = list.size() - 1;
                 }
 
-                Vector2 value = list.at(idx);
-                data.setValue(value);
-                ImGui::InputFloat2("Value", value.data);
+                data.setValue(list[idx]);
+                ImGui::InputFloat2("Value", (list.data() + idx)->data);
+
+                if(val_connected && !disconnectInputIfNotOfType<Vector2>("value"))
+                {
+                    auto& valueData = value->second->data;
+                    auto valueValue = valueData.getValue<Vector2>();
+
+                    if(valueData.dataChanged() || (valueValue != list[idx]))
+                    {
+                        list[idx] = valueValue;
+                    }
+                }
             }
             else if(list_it->second->data.isOfType<std::vector<Vector3>>())
             {
-                auto list = list_it->second->data.getValue<std::vector<Vector3>>();
+                auto& list = list_it->second->data.getValue<std::vector<Vector3>>();
                 if(idx >= list.size())
                 {
                     idx = list.size() - 1;
                 }
 
-                Vector3 value = list.at(idx);
-                data.setValue(value);
-                ImGui::InputFloat3("Value", value.data);
+                data.setValue(list[idx]);
+                ImGui::InputFloat3("Value", (list.data() + idx)->data);
+
+                if(val_connected && !disconnectInputIfNotOfType<Vector3>("value"))
+                {
+                    auto& valueData = value->second->data;
+                    auto valueValue = valueData.getValue<Vector3>();
+
+                    if(valueData.dataChanged() || (valueValue != list[idx]))
+                    {
+                        list[idx] = valueValue;
+                    }
+                }
             }
             else if(list_it->second->data.isOfType<std::vector<Vector4>>())
             {
-                auto list = list_it->second->data.getValue<std::vector<Vector4>>();
+                auto& list = list_it->second->data.getValue<std::vector<Vector4>>();
                 if(idx >= list.size())
                 {
                     idx = list.size() - 1;
                 }
 
-                Vector4 value = list.at(idx);
-                data.setValue(value);
-                ImGui::InputFloat4("Value", value.data);
+                data.setValue(list[idx]);
+                ImGui::InputFloat4("Value", (list.data() + idx)->data);
+                
+                if(val_connected && !disconnectInputIfNotOfType<Vector4>("value"))
+                {
+                    auto& valueData = value->second->data;
+                    auto valueValue = valueData.getValue<Vector4>();
+
+                    if(valueData.dataChanged() || (valueValue != list[idx]))
+                    {
+                        list[idx] = valueValue;
+                    }
+                }
             }
             ImGui::EndDisabled();
         }
@@ -150,4 +238,5 @@ struct ListAccessNode final : public PropertyNode
 
 private:
     int idx = 0;
+    bool mod = false;
 };
