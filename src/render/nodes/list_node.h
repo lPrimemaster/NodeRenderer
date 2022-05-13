@@ -17,12 +17,19 @@ struct ListNode final : public PropertyNode
         VECTOR4
     } type;
 
+    enum class Dim
+    {
+        D1,
+        D2,
+        D3
+    } dim;
+
     inline ListNode() : PropertyNode()
     {
         static int inc = 0;
         setInputsOrdered(
             {
-                "count"
+                "sizex"
             }
         );
         _output_count = 1;
@@ -50,7 +57,9 @@ struct ListNode final : public PropertyNode
     {
         data.resetDataUpdate();
 
-        disconnectInputIfNotOfType<unsigned int>("count");
+        disconnectInputIfNotOfType<unsigned int>("sizex");
+        disconnectInputIfNotOfType<unsigned int>("sizey");
+        disconnectInputIfNotOfType<unsigned int>("sizez");
 
         static const char* const type_names[] = {
             "float",
@@ -64,11 +73,98 @@ struct ListNode final : public PropertyNode
         ImGui::Combo("Type", &currenttypeid, type_names, sizeof(type_names) / sizeof(type_names[0]));
         type = static_cast<Type>(currenttypeid);
 
-        auto listsizeLocal = inputs_named.find("count");
-        bool funcChanged = false;
-        if(listsizeLocal != inputs_named.end())
+        static const char* const dim_names[] = {
+            "1D",
+            "2D",
+            "3D"
+        };
+
+        bool dim_changed = ImGui::Combo("Dim", &currentdimid, dim_names, sizeof(dim_names) / sizeof(dim_names[0]));
+        dim = static_cast<Dim>(currentdimid);
+
+        unsigned int size_x = 1;
+        unsigned int size_y = 1;
+        unsigned int size_z = 1;
+        bool has_a_dim = false;
+
+        switch (dim)
         {
-            unsigned int size = listsizeLocal->second->data.getValue<unsigned int>();
+        case Dim::D3:
+        {
+            auto listsizeLocal = inputs_named.find("sizez");
+            if(listsizeLocal != inputs_named.end())
+            {
+                size_z = listsizeLocal->second->data.getValue<unsigned int>();
+                has_a_dim = true;
+            }
+        }
+        [[fallthrough]];
+        case Dim::D2:
+        {
+            auto listsizeLocal = inputs_named.find("sizey");
+            if(listsizeLocal != inputs_named.end())
+            {
+                size_y = listsizeLocal->second->data.getValue<unsigned int>();
+                has_a_dim = true;
+            }
+        }
+        [[fallthrough]];
+        case Dim::D1:
+        {
+            auto listsizeLocal = inputs_named.find("sizex");
+            if(listsizeLocal != inputs_named.end())
+            {
+                size_x = listsizeLocal->second->data.getValue<unsigned int>();
+                has_a_dim = true;
+            }
+        }
+        break;
+        
+        default:
+            break;
+        }
+
+        if(dim_changed)
+        {
+            switch (dim)
+            {
+            case Dim::D1:
+                disconnectInputIfNotOfType<PropertyNode::EmptyType>("sizey");
+                disconnectInputIfNotOfType<PropertyNode::EmptyType>("sizez");
+                setInputsOrdered(
+                    {
+                        "sizex"
+                    }
+                );
+                break;
+            case Dim::D2:
+                disconnectInputIfNotOfType<PropertyNode::EmptyType>("sizez");
+                setInputsOrdered(
+                    {
+                        "sizex",
+                        "sizey"
+                    }
+                );
+                break;
+            case Dim::D3:
+                setInputsOrdered(
+                    {
+                        "sizex",
+                        "sizey",
+                        "sizez"
+                    }
+                );
+                break;
+            
+            default:
+                break;
+            }
+        }
+
+        bool funcChanged = false;
+        if(has_a_dim)
+        {
+            unsigned int size = size_x * size_y * size_z;
             bool types_or_size_diff = (listsize != size) || (currenttypeid != lasttypeid);
             if(types_or_size_diff)
             {
@@ -172,9 +268,50 @@ struct ListNode final : public PropertyNode
             }
 
             ImGui::Text("Semi-colon separated. [ex.: \"a;b;\"]");
-            if(ImGui::InputText("Extra variables", _extra_vars, 128))
+            if(ImGui::InputText("Extra variables", _extra_vars, 128) || dim_changed)
             {
-                std::vector<std::string> strings = { "count" };
+                std::vector<std::string> strings;
+                int it_inc = 1 + static_cast<int>(dim);
+
+                px.ClearVar();
+                py.ClearVar();
+                pz.ClearVar();
+                pw.ClearVar();
+
+                _vars.clear();
+
+                switch (dim)
+                {
+                case Dim::D1: strings = { "sizex"                   }; break;
+                case Dim::D2: strings = { "sizex", "sizey"          }; break;
+                case Dim::D3: strings = { "sizex", "sizey", "sizez" }; break;
+                default: break;
+                }
+
+                switch (dim)
+                {
+                case Dim::D3:
+                    px.DefineVar("k", &k_var);
+                    py.DefineVar("k", &k_var);
+                    pz.DefineVar("k", &k_var);
+                    pw.DefineVar("k", &k_var);
+                    [[fallthrough]];
+                case Dim::D2:
+                    px.DefineVar("j", &j_var);
+                    py.DefineVar("j", &j_var);
+                    pz.DefineVar("j", &j_var);
+                    pw.DefineVar("j", &j_var);
+                    [[fallthrough]];
+                case Dim::D1:
+                    px.DefineVar("i", &i_var);
+                    py.DefineVar("i", &i_var);
+                    pz.DefineVar("i", &i_var);
+                    pw.DefineVar("i", &i_var);
+                    break;
+                default:
+                    break;
+                }
+
                 std::istringstream f(_extra_vars);
                 std::string s;
                 while (std::getline(f, s, ';'))
@@ -192,20 +329,8 @@ struct ListNode final : public PropertyNode
                 // TODO: Create a new input set were the currently connected ones are mutated to allow for on the fly name change
                 setInputsOrdered(strings);
 
-                px.ClearVar();
-                py.ClearVar();
-                pz.ClearVar();
-                pw.ClearVar();
-
-                _vars.clear();
-
-                px.DefineVar("i", &i_var);
-                py.DefineVar("i", &i_var);
-                pz.DefineVar("i", &i_var);
-                pw.DefineVar("i", &i_var);
-
                 // Ignore fix variable "count"
-                _vars_name = std::vector<std::string>(strings.begin() + 1, strings.end());
+                _vars_name = std::vector<std::string>(strings.begin() + it_inc, strings.end());
                 for(auto s : _vars_name)
                 {
                     L_TRACE("Found additional var = %s", s.c_str());
@@ -309,72 +434,119 @@ struct ListNode final : public PropertyNode
                     case Type::FLOAT:
                         {
                             std::vector<float>* dataVal = data.getValuePtr<std::vector<float>>();
-                            for(i_it = 0; i_it < size; i_it++)
+                            for(k_it = 0; k_it < size_z; k_it++)
                             {
-                                i_var = i_it;
-                                double x = px.Eval();
-                                dataVal->at(i_it) = (float)x;
+                                k_var = k_it;
+                                for(j_it = 0; j_it < size_y; j_it++)
+                                {
+                                    j_var = j_it;
+                                    for(i_it = 0; i_it < size_x; i_it++)
+                                    {
+                                        i_var = i_it;
+                                        double x = px.Eval();
+                                        dataVal->at(i_it + j_it * size_x + k_it * size_y * size_z) = (float)x;
+                                    }
+                                }
                             }
                         }
                         break;
                     case Type::INT:
                         {
                             std::vector<int>* dataVal = data.getValuePtr<std::vector<int>>();
-                            for(i_it = 0; i_it < size; i_it++)
+                            for(k_it = 0; k_it < size_z; k_it++)
                             {
-                                i_var = i_it;
-                                double x = px.Eval();
-                                dataVal->at(i_it) = (int)x;
+                                k_var = k_it;
+                                for(j_it = 0; j_it < size_y; j_it++)
+                                {
+                                    j_var = j_it;
+                                    for(i_it = 0; i_it < size_x; i_it++)
+                                    {
+                                        i_var = i_it;
+                                        double x = px.Eval();
+                                        dataVal->at(i_it + j_it * size_x + k_it * size_y * size_z) = (int)x;
+                                    }
+                                }
                             }
                         }
                         break;
                     case Type::UINT:
                         {
                             std::vector<unsigned int>* dataVal = data.getValuePtr<std::vector<unsigned int>>();
-                            for(i_it = 0; i_it < size; i_it++)
+                            for(k_it = 0; k_it < size_z; k_it++)
                             {
-                                i_var = i_it;
-                                double x = px.Eval();
-                                dataVal->at(i_it) = (unsigned int)x;
+                                k_var = k_it;
+                                for(j_it = 0; j_it < size_y; j_it++)
+                                {
+                                    j_var = j_it;
+                                    for(i_it = 0; i_it < size_x; i_it++)
+                                    {
+                                        i_var = i_it;
+                                        double x = px.Eval();
+                                        dataVal->at(i_it + j_it * size_x + k_it * size_y * size_z) = (unsigned int)x;
+                                    }
+                                }
                             }
                         }
                         break;
                     case Type::VECTOR2:
                         {
                             std::vector<Vector2>* dataVal = data.getValuePtr<std::vector<Vector2>>();
-                            for(i_it = 0; i_it < size; i_it++)
+                            for(k_it = 0; k_it < size_z; k_it++)
                             {
-                                i_var = i_it;
-                                double x = px.Eval();
-                                double y = py.Eval();
-                                dataVal->at(i_it) = Vector2((float)x, (float)y);
+                                k_var = k_it;
+                                for(j_it = 0; j_it < size_y; j_it++)
+                                {
+                                    j_var = j_it;
+                                    for(i_it = 0; i_it < size_x; i_it++)
+                                    {
+                                        i_var = i_it;
+                                        double x = px.Eval();
+                                        double y = py.Eval();
+                                        dataVal->at(i_it + j_it * size_x + k_it * size_y * size_z) = Vector2((float)x, (float)y);
+                                    }
+                                }
                             }
                         }
                         break;
                     case Type::VECTOR3:
                         {
                             std::vector<Vector3>* dataVal = data.getValuePtr<std::vector<Vector3>>();
-                            for(i_it = 0; i_it < size; i_it++)
+                            for(k_it = 0; k_it < size_z; k_it++)
                             {
-                                i_var = i_it;
-                                double x = px.Eval();
-                                double y = py.Eval(); 0.0;
-                                double z = pz.Eval(); 0.0;
-                                (*dataVal)[i_it] = Vector3((float)x, (float)y, (float)z);
+                                k_var = k_it;
+                                for(j_it = 0; j_it < size_y; j_it++)
+                                {
+                                    j_var = j_it;
+                                    for(i_it = 0; i_it < size_x; i_it++)
+                                    {
+                                        i_var = i_it;
+                                        double x = px.Eval();
+                                        double y = py.Eval();
+                                        double z = pz.Eval();
+                                        dataVal->at(i_it + j_it * size_x + k_it * size_y * size_z) = Vector3((float)x, (float)y, (float)z);
+                                    }
+                                }
                             }
                         }
                         break;
                     case Type::VECTOR4:
                         {
                             std::vector<Vector4>* dataVal = data.getValuePtr<std::vector<Vector4>>();
-                            for(i_it = 0; i_it < size; i_it++)
                             {
-                                i_var = i_it;
-                                double x = px.Eval();
-                                double y = py.Eval();
-                                double z = pz.Eval();
-                                double w = pw.Eval();
-                                dataVal->at(i_it) = Vector4((float)x, (float)y, (float)z, (float)w);
+                                k_var = k_it;
+                                for(j_it = 0; j_it < size_y; j_it++)
+                                {
+                                    j_var = j_it;
+                                    for(i_it = 0; i_it < size_x; i_it++)
+                                    {
+                                        i_var = i_it;
+                                        double x = px.Eval();
+                                        double y = py.Eval();
+                                        double z = pz.Eval();
+                                        double w = pz.Eval();
+                                        dataVal->at(i_it + j_it * size_x + k_it * size_y * size_z) = Vector4((float)x, (float)y, (float)z, (float)w);
+                                    }
+                                }
                             }
                         }
                         break;
@@ -389,12 +561,46 @@ struct ListNode final : public PropertyNode
                 }
             }
         }
+        else if(dim_changed) // Change current accepted it vars (i,j,k), even if no inputs are connected
+        {
+            px.ClearVar();
+            py.ClearVar();
+            pz.ClearVar();
+            pw.ClearVar();
+
+            switch (dim)
+            {
+            case Dim::D3:
+                px.DefineVar("k", &k_var);
+                py.DefineVar("k", &k_var);
+                pz.DefineVar("k", &k_var);
+                pw.DefineVar("k", &k_var);
+                [[fallthrough]];
+            case Dim::D2:
+                px.DefineVar("j", &j_var);
+                py.DefineVar("j", &j_var);
+                pz.DefineVar("j", &j_var);
+                pw.DefineVar("j", &j_var);
+                [[fallthrough]];
+            case Dim::D1:
+                px.DefineVar("i", &i_var);
+                py.DefineVar("i", &i_var);
+                pz.DefineVar("i", &i_var);
+                pw.DefineVar("i", &i_var);
+                break;
+            default:
+                break;
+            }
+        }
     }
 
 private:
     unsigned int listsize = 0;
     int currenttypeid = 0;
     int lasttypeid = 0;
+
+    int currentdimid = 0;
+    int lastdimid = 0;
 
     char _expr_str_0[128];
     char _expr_str_1[128];
@@ -406,8 +612,16 @@ private:
     mu::Parser py;
     mu::Parser pz;
     mu::Parser pw;
+
     double i_var = 0.0;
     int i_it = 0;
+
+    double j_var = 0.0;
+    int j_it = 0;
+
+    double k_var = 0.0;
+    int k_it = 0;
+
     std::vector<double> _vars;
     std::vector<double> _vars_last;
     std::vector<std::string> _vars_name;
