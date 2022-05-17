@@ -160,8 +160,40 @@ static GLuint CreateDefaultProgram()
 {
     GLuint program = glCreateProgram();
 
-    int err = LoadShaderFromFile(GL_VERTEX_SHADER, "shader/vertex.glsl", &program);
-    err |= LoadShaderFromFile(GL_FRAGMENT_SHADER, "shader/fragment.glsl", &program);
+    int err = LoadShaderFromFile(GL_VERTEX_SHADER, "shader/vertex.vs", &program);
+    err |= LoadShaderFromFile(GL_FRAGMENT_SHADER, "shader/fragment.fs", &program);
+
+    if(err)
+    {
+        L_ERROR("Failed to create program.");
+        glDeleteProgram(program);
+    }
+
+    return program;
+}
+
+static GLuint CreateNormalPassProgram()
+{
+    GLuint program = glCreateProgram();
+
+    int err = LoadShaderFromFile(GL_VERTEX_SHADER, "shader/normal_pass.vs", &program);
+    err |= LoadShaderFromFile(GL_FRAGMENT_SHADER, "shader/normal_pass.fs", &program);
+
+    if(err)
+    {
+        L_ERROR("Failed to create program.");
+        glDeleteProgram(program);
+    }
+
+    return program;
+}
+
+static GLuint CreateSobelFilterProgram()
+{
+    GLuint program = glCreateProgram();
+
+    int err = LoadShaderFromFile(GL_VERTEX_SHADER, "shader/sobel_filter.vs", &program);
+    err |= LoadShaderFromFile(GL_FRAGMENT_SHADER, "shader/sobel_filter.fs", &program);
 
     if(err)
     {
@@ -179,66 +211,111 @@ Renderer::DrawInstance::DrawInstance()
     glGenBuffers(1, &_vbo);
     glBindBuffer(GL_ARRAY_BUFFER, _vbo);
 
-    static const float vertices[] = {
-        -1, -1, -1,
-         1, -1, -1,
-         1,  1, -1,
-        -1,  1, -1,
-        -1, -1,  1,
-         1, -1,  1,
-         1,  1,  1,
-        -1,  1,  1
+    static const float vtx_nrm[] = {
+        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f, -1.0f,
+         0.5f, -0.5f, -0.5f,  0.0f, 0.0f, -1.0f,
+         0.5f,  0.5f, -0.5f,  0.0f, 0.0f, -1.0f,
+         0.5f,  0.5f, -0.5f,  0.0f, 0.0f, -1.0f,
+        -0.5f,  0.5f, -0.5f,  0.0f, 0.0f, -1.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f, -1.0f,
+
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,  1.0f,
+         0.5f, -0.5f,  0.5f,  0.0f, 0.0f,  1.0f,
+         0.5f,  0.5f,  0.5f,  0.0f, 0.0f,  1.0f,
+         0.5f,  0.5f,  0.5f,  0.0f, 0.0f,  1.0f,
+        -0.5f,  0.5f,  0.5f,  0.0f, 0.0f,  1.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,  1.0f,
+
+        -0.5f,  0.5f,  0.5f, -1.0f, 0.0f,  0.0f,
+        -0.5f,  0.5f, -0.5f, -1.0f, 0.0f,  0.0f,
+        -0.5f, -0.5f, -0.5f, -1.0f, 0.0f,  0.0f,
+        -0.5f, -0.5f, -0.5f, -1.0f, 0.0f,  0.0f,
+        -0.5f, -0.5f,  0.5f, -1.0f, 0.0f,  0.0f,
+        -0.5f,  0.5f,  0.5f, -1.0f, 0.0f,  0.0f,
+
+         0.5f,  0.5f,  0.5f,  1.0f, 0.0f,  0.0f,
+         0.5f,  0.5f, -0.5f,  1.0f, 0.0f,  0.0f,
+         0.5f, -0.5f, -0.5f,  1.0f, 0.0f,  0.0f,
+         0.5f, -0.5f, -0.5f,  1.0f, 0.0f,  0.0f,
+         0.5f, -0.5f,  0.5f,  1.0f, 0.0f,  0.0f,
+         0.5f,  0.5f,  0.5f,  1.0f, 0.0f,  0.0f,
+
+        -0.5f, -0.5f, -0.5f,  0.0f, -1.0f, 0.0f,
+         0.5f, -0.5f, -0.5f,  0.0f, -1.0f, 0.0f,
+         0.5f, -0.5f,  0.5f,  0.0f, -1.0f, 0.0f,
+         0.5f, -0.5f,  0.5f,  0.0f, -1.0f, 0.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f, -1.0f, 0.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, -1.0f, 0.0f,
+
+        -0.5f,  0.5f, -0.5f,  0.0f,  1.0f, 0.0f,
+         0.5f,  0.5f, -0.5f,  0.0f,  1.0f, 0.0f,
+         0.5f,  0.5f,  0.5f,  0.0f,  1.0f, 0.0f,
+         0.5f,  0.5f,  0.5f,  0.0f,  1.0f, 0.0f,
+        -0.5f,  0.5f,  0.5f,  0.0f,  1.0f, 0.0f,
+        -0.5f,  0.5f, -0.5f,  0.0f,  1.0f, 0.0f
     };
 
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vtx_nrm), vtx_nrm, GL_STATIC_DRAW);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
 
-    glGenBuffers(1, &_ebo);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _ebo);
+    // glGenBuffers(1, &_ebo);
+    // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _ebo);
 
-    static const unsigned int indices[] = {
-        0, 1, 3, 3, 1, 2,
-        1, 5, 2, 2, 5, 6,
-        5, 4, 6, 6, 4, 7,
-        4, 0, 7, 7, 0, 3,
-        3, 2, 7, 7, 2, 6,
-        4, 5, 0, 0, 5, 1
-    };
+    // // static const unsigned int indices[] = {
+    // //     0, 1, 2, 0, 2, 3, // f
+    // //     6, 5, 4, 6, 4, 7, // bk
+    // //     7, 3, 2, 7, 2, 6, // r
+    // //     1, 4, 5, 1, 0, 4, // l
+    // //     4, 0, 3, 4, 3, 7, // bt
+    // //     5, 2, 1, 5, 6, 2  // t
+    // // };
 
-    _idxcount = sizeof(indices) / sizeof(indices[0]);
+    // static const unsigned int indices[] = {
+    //     0, 2, 3,   0, 3, 1, // front
+    //     4, 6, 7,   4, 7, 5, // back
+    //     3, 2, 4,   3, 4, 5, // right
+    //     7, 6, 0,   7, 0, 1, // left
+    //     6, 4, 2,   6, 2, 0, // bottom 
+    //     1, 3, 5,   1, 5, 7  // top
+    // };
 
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+    // _idxcount = sizeof(indices) / sizeof(indices[0]);
 
-    _instanceCount = 100;
+    // glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+    _idxcount = 36;
+    _instanceCount = 1;
     glGenBuffers(1, &_imb);
     glBindBuffer(GL_ARRAY_BUFFER, _imb);
     _intanceModelMatrixPtr = nullptr;
     glBufferData(GL_ARRAY_BUFFER, _instanceCount * sizeof(glm::mat4), nullptr, GL_DYNAMIC_DRAW);
 
-    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(glm::vec4), (void*)0);
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(glm::vec4), (void*)(1 * sizeof(glm::vec4)));
+    glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(glm::vec4), (void*)0);
     glEnableVertexAttribArray(2);
-    glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(glm::vec4), (void*)(2 * sizeof(glm::vec4)));
+    glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(glm::vec4), (void*)(1 * sizeof(glm::vec4)));
     glEnableVertexAttribArray(3);
-    glVertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(glm::vec4), (void*)(3 * sizeof(glm::vec4)));
+    glVertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(glm::vec4), (void*)(2 * sizeof(glm::vec4)));
     glEnableVertexAttribArray(4);
+    glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(glm::vec4), (void*)(3 * sizeof(glm::vec4)));
+    glEnableVertexAttribArray(5);
 
-    glVertexAttribDivisor(1, 1);
     glVertexAttribDivisor(2, 1);
     glVertexAttribDivisor(3, 1);
     glVertexAttribDivisor(4, 1);
+    glVertexAttribDivisor(5, 1);
 
     glGenBuffers(1, &_icb);
     glBindBuffer(GL_ARRAY_BUFFER, _icb);
     _instanceColorsPtr = nullptr;
     glBufferData(GL_ARRAY_BUFFER, _instanceCount * sizeof(Vector4), nullptr, GL_DYNAMIC_DRAW);
 
-    glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, sizeof(Vector4), (void*)0);
-    glEnableVertexAttribArray(5);
+    glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, sizeof(Vector4), (void*)0);
+    glEnableVertexAttribArray(6);
 
-    glVertexAttribDivisor(5, 1);
+    glVertexAttribDivisor(6, 1);
 
     glBindVertexArray(0);
 }
@@ -248,7 +325,7 @@ Renderer::DrawInstance::~DrawInstance()
     L_TRACE("~DrawInstance()");
     glDeleteVertexArrays(1, &_vao);
     glDeleteBuffers(1, &_vbo);
-    glDeleteBuffers(1, &_ebo);
+    // glDeleteBuffers(1, &_ebo);
     glDeleteBuffers(1, &_imb);
     glDeleteBuffers(1, &_icb);
 }
@@ -258,7 +335,7 @@ Renderer::Camera::Camera(float fov)
     // TODO: Update camera projection with viewport change and add camera control options
     projectionMatrix = glm::perspective(fov, aspectRatio, 0.1f, 1000.0f);
 
-    position = glm::vec3(0, 0, 0);
+    position = glm::vec3(0, 0, 2);
     front = glm::vec3(0, 0, -1);
     up = glm::vec3(0, 1, 0);
     right = glm::normalize(glm::cross(front, glm::vec3(0, 1, 0)));
@@ -327,17 +404,70 @@ Renderer::DrawList::DrawList(GLFWwindow* window, const int sw, const int sh)
     screen_halfsize[0] = sw / 2.0f;
     screen_halfsize[1] = sh / 2.0f;
 
-    _program = CreateDefaultProgram();
+    _program_nrmpass = CreateNormalPassProgram();
+    _program_sobfilter = CreateSobelFilterProgram();
+    
     addInstance(new DrawInstance());
 
     camera = new Camera(45.0f);
 
-    glUseProgram(_program);
-    _uniforms.projectionMatrix = glGetUniformLocation(_program, "projectionMatrix");
-    _uniforms.viewMatrix = glGetUniformLocation(_program, "viewMatrix");
-    _uniforms.modelMatrix = glGetUniformLocation(_program, "modelMatrix");
+    glUseProgram(_program_nrmpass);
+    _uniforms.projectionMatrix = glGetUniformLocation(_program_nrmpass, "projectionMatrix");
+    _uniforms.viewMatrix = glGetUniformLocation(_program_nrmpass, "viewMatrix");
+    _uniforms.modelMatrix = glGetUniformLocation(_program_nrmpass, "modelMatrix");
     
     glUniformMatrix4fv(_uniforms.projectionMatrix, 1, GL_FALSE, &camera->projectionMatrix[0][0]);
+
+    glGenFramebuffers(1, &_rendertarget.framebuffer_id);
+    glBindFramebuffer(GL_FRAMEBUFFER, _rendertarget.framebuffer_id);
+
+    glGenTextures(2, _rendertarget.texid);
+    glBindTexture(GL_TEXTURE_2D, _rendertarget.texid[0]);
+    // TODO: Set texture size according to a given resolution
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, sw, sh, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+
+    glBindTexture(GL_TEXTURE_2D, _rendertarget.texid[1]);
+    // TODO: Set texture size according to a given resolution
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, sw, sh, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+
+    // NOTE: Color attachment is automatically present
+    glGenRenderbuffers(1, &_rendertarget.renderbuffer_depth_id);
+    glBindRenderbuffer(GL_RENDERBUFFER, _rendertarget.renderbuffer_depth_id);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, sw, sh);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, _rendertarget.renderbuffer_depth_id);
+
+    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, _rendertarget.texid[0], 0);
+    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, _rendertarget.texid[1], 0);
+    GLenum drawBuffers[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
+    glDrawBuffers(2, drawBuffers);
+
+    glUseProgram(_program_sobfilter);
+    glUniform1i(glGetUniformLocation(_program_sobfilter, "screenNormalTexture"), 0);
+    glUniform1i(glGetUniformLocation(_program_sobfilter, "screenDiffuseTexture"), 1);
+
+    glGenVertexArrays(1, &_vao_screen);
+    glBindVertexArray(_vao_screen);
+    glGenBuffers(1, &_vbo_screen);
+    glBindBuffer(GL_ARRAY_BUFFER, _vbo_screen);
+
+    static const float vtx_uv[] = {
+        -1.0f, -1.0f, 0.0f, 0.0f,
+         1.0f, -1.0f, 1.0f, 0.0f,
+        -1.0f,  1.0f, 0.0f, 1.0f,
+        -1.0f,  1.0f, 0.0f, 1.0f,
+         1.0f, -1.0f, 1.0f, 0.0f,
+         1.0f,  1.0f, 1.0f, 1.0f
+    };
+
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vtx_uv), vtx_uv, GL_STATIC_DRAW);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+    glEnableVertexAttribArray(1);
 }
 
 Renderer::DrawList::~DrawList()
@@ -350,7 +480,15 @@ Renderer::DrawList::~DrawList()
     delete camera;
 
     instances.clear();
-    glDeleteProgram(_program);
+    glDeleteProgram(_program_nrmpass);
+    glDeleteProgram(_program_sobfilter);
+
+    glDeleteVertexArrays(1, &_vao_screen);
+    glDeleteBuffers(1, &_vbo_screen);
+
+    glDeleteRenderbuffers(1, &_rendertarget.renderbuffer_depth_id);
+    glDeleteTextures(2, _rendertarget.texid);
+    glDeleteFramebuffers(1, &_rendertarget.framebuffer_id);
 }
 
 void Renderer::DrawList::render(NodeWindow* nodeWindow)
@@ -397,15 +535,26 @@ void Renderer::DrawList::render(NodeWindow* nodeWindow)
     camera->update(mouse_scroll, mouse_delta[0], mouse_delta[1], cam_dir_f, now - last_time);
     last_time = now;
 
-    glUseProgram(_program);
-    // static float angle = 0.1f;
-    // camera->modelMatrix = glm::rotate(camera->modelMatrix, angle, glm::vec3(-1, 1, 1));
-
+    // Render using normals to create an image to the sobel filter for edge detection
+    glUseProgram(_program_nrmpass);
     glUniformMatrix4fv(_uniforms.modelMatrix, 1, GL_FALSE, &camera->modelMatrix[0][0]);
     glUniformMatrix4fv(_uniforms.viewMatrix, 1, GL_FALSE, &camera->viewMatrix[0][0]);
-
+    glBindFramebuffer(GL_FRAMEBUFFER, _rendertarget.framebuffer_id);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    // TODO: Add glViewport() here to the size of the framebuffer's texture
     glBindVertexArray(instances[0]->_vao);
-    glDrawElementsInstanced(GL_TRIANGLES, instances[0]->_idxcount, GL_UNSIGNED_INT, nullptr, instances[0]->_instanceCount);
+    glDrawArraysInstanced(GL_TRIANGLES, 0, instances[0]->_idxcount, instances[0]->_instanceCount);
+
+    // Render the filter calculated outlines into the screen alongside the diffuse data
+    glUseProgram(_program_sobfilter);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glBindVertexArray(_vao_screen);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, _rendertarget.texid[0]);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, _rendertarget.texid[1]);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+    
     glBindVertexArray(0);
     glUseProgram(0);
 }

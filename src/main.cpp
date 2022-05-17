@@ -58,6 +58,10 @@ int main(int argc, char* argv[])
     NodeWindow* nodeWindow = WindowManager::GetNodeWindow();
     Renderer::DrawList dl(window, DEF_SCREEN_PX_W, DEF_SCREEN_PX_H);
 
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LEQUAL);
+    glClearColor(0.1f, 0.1f, 0.3f, 1.0f);
+
     while (!glfwWindowShouldClose(window))
     {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);

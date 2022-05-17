@@ -88,16 +88,7 @@ namespace Renderer
         DrawList(GLFWwindow* window, const int sw, const int sh);
         ~DrawList();
 
-        std::vector<DrawInstance*> instances;
-
-        inline void addInstance(DrawInstance* instance)
-        {
-            instances.push_back(instance);
-        }
-
         void render(NodeWindow* nodeWindow);
-
-        GLuint _program;
 
         struct
         {
@@ -106,6 +97,24 @@ namespace Renderer
             GLuint modelMatrix;
         } _uniforms;
 
+        struct
+        {
+            GLuint framebuffer_id;
+            GLuint renderbuffer_depth_id;
+            GLuint texid[2];
+        } _rendertarget;
+
+        GLuint _program_nrmpass;
+        GLuint _program_sobfilter;
+
+        GLuint _vao_screen;
+        GLuint _vbo_screen;
+
         Camera* camera;
+        std::vector<DrawInstance*> instances;
+        inline void addInstance(DrawInstance* instance)
+        {
+            instances.push_back(instance);
+        }
     };
 }
