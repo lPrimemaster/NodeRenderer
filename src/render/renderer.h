@@ -12,6 +12,7 @@ namespace Renderer
     struct DrawInstance
     {
         DrawInstance();
+        DrawInstance(const char* filename);
         ~DrawInstance();
 
         GLuint _vao;
@@ -100,8 +101,7 @@ namespace Renderer
         struct
         {
             GLuint framebuffer_id;
-            GLuint renderbuffer_depth_id;
-            GLuint texid[2];
+            GLuint texid[3];
         } _rendertarget;
 
         GLuint _program_nrmpass;
