@@ -57,6 +57,22 @@ public:
 
                 if(fit != other->inputs.end())
                 {
+                    // Erase named input
+                    auto named_node_it = other->inputs_named.begin();
+                    while(named_node_it != other->inputs_named.end())
+                    {
+                        if(named_node_it->second == fit->second)
+                        {
+                            named_node_it = other->inputs_named.erase(named_node_it);
+                            break;
+                        }
+                        else
+                        {
+                            ++named_node_it;
+                        }
+                    }
+
+                    // Erase input
                     other->inputs.erase(fit);
                 }
             }

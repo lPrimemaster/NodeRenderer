@@ -42,6 +42,7 @@ int main(int argc, char* argv[])
         return -1;
     }
     glfwSwapInterval(1);
+    glfwWindowHint(GLFW_SAMPLES, 4);
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -61,6 +62,9 @@ int main(int argc, char* argv[])
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LEQUAL);
     glClearColor(0.1f, 0.1f, 0.3f, 1.0f);
+
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     while (!glfwWindowShouldClose(window))
     {
@@ -83,9 +87,9 @@ int main(int argc, char* argv[])
         glfwPollEvents();
     }
 
-    ImGui::DestroyContext();
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
 
     glfwDestroyWindow(window);
     glfwTerminate();

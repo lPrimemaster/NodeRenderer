@@ -1,11 +1,13 @@
 #version 450
 in vec3 normal;
 in vec4 iColorOut;
-out vec4 f_color;
+
+layout (location = 0) out vec4 f_normal;
+layout (location = 1) out vec4 f_diffuse;
 
 
 void main()
 {
-    gl_FragData[0] = vec4(abs(normal), 1.0);
-    gl_FragData[1] = iColorOut;
+    f_normal  = vec4(abs(normal), 1.0);
+    f_diffuse = iColorOut;
 }

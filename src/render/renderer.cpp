@@ -260,32 +260,7 @@ Renderer::DrawInstance::DrawInstance()
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
-
-    // glGenBuffers(1, &_ebo);
-    // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _ebo);
-
-    // // static const unsigned int indices[] = {
-    // //     0, 1, 2, 0, 2, 3, // f
-    // //     6, 5, 4, 6, 4, 7, // bk
-    // //     7, 3, 2, 7, 2, 6, // r
-    // //     1, 4, 5, 1, 0, 4, // l
-    // //     4, 0, 3, 4, 3, 7, // bt
-    // //     5, 2, 1, 5, 6, 2  // t
-    // // };
-
-    // static const unsigned int indices[] = {
-    //     0, 2, 3,   0, 3, 1, // front
-    //     4, 6, 7,   4, 7, 5, // back
-    //     3, 2, 4,   3, 4, 5, // right
-    //     7, 6, 0,   7, 0, 1, // left
-    //     6, 4, 2,   6, 2, 0, // bottom 
-    //     1, 3, 5,   1, 5, 7  // top
-    // };
-
-    // _idxcount = sizeof(indices) / sizeof(indices[0]);
-
-    // glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-
+    
     _idxcount = 36;
     _instanceCount = 1;
     glGenBuffers(1, &_imb);
@@ -333,7 +308,7 @@ Renderer::DrawInstance::~DrawInstance()
 Renderer::Camera::Camera(float fov)
 {
     // TODO: Update camera projection with viewport change and add camera control options
-    projectionMatrix = glm::perspective(fov, aspectRatio, 0.1f, 1000.0f);
+    projectionMatrix = glm::perspective(fov, aspectRatio, 0.1f, 100.0f);
 
     position = glm::vec3(0, 0, 2);
     front = glm::vec3(0, 0, -1);
@@ -421,7 +396,7 @@ Renderer::DrawList::DrawList(GLFWwindow* window, const int sw, const int sh)
     glGenFramebuffers(1, &_rendertarget.framebuffer_id);
     glBindFramebuffer(GL_FRAMEBUFFER, _rendertarget.framebuffer_id);
 
-    glGenTextures(2, _rendertarget.texid);
+    glGenTextures(3, _rendertarget.texid);
     glBindTexture(GL_TEXTURE_2D, _rendertarget.texid[0]);
     // TODO: Set texture size according to a given resolution
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, sw, sh, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
@@ -434,20 +409,27 @@ Renderer::DrawList::DrawList(GLFWwindow* window, const int sw, const int sh)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 
-    // NOTE: Color attachment is automatically present
-    glGenRenderbuffers(1, &_rendertarget.renderbuffer_depth_id);
-    glBindRenderbuffer(GL_RENDERBUFFER, _rendertarget.renderbuffer_depth_id);
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, sw, sh);
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, _rendertarget.renderbuffer_depth_id);
+    glBindTexture(GL_TEXTURE_2D, _rendertarget.texid[2]);
+    // TODO: Set texture size according to a given resolution
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32, sw, sh, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, 0);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_NONE);
 
+    // NOTE: Color attachment is automatically present
     glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, _rendertarget.texid[0], 0);
     glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, _rendertarget.texid[1], 0);
+    glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, _rendertarget.texid[2], 0);
     GLenum drawBuffers[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
     glDrawBuffers(2, drawBuffers);
 
     glUseProgram(_program_sobfilter);
     glUniform1i(glGetUniformLocation(_program_sobfilter, "screenNormalTexture"), 0);
     glUniform1i(glGetUniformLocation(_program_sobfilter, "screenDiffuseTexture"), 1);
+    glUniform1i(glGetUniformLocation(_program_sobfilter, "screenDepthTexture"), 2);
 
     glGenVertexArrays(1, &_vao_screen);
     glBindVertexArray(_vao_screen);
@@ -486,8 +468,7 @@ Renderer::DrawList::~DrawList()
     glDeleteVertexArrays(1, &_vao_screen);
     glDeleteBuffers(1, &_vbo_screen);
 
-    glDeleteRenderbuffers(1, &_rendertarget.renderbuffer_depth_id);
-    glDeleteTextures(2, _rendertarget.texid);
+    glDeleteTextures(3, _rendertarget.texid);
     glDeleteFramebuffers(1, &_rendertarget.framebuffer_id);
 }
 
@@ -553,6 +534,8 @@ void Renderer::DrawList::render(NodeWindow* nodeWindow)
     glBindTexture(GL_TEXTURE_2D, _rendertarget.texid[0]);
     glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_2D, _rendertarget.texid[1]);
+    glActiveTexture(GL_TEXTURE2);
+    glBindTexture(GL_TEXTURE_2D, _rendertarget.texid[2]);
     glDrawArrays(GL_TRIANGLES, 0, 6);
     
     glBindVertexArray(0);

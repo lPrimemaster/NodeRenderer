@@ -532,6 +532,7 @@ struct ListNode final : public PropertyNode
                     case Type::VECTOR4:
                         {
                             std::vector<Vector4>* dataVal = data.getValuePtr<std::vector<Vector4>>();
+                            for(k_it = 0; k_it < size_z; k_it++)
                             {
                                 k_var = k_it;
                                 for(j_it = 0; j_it < size_y; j_it++)
@@ -543,7 +544,7 @@ struct ListNode final : public PropertyNode
                                         double x = px.Eval();
                                         double y = py.Eval();
                                         double z = pz.Eval();
-                                        double w = pz.Eval();
+                                        double w = pw.Eval();
                                         dataVal->at(i_it + j_it * size_x + k_it * size_y * size_z) = Vector4((float)x, (float)y, (float)z, (float)w);
                                     }
                                 }

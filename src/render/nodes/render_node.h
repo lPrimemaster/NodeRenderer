@@ -221,7 +221,7 @@ struct RenderNode final : public PropertyNode
                 if(colorOkay)
                 {
                     auto color = colorLocal->second->data.getValue<std::vector<Vector4>>();
-                    memcpy(colors, color.data(), color.size() * sizeof(Vector4));
+                    memcpy(colors, color.data(), instanceCount * sizeof(Vector4));
                 }
                 else
                 {
