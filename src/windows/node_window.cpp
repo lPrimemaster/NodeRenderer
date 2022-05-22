@@ -328,6 +328,10 @@ void NodeWindow::render()
                 {
                     newNode = new ListJoinNode();
                 }
+                if (ImGui::MenuItem("Mesh Node"))
+                {
+                    newNode = new MeshNode();
+                }
 
                 if(newNode)
                 {

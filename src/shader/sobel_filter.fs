@@ -6,6 +6,9 @@ uniform sampler2D screenNormalTexture;
 uniform sampler2D screenDiffuseTexture;
 uniform sampler2D screenDepthTexture;
 
+uniform float fogMax = 50.0;
+uniform float fogMin = 10.0;
+
 const float zNear = 0.1;
 const float zFar = 100.0;
 
@@ -24,7 +27,7 @@ const mat3 sy = mat3(
 float sobelNormal()
 {
     mat3 I;
-    // TODO: Two passes for x and y might be faster
+    // NOTE: Two passes - one for x and one for y might be faster
     vec3 normal = texelFetch(screenNormalTexture, ivec2(gl_FragCoord), 0).rgb * 2.0 - 1.0;
     for (int i=0; i<3; i++)
     {
@@ -50,7 +53,7 @@ float linearizeDepth(float z)
 float sobelDepth()
 {
     mat3 I;
-    // TODO: Two passes for x and y might be faster
+    // NOTE: Two passes - one for x and one for y might be faster
     for (int i=0; i<3; i++)
     {
         for (int j=0; j<3; j++)
@@ -68,9 +71,6 @@ float sobelDepth()
 
 float fogFactor(float z)
 {
-    const float fogMax = 50.0;
-    const float fogMin = 10.0;
-
     if(z >= fogMax) return 1.0;
     if(z <= fogMin) return 0.0;
 
@@ -110,4 +110,6 @@ void main()
     }
     f_color.a = 1.0 - fog;
     // f_color = vec4(vec3(linearizeDepth(texelFetch(screenDepthTexture, ivec2(gl_FragCoord), 0).r)), 1.0);
-} 
+}
+
+// TODO: Fog color and density control

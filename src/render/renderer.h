@@ -89,7 +89,7 @@ namespace Renderer
         DrawList(GLFWwindow* window, const int sw, const int sh);
         ~DrawList();
 
-        void render(NodeWindow* nodeWindow);
+        void render(GLFWwindow* window, NodeWindow* nodeWindow);
 
         struct
         {

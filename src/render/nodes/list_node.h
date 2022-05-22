@@ -434,13 +434,13 @@ struct ListNode final : public PropertyNode
                     case Type::FLOAT:
                         {
                             std::vector<float>* dataVal = data.getValuePtr<std::vector<float>>();
-                            for(k_it = 0; k_it < size_z; k_it++)
+                            for(k_it = 0; k_it < (int)size_z; k_it++)
                             {
                                 k_var = k_it;
-                                for(j_it = 0; j_it < size_y; j_it++)
+                                for(j_it = 0; j_it < (int)size_y; j_it++)
                                 {
                                     j_var = j_it;
-                                    for(i_it = 0; i_it < size_x; i_it++)
+                                    for(i_it = 0; i_it < (int)size_x; i_it++)
                                     {
                                         i_var = i_it;
                                         double x = px.Eval();
@@ -453,13 +453,13 @@ struct ListNode final : public PropertyNode
                     case Type::INT:
                         {
                             std::vector<int>* dataVal = data.getValuePtr<std::vector<int>>();
-                            for(k_it = 0; k_it < size_z; k_it++)
+                            for(k_it = 0; k_it < (int)size_z; k_it++)
                             {
                                 k_var = k_it;
-                                for(j_it = 0; j_it < size_y; j_it++)
+                                for(j_it = 0; j_it < (int)size_y; j_it++)
                                 {
                                     j_var = j_it;
-                                    for(i_it = 0; i_it < size_x; i_it++)
+                                    for(i_it = 0; i_it < (int)size_x; i_it++)
                                     {
                                         i_var = i_it;
                                         double x = px.Eval();
@@ -472,13 +472,13 @@ struct ListNode final : public PropertyNode
                     case Type::UINT:
                         {
                             std::vector<unsigned int>* dataVal = data.getValuePtr<std::vector<unsigned int>>();
-                            for(k_it = 0; k_it < size_z; k_it++)
+                            for(k_it = 0; k_it < (int)size_z; k_it++)
                             {
                                 k_var = k_it;
-                                for(j_it = 0; j_it < size_y; j_it++)
+                                for(j_it = 0; j_it < (int)size_y; j_it++)
                                 {
                                     j_var = j_it;
-                                    for(i_it = 0; i_it < size_x; i_it++)
+                                    for(i_it = 0; i_it < (int)size_x; i_it++)
                                     {
                                         i_var = i_it;
                                         double x = px.Eval();
@@ -491,13 +491,13 @@ struct ListNode final : public PropertyNode
                     case Type::VECTOR2:
                         {
                             std::vector<Vector2>* dataVal = data.getValuePtr<std::vector<Vector2>>();
-                            for(k_it = 0; k_it < size_z; k_it++)
+                            for(k_it = 0; k_it < (int)size_z; k_it++)
                             {
                                 k_var = k_it;
-                                for(j_it = 0; j_it < size_y; j_it++)
+                                for(j_it = 0; j_it < (int)size_y; j_it++)
                                 {
                                     j_var = j_it;
-                                    for(i_it = 0; i_it < size_x; i_it++)
+                                    for(i_it = 0; i_it < (int)size_x; i_it++)
                                     {
                                         i_var = i_it;
                                         double x = px.Eval();
@@ -511,13 +511,13 @@ struct ListNode final : public PropertyNode
                     case Type::VECTOR3:
                         {
                             std::vector<Vector3>* dataVal = data.getValuePtr<std::vector<Vector3>>();
-                            for(k_it = 0; k_it < size_z; k_it++)
+                            for(k_it = 0; k_it < (int)size_z; k_it++)
                             {
                                 k_var = k_it;
-                                for(j_it = 0; j_it < size_y; j_it++)
+                                for(j_it = 0; j_it < (int)size_y; j_it++)
                                 {
                                     j_var = j_it;
-                                    for(i_it = 0; i_it < size_x; i_it++)
+                                    for(i_it = 0; i_it < (int)size_x; i_it++)
                                     {
                                         i_var = i_it;
                                         double x = px.Eval();
@@ -532,13 +532,13 @@ struct ListNode final : public PropertyNode
                     case Type::VECTOR4:
                         {
                             std::vector<Vector4>* dataVal = data.getValuePtr<std::vector<Vector4>>();
-                            for(k_it = 0; k_it < size_z; k_it++)
+                            for(k_it = 0; k_it < (int)size_z; k_it++)
                             {
                                 k_var = k_it;
-                                for(j_it = 0; j_it < size_y; j_it++)
+                                for(j_it = 0; j_it < (int)size_y; j_it++)
                                 {
                                     j_var = j_it;
-                                    for(i_it = 0; i_it < size_x; i_it++)
+                                    for(i_it = 0; i_it < (int)size_x; i_it++)
                                     {
                                         i_var = i_it;
                                         double x = px.Eval();

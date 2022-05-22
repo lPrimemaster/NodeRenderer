@@ -6,6 +6,8 @@
 #include "nodes/render_node.h"
 #include "../../imgui/imgui_impl_glfw.h"
 
+#include "../util/objloader.h"
+
 static float screen_halfsize[2];
 static float mouse_delta[2];
 static float mouse_scroll;
@@ -40,7 +42,7 @@ static void _key_callback(GLFWwindow* window, int key, int scancode, int action,
 static void _mouse_pos_callback(GLFWwindow* window, double xpos, double ypos)
 {
     ImGuiIO& io = ImGui::GetIO();
-    io.AddMousePosEvent(xpos, ypos);
+    io.AddMousePosEvent((float)xpos, (float)ypos);
 
     if(holding_mouse_right)
     {
@@ -57,7 +59,9 @@ static void _mouse_pos_callback(GLFWwindow* window, double xpos, double ypos)
 
 static void _mouse_scr_callback(GLFWwindow* window, double xoffset, double yoffset)
 {
+    ImGuiIO& io = ImGui::GetIO();
     mouse_scroll = (float)yoffset;
+    io.AddMouseWheelEvent(0, (float)yoffset);
 }
 
 static void _mouse_btn_callback(GLFWwindow* window, int button, int action, int mods)
@@ -260,7 +264,7 @@ Renderer::DrawInstance::DrawInstance()
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
-    
+
     _idxcount = 36;
     _instanceCount = 1;
     glGenBuffers(1, &_imb);
@@ -454,6 +458,7 @@ Renderer::DrawList::DrawList(GLFWwindow* window, const int sw, const int sh)
 
 Renderer::DrawList::~DrawList()
 {
+    L_TRACE("~DrawList()");
     for(auto i : instances)
     {
         delete i;
@@ -472,8 +477,8 @@ Renderer::DrawList::~DrawList()
     glDeleteFramebuffers(1, &_rendertarget.framebuffer_id);
 }
 
-void Renderer::DrawList::render(NodeWindow* nodeWindow)
-{
+void Renderer::DrawList::render(GLFWwindow* window, NodeWindow* nodeWindow)
+{ 
     static float last_time = (float)glfwGetTime();
     RenderNode* outNode = dynamic_cast<RenderNode*>(nodeWindow->getRenderOutputNode());
 
@@ -483,7 +488,7 @@ void Renderer::DrawList::render(NodeWindow* nodeWindow)
 
         if(nodeWindow->isRenderOutputNodeChanged())
         {
-            RenderNodeData nodeData = outNode->data.getValue<RenderNodeData>();
+            // RenderNodeData nodeData = outNode->data.getValue<RenderNodeData>();
             instances[0]->_instanceCount = nodeData._instanceCount;
             instances[0]->_intanceModelMatrixPtr = nodeData._worldPositionPtr;
             instances[0]->_instanceColorsPtr = nodeData._instanceColorsPtr;
@@ -492,8 +497,17 @@ void Renderer::DrawList::render(NodeWindow* nodeWindow)
         if(outNode->renderDataChanged())
         {
             // TODO: Do something with the new data / init it in the graphics memory
-            RenderNodeData nodeData = outNode->data.getValue<RenderNodeData>();
+            // RenderNodeData nodeData = outNode->data.getValue<RenderNodeData>();
             instances[0]->_instanceCount = nodeData._instanceCount;
+
+            // TODO: This is dumb, create a function and update it only when it changes
+            MeshNodeData* mesh = *(nodeData._meshPtr);
+            if(mesh != nullptr)
+            {
+                glBindBuffer(GL_ARRAY_BUFFER, instances[0]->_vbo);
+                glBufferData(GL_ARRAY_BUFFER, mesh->data_size * sizeof(float), mesh->vertex_data, GL_STATIC_DRAW);
+                instances[0]->_idxcount = (GLsizei)mesh->data_size / 6;
+            }
         }
 
         glm::mat4* pos = *(nodeData._worldPositionPtr);
@@ -508,6 +522,16 @@ void Renderer::DrawList::render(NodeWindow* nodeWindow)
         {
             glBindBuffer(GL_ARRAY_BUFFER, instances[0]->_icb);
             glBufferData(GL_ARRAY_BUFFER, instances[0]->_instanceCount * sizeof(Vector4), col, GL_DYNAMIC_DRAW);
+        }
+
+        if(nodeData._fogChanged)
+        {
+            // NOTE: Using glGetUniformLocation should be ok: this won't change that often and I'm lazy
+            glUseProgram(_program_sobfilter);
+            glUniform1f(glGetUniformLocation(_program_sobfilter, "fogMax"), nodeData._fogMax);
+            glUniform1f(glGetUniformLocation(_program_sobfilter, "fogMin"), nodeData._fogMin);
+            // fogcolor is background basically (no volumetric fog)
+            glClearColor(nodeData._fogColor.x, nodeData._fogColor.y, nodeData._fogColor.z, 1.0f);
         }
     }
 

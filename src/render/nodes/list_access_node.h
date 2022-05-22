@@ -105,7 +105,7 @@ struct ListAccessNode final : public PropertyNode
                 auto& list = list_it->second->data.getValue<std::vector<float>>();
                 if(idx >= list.size())
                 {
-                    idx = list.size() - 1;
+                    idx = (int)list.size() - 1;
                 }
 
                 data.setValue(list[idx]);
@@ -127,7 +127,7 @@ struct ListAccessNode final : public PropertyNode
                 auto& list = list_it->second->data.getValue<std::vector<int>>();
                 if(idx >= list.size())
                 {
-                    idx = list.size() - 1;
+                    idx = (int)list.size() - 1;
                 }
 
                 data.setValue(list[idx]);
@@ -149,7 +149,7 @@ struct ListAccessNode final : public PropertyNode
                 auto& list = list_it->second->data.getValue<std::vector<unsigned int>>();
                 if(idx >= list.size())
                 {
-                    idx = list.size() - 1;
+                    idx = (int)list.size() - 1;
                 }
 
                 data.setValue(list[idx]);
@@ -171,7 +171,7 @@ struct ListAccessNode final : public PropertyNode
                 auto& list = list_it->second->data.getValue<std::vector<Vector2>>();
                 if(idx >= list.size())
                 {
-                    idx = list.size() - 1;
+                    idx = (int)list.size() - 1;
                 }
 
                 data.setValue(list[idx]);
@@ -193,7 +193,7 @@ struct ListAccessNode final : public PropertyNode
                 auto& list = list_it->second->data.getValue<std::vector<Vector3>>();
                 if(idx >= list.size())
                 {
-                    idx = list.size() - 1;
+                    idx = (int)list.size() - 1;
                 }
 
                 data.setValue(list[idx]);
@@ -215,7 +215,7 @@ struct ListAccessNode final : public PropertyNode
                 auto& list = list_it->second->data.getValue<std::vector<Vector4>>();
                 if(idx >= list.size())
                 {
-                    idx = list.size() - 1;
+                    idx = (int)list.size() - 1;
                 }
 
                 data.setValue(list[idx]);

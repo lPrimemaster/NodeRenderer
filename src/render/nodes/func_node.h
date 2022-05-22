@@ -143,7 +143,7 @@ struct FunctionNode final : public PropertyNode
             float r;
             try
             {
-                r = px.Eval();
+                r = (float)px.Eval();
             }
             catch(mu::Parser::exception_type &e)
             {

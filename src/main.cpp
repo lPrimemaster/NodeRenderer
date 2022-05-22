@@ -61,7 +61,7 @@ int main(int argc, char* argv[])
 
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LEQUAL);
-    glClearColor(0.1f, 0.1f, 0.3f, 1.0f);
+    glClearColor(0.7f, 0.7f, 0.7f, 1.0f);
 
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -71,7 +71,7 @@ int main(int argc, char* argv[])
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         // Render to the screen
         // TODO: Render to a texture and display it on an ImGui window
-        dl.render(nodeWindow);
+        dl.render(window, nodeWindow);
 
         // Render the UI
         ImGui_ImplOpenGL3_NewFrame();

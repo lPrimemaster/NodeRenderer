@@ -83,7 +83,8 @@ struct PropertyGenericData
         else
         {
             L_ERROR("This PropertyGenericData stores an array. Attempted method call without a pointer type.");
-            // TODO : Handle this return somehow
+            // NOTE : This value is invalid
+            return (*(T*)data);
         }
     }
 

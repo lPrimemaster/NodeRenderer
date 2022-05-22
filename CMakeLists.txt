@@ -23,6 +23,8 @@ file(GLOB WINDOWS_SRC
 
 add_subdirectory(muparser)
 
+add_subdirectory(tinyobjloader)
+
 add_executable(cbg64
     glad/src/glad.c
     # glad/include/glad.h
@@ -39,11 +41,14 @@ add_executable(cbg64
     src/math/vector.h
     src/math/vector.cpp
 
+    src/util/objloader.h
+    src/util/objloader.cpp
+
     src/main.cpp
 )
 
 target_include_directories(cbg64 PRIVATE glad/include glfw/include)
-target_link_libraries(cbg64 glfw ${GLFW_LIBRARIES} muparser)
+target_link_libraries(cbg64 glfw ${GLFW_LIBRARIES} muparser tinyobjloader)
 
 add_custom_target(copy-runtime-files ALL
     COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/src/shader ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Release/shader

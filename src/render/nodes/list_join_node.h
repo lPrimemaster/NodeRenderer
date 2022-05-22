@@ -70,7 +70,7 @@ struct ListJoinNode final : public PropertyNode
             else if(joinSimilarListTypesIfOfType<std::vector<unsigned int>>(listAData, listBit));
             else if(joinSimilarListTypesIfOfType<std::vector<Vector2>>     (listAData, listBit));
             else if(joinSimilarListTypesIfOfType<std::vector<Vector3>>     (listAData, listBit));
-            else if(joinSimilarListTypesIfOfType<std::vector<Vector4>>     (listAData, listBit));
+            else if(joinSimilarListTypesIfOfType<std::vector<Vector4>>     (listAData, listBit)) {  }
         }
         else if(listBit != inputs_named.end())
         {
@@ -90,7 +90,7 @@ struct ListJoinNode final : public PropertyNode
             data.setValue(EmptyType());
         }
 
-        linput_size = inputs.size();
+        linput_size = (unsigned int)inputs.size();
     }
 
 private:
