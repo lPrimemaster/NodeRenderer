@@ -60,7 +60,7 @@ struct PropertyGenericData
             }
         }
     }
-
+    
     template<typename T>
     inline bool isOfType()
     {

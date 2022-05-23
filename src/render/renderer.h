@@ -20,8 +20,11 @@ namespace Renderer
         GLuint _ebo;
         GLsizei _idxcount;
 
-        GLuint _imb;
-        glm::mat4** _intanceModelMatrixPtr;
+        GLuint _ipb;
+        glm::mat4** _intancePositionMatrixPtr;
+
+        GLuint _irb;
+        glm::mat4** _intanceRotationMatrixPtr;
 
         GLuint _icb;
         Vector4** _instanceColorsPtr;

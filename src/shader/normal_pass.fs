@@ -10,4 +10,5 @@ void main()
 {
     f_normal  = vec4(abs(normal), 1.0);
     f_diffuse = iColorOut;
+    // depth is passed in automatically to our texture
 }
