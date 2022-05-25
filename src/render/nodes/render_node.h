@@ -16,10 +16,16 @@ struct RenderNodeData
     Vector4**      _instanceColorsPtr = nullptr;
 
     // Fog rendering data
-    float   _fogMax = 50.0;
-    float   _fogMin = 10.0;
+    float   _fogMax = 50.0f;
+    float   _fogMin = 10.0f;
     Vector3 _fogColor = { 0.7f, 0.7f, 0.7f };
     bool    _fogChanged = false;
+
+    // Position related options
+    bool         _repeatBlocks = false;
+    Vector3      _motifSize = Vector3(1.0f, 1.0f, 1.0f);
+    unsigned int _motifInstances[3] = {1, 1, 1};
+    bool         _motifChanged = false;
 };
 
 struct RenderNode final : public PropertyNode
@@ -61,7 +67,6 @@ struct RenderNode final : public PropertyNode
     
     ~RenderNode()
     {
-        L_TRACE("~RenderNode()");
         if(_renderData._worldPositionPtr != nullptr)
         {
             free(_renderData._worldPositionPtr);
@@ -81,6 +86,7 @@ struct RenderNode final : public PropertyNode
         {
             free(_renderData._meshPtr);
         }
+        L_TRACE("~RenderNode()");
     }
 
     inline bool renderDataChanged() const
@@ -334,6 +340,7 @@ struct RenderNode final : public PropertyNode
                 *(_renderData._worldPositionPtr) = worldPosLocal;
                 *(_renderData._worldRotationPtr) = worldRotLocal;
                 *(_renderData._instanceColorsPtr) = colors;
+
                 data.setValue(_renderData);
             }
         }
@@ -360,7 +367,7 @@ struct RenderNode final : public PropertyNode
         ImGui::TextColored(ImVec4(0.8f, 0.7f, 0.0f, 1.0f), "Warn: Data types are not checked!");
 
         #define AND_BHEADER(i) allCollapsed &= !bheaders.all[i]
-        #define HEADER_SZ 1
+        #define HEADER_SZ 2
         struct
         {
             union
@@ -368,6 +375,7 @@ struct RenderNode final : public PropertyNode
                 struct
                 {
                     bool fog;
+                    bool pos;
                 };
                 bool all[HEADER_SZ];
             };
@@ -383,19 +391,19 @@ struct RenderNode final : public PropertyNode
         #undef HEADER_SZ
 
         if(!allCollapsed) childSize = ImVec2(400.0f, 300.0f);
-        allCollapsed = true;
 
         ImGui::BeginChild("#details_window", childSize, true);
 
         // Fog settings header
-        ImGui::PushStyleColor(ImGuiCol_Header, IM_COL32(179, 102, 0, 255));
+        ImU32 frame_color = IM_COL32(179, 102, 0, 255);
+        ImGui::PushStyleColor(ImGuiCol_Header, frame_color);
         bheaders.fog = ImGui::CollapsingHeader("Fog");
         ImGui::PopStyleColor();
         if(bheaders.fog)
         {
             ImDrawList* draw_list = ImGui::GetWindowDrawList();
             ImVec2 border_start = ImGui::GetItemRectMin();
-            ImGui::BeginChild("#fog_details", ImVec2(0, 0), false);
+            ImGui::BeginChild("#fog_details");
 
             _renderData._fogChanged  = ImGui::InputFloat("Fog Maximum", &_renderData._fogMax, 1.0f, 0.0f, "%.1f");
             _renderData._fogChanged |= ImGui::InputFloat("Fog Minimum", &_renderData._fogMin, 1.0f, 0.0f, "%.1f");
@@ -416,7 +424,66 @@ struct RenderNode final : public PropertyNode
 
             ImVec2 border_end = ImGui::GetItemRectMax();
             border_end.x += ImGui::GetStyle().WindowPadding.x / 2;
-            draw_list->AddRect(border_start, border_end, IM_COL32(179, 102, 0, 255));
+            draw_list->AddRect(border_start, border_end, frame_color);
+        }
+
+        // Position settings header
+        frame_color = IM_COL32(50, 205, 50, 255);
+        ImGui::PushStyleColor(ImGuiCol_Header, frame_color);
+        bheaders.pos = ImGui::CollapsingHeader("Position");
+        ImGui::PopStyleColor();
+        _motif_changed_internal = false;
+        if(bheaders.pos)
+        {
+            ImDrawList* draw_list = ImGui::GetWindowDrawList();
+            ImVec2 border_start = ImGui::GetItemRectMin();
+            ImGui::BeginChild("#pos_details");
+
+            _motif_changed_internal = ImGui::Checkbox("Repeat Motif", &_renderData._repeatBlocks);
+
+            if(_renderData._repeatBlocks)
+            {
+                if(ImGui::InputFloat3("Motif Size", _renderData._motifSize.data, "%.1f") || _motif_changed_internal || _renderData._fogChanged)
+                {
+                    _motif_changed_internal = true;
+                    _renderData._motifInstances[0] = (unsigned int)std::ceil(_renderData._fogMax / _renderData._motifSize.x);
+                    _renderData._motifInstances[1] = (unsigned int)std::ceil(_renderData._fogMax / _renderData._motifSize.y);
+                    _renderData._motifInstances[2] = (unsigned int)std::ceil(_renderData._fogMax / _renderData._motifSize.z);
+
+                    L_DEBUG("New Motif Instances: (%u, %u, %u)", _renderData._motifInstances[0], _renderData._motifInstances[1], _renderData._motifInstances[2]);
+                    _renderData._motifChanged = true;
+                }
+                else
+                {
+                    _motif_changed_internal = false;
+                    _renderData._motifChanged = false;
+                }
+
+                data.setValue(_renderData);
+            }
+
+            ImGui::EndChild();
+
+            ImVec2 border_end = ImGui::GetItemRectMax();
+            border_end.x += ImGui::GetStyle().WindowPadding.x / 2;
+            draw_list->AddRect(border_start, border_end, frame_color);
+        }
+
+        // Recalculate instances
+        if(_motif_changed_internal || _renderData._fogChanged)
+        {
+            _renderData._motifInstances[0] = (unsigned int)std::ceil(_renderData._fogMax / _renderData._motifSize.x);
+            _renderData._motifInstances[1] = (unsigned int)std::ceil(_renderData._fogMax / _renderData._motifSize.y);
+            _renderData._motifInstances[2] = (unsigned int)std::ceil(_renderData._fogMax / _renderData._motifSize.z);
+
+            L_DEBUG("New Motif Instances: (%u, %u, %u)", _renderData._motifInstances[0], _renderData._motifInstances[1], _renderData._motifInstances[2]);
+            _renderData._motifChanged = true;
+            data.setValue(_renderData);
+        }
+        else if(_renderData._motifChanged)
+        {
+            _renderData._motifChanged = false;
+            data.setValue(_renderData);
         }
 
         ImGui::EndChild();
@@ -426,4 +493,5 @@ private:
     RenderNodeData _renderData;
     bool _render_data_changed = false;
     bool _fog_changed_last_frame = false;
+    bool _motif_changed_internal = false;
 };

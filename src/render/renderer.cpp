@@ -1,14 +1,19 @@
 #include "renderer.h"
 #include <fstream>
 #include <string>
+#include <cstdlib>
+#include <ctime>
 #include "../log/logger.h"
 #include "../../glm/glm/gtx/transform.hpp"
 #include "nodes/render_node.h"
 #include "../../imgui/imgui_impl_glfw.h"
 
 #include "../util/objloader.h"
+#include "../util/perlin.inl"
 
 static float screen_halfsize[2];
+static float screen_size[2];
+static bool viewport_changed;
 static float mouse_delta[2];
 static float mouse_scroll;
 static bool holding_mouse_right;
@@ -23,22 +28,26 @@ static void _key_callback(GLFWwindow* window, int key, int scancode, int action,
     {
         if(action == GLFW_PRESS)
         {
-            if(key == GLFW_KEY_W) cam_dir_f |= Renderer::Camera::DirectionFlag_FORWARD;
-            if(key == GLFW_KEY_A) cam_dir_f |= Renderer::Camera::DirectionFlag_LEFT;
-            if(key == GLFW_KEY_S) cam_dir_f |= Renderer::Camera::DirectionFlag_BACKWARD;
-            if(key == GLFW_KEY_D) cam_dir_f |= Renderer::Camera::DirectionFlag_RIGHT;
+            if(key == GLFW_KEY_W)          cam_dir_f |= Renderer::Camera::DirectionFlag_FORWARD;
+            if(key == GLFW_KEY_A)          cam_dir_f |= Renderer::Camera::DirectionFlag_LEFT;
+            if(key == GLFW_KEY_S)          cam_dir_f |= Renderer::Camera::DirectionFlag_BACKWARD;
+            if(key == GLFW_KEY_D)          cam_dir_f |= Renderer::Camera::DirectionFlag_RIGHT;
+            if(key == GLFW_KEY_SPACE)      cam_dir_f |= Renderer::Camera::DirectionFlag_UP;
+            if(key == GLFW_KEY_LEFT_SHIFT) cam_dir_f |= Renderer::Camera::DirectionFlag_DOWN;
         }
         else if(action == GLFW_RELEASE)
         {
-            if(key == GLFW_KEY_W) cam_dir_f &= ~Renderer::Camera::DirectionFlag_FORWARD;
-            if(key == GLFW_KEY_A) cam_dir_f &= ~Renderer::Camera::DirectionFlag_LEFT;
-            if(key == GLFW_KEY_S) cam_dir_f &= ~Renderer::Camera::DirectionFlag_BACKWARD;
-            if(key == GLFW_KEY_D) cam_dir_f &= ~Renderer::Camera::DirectionFlag_RIGHT;
+            if(key == GLFW_KEY_W)          cam_dir_f &= ~Renderer::Camera::DirectionFlag_FORWARD;
+            if(key == GLFW_KEY_A)          cam_dir_f &= ~Renderer::Camera::DirectionFlag_LEFT;
+            if(key == GLFW_KEY_S)          cam_dir_f &= ~Renderer::Camera::DirectionFlag_BACKWARD;
+            if(key == GLFW_KEY_D)          cam_dir_f &= ~Renderer::Camera::DirectionFlag_RIGHT;
+            if(key == GLFW_KEY_SPACE)      cam_dir_f &= ~Renderer::Camera::DirectionFlag_UP;
+            if(key == GLFW_KEY_LEFT_SHIFT) cam_dir_f &= ~Renderer::Camera::DirectionFlag_DOWN;
         }
     }
 }
 
-// TODO: Check if we are in the screen region or not
+// FIX: Check if we are in the screen region or not
 static void _mouse_pos_callback(GLFWwindow* window, double xpos, double ypos)
 {
     ImGuiIO& io = ImGui::GetIO();
@@ -86,8 +95,13 @@ static void _framebuffer_size_callback(GLFWwindow* window, int width, int height
 {
     glViewport(0, 0, width, height);
 
+    screen_size[0] = width;
+    screen_size[1] = height;
+
     screen_halfsize[0] = width  / 2.0f;
     screen_halfsize[1] = height / 2.0f;
+
+    viewport_changed = true;
 }
 
 static int LoadShaderFromFile(GLuint shadertype, std::string file, GLuint* program)
@@ -208,6 +222,22 @@ static GLuint CreateSobelFilterProgram()
     return program;
 }
 
+static GLuint CreateFogParticleProgram()
+{
+    GLuint program = glCreateProgram();
+
+    int err = LoadShaderFromFile(GL_VERTEX_SHADER, "shader/fogpart.vs", &program);
+    err |= LoadShaderFromFile(GL_FRAGMENT_SHADER, "shader/fogpart.fs", &program);
+
+    if(err)
+    {
+        L_ERROR("Failed to create program.");
+        glDeleteProgram(program);
+    }
+
+    return program;
+}
+
 Renderer::DrawInstance::DrawInstance()
 {
     glGenVertexArrays(1, &_vao);
@@ -316,23 +346,30 @@ Renderer::DrawInstance::DrawInstance()
     glVertexAttribDivisor(10, 1);
 
     glBindVertexArray(0);
+
+    _motif_model_matrices = new glm::mat4[1]{ glm::mat4(1.0f) };
+    _motif_span = 1;
 }
 
 Renderer::DrawInstance::~DrawInstance()
 {
-    L_TRACE("~DrawInstance()");
     glDeleteVertexArrays(1, &_vao);
     glDeleteBuffers(1, &_vbo);
     // glDeleteBuffers(1, &_ebo);
     glDeleteBuffers(1, &_ipb);
     glDeleteBuffers(1, &_icb);
     glDeleteBuffers(1, &_irb);
+
+    if(_motif_model_matrices != nullptr)
+    {
+        delete[] _motif_model_matrices;
+    }
+    L_TRACE("~DrawInstance()");
 }
 
-Renderer::Camera::Camera(float fov)
+Renderer::Camera::Camera(float fov) : fov(fov)
 {
-    // TODO: Update camera projection with viewport change and add camera control options
-    projectionMatrix = glm::perspective(fov, aspectRatio, 0.1f, 100.0f);
+    projectionMatrix = glm::perspective(fov, initialAspectRatio, 0.1f, 100.0f);
 
     position = glm::vec3(0, 0, 2);
     front = glm::vec3(0, 0, -1);
@@ -345,6 +382,11 @@ Renderer::Camera::Camera(float fov)
 
 void Renderer::Camera::update(float frame_mouse_scroll, float frame_mouse_x, float frame_mouse_y, DirectionFlag dir, float dt)
 {
+    if(viewport_changed)
+    {
+        projectionMatrix = glm::perspective(fov, screen_size[0] / screen_size[1], 0.1f, 100.0f);
+    }
+
     // Update position
     float v = move_speed * dt;
     if(dir.FORWARD)
@@ -362,6 +404,14 @@ void Renderer::Camera::update(float frame_mouse_scroll, float frame_mouse_x, flo
     if(dir.RIGHT)
     {
         position += right * v;
+    }
+    if(dir.UP)
+    {
+        position += up * v;
+    }
+    if(dir.DOWN)
+    {
+        position -= up * v;
     }
 
     // Update look
@@ -392,6 +442,32 @@ void Renderer::Camera::update(float frame_mouse_scroll, float frame_mouse_x, flo
     viewMatrix = glm::lookAt(position, position + front, up);
 }
 
+static void GeneratePerlin2DTex(GLsizei w, GLsizei h, unsigned char* buffer)
+{
+    auto idx = [w](int x, int y) -> int { return 3 * (x + y * w); };
+
+    if(buffer != nullptr)
+    {
+        std::srand(std::time(nullptr)); // Random seed
+        float seed = std::rand() / ((RAND_MAX + 1u) / 2048);
+        for(int x = 0; x < w; x++)
+        {
+            for(int y = 0; y < h; y++)
+            {
+                for(int i = 0; i < 3; i++)
+                {
+                    float noise = Utils::perlin(seed + (float)x / 16.0f, seed + (float)y / 16.0f, seed + (float)i);
+                    buffer[idx(x, y) + i] = (unsigned char)((noise * 0.5f + 0.5f) * 255.0f);
+                }
+            }
+        }
+    }
+    else
+    {
+        L_ERROR("GeneratePerlin2DTex(): buffer is nullptr.");
+    }
+}
+
 Renderer::DrawList::DrawList(GLFWwindow* window, const int sw, const int sh)
 {
     glfwSetKeyCallback(window, _key_callback);
@@ -400,11 +476,15 @@ Renderer::DrawList::DrawList(GLFWwindow* window, const int sw, const int sh)
     glfwSetMouseButtonCallback(window, _mouse_btn_callback);
     glfwSetFramebufferSizeCallback(window, _framebuffer_size_callback);
 
+    screen_size[0] = sw;
+    screen_size[1] = sh;
+
     screen_halfsize[0] = sw / 2.0f;
     screen_halfsize[1] = sh / 2.0f;
 
     _program_nrmpass = CreateNormalPassProgram();
     _program_sobfilter = CreateSobelFilterProgram();
+    _program_fogpart = CreateFogParticleProgram();
     
     addInstance(new DrawInstance());
 
@@ -413,7 +493,7 @@ Renderer::DrawList::DrawList(GLFWwindow* window, const int sw, const int sh)
     glUseProgram(_program_nrmpass);
     _uniforms.projectionMatrix = glGetUniformLocation(_program_nrmpass, "projectionMatrix");
     _uniforms.viewMatrix = glGetUniformLocation(_program_nrmpass, "viewMatrix");
-    _uniforms.modelMatrix = glGetUniformLocation(_program_nrmpass, "modelMatrix");
+    _uniforms.motifModelMatrix = glGetUniformLocation(_program_nrmpass, "motifModelMatrix");
     
     glUniformMatrix4fv(_uniforms.projectionMatrix, 1, GL_FALSE, &camera->projectionMatrix[0][0]);
 
@@ -422,19 +502,16 @@ Renderer::DrawList::DrawList(GLFWwindow* window, const int sw, const int sh)
 
     glGenTextures(3, _rendertarget.texid);
     glBindTexture(GL_TEXTURE_2D, _rendertarget.texid[0]);
-    // TODO: Set texture size according to a given resolution
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, sw, sh, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 
     glBindTexture(GL_TEXTURE_2D, _rendertarget.texid[1]);
-    // TODO: Set texture size according to a given resolution
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, sw, sh, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 
     glBindTexture(GL_TEXTURE_2D, _rendertarget.texid[2]);
-    // TODO: Set texture size according to a given resolution
     glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32, sw, sh, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, 0);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -443,17 +520,18 @@ Renderer::DrawList::DrawList(GLFWwindow* window, const int sw, const int sh)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_NONE);
 
-    // NOTE: Color attachment is automatically present
+    // NOTE: Depth attachment is automatically present
     glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, _rendertarget.texid[0], 0);
     glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, _rendertarget.texid[1], 0);
     glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, _rendertarget.texid[2], 0);
-    GLenum drawBuffers[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
-    glDrawBuffers(2, drawBuffers);
+    GLenum drawBuffers[3] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
+    glDrawBuffers(3, drawBuffers);
 
     glUseProgram(_program_sobfilter);
     glUniform1i(glGetUniformLocation(_program_sobfilter, "screenNormalTexture"), 0);
     glUniform1i(glGetUniformLocation(_program_sobfilter, "screenDiffuseTexture"), 1);
     glUniform1i(glGetUniformLocation(_program_sobfilter, "screenDepthTexture"), 2);
+    _uniforms.sobel_time = glGetUniformLocation(_program_sobfilter, "time");
 
     glGenVertexArrays(1, &_vao_screen);
     glBindVertexArray(_vao_screen);
@@ -474,11 +552,65 @@ Renderer::DrawList::DrawList(GLFWwindow* window, const int sw, const int sh)
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
     glEnableVertexAttribArray(1);
+
+
+    glGenFramebuffers(1, &_finalrender.framebuffer_id);
+    glBindFramebuffer(GL_FRAMEBUFFER, _finalrender.framebuffer_id);
+    glGenTextures(1, &_finalrender.texid);
+    glBindTexture(GL_TEXTURE_2D, _finalrender.texid);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, sw, sh, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+
+    unsigned char* buffer = new unsigned char[3 * 1024 * 1024];
+
+    GeneratePerlin2DTex(1024, 1024, buffer);
+    glGenTextures(1, &_fog_perlin_texid);
+    glBindTexture(GL_TEXTURE_2D, _fog_perlin_texid);
+    // glPixelStorei(GL_UNPACK_ALIGNMENT, 1); // For 1d texture only (GL_RED)
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1024, 1024, 0, GL_RGB, GL_UNSIGNED_BYTE, buffer);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+
+    delete[] buffer;
+
+    glGenVertexArrays(1, &_vao_fog);
+    glBindVertexArray(_vao_fog);
+    glGenBuffers(1, &_vbo_fog);
+    glBindBuffer(GL_ARRAY_BUFFER, _vbo_fog);
+
+    glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
+
+    _fog_density = 1000;
+    std::vector<float> fog_points;
+    fog_points.reserve(3 * _fog_density);
+
+    std::srand(std::time(nullptr));
+    // Random AABB around view fustrum
+    for(int i = 0; i < 3 * _fog_density; i++)
+    {
+        float rx = ((float)std::rand() / RAND_MAX) * 2.0f - 1.0f;
+        float ry = ((float)std::rand() / RAND_MAX) * 2.0f - 1.0f;
+        float rz = ((float)std::rand() / RAND_MAX) * 2.0f - 1.0f;
+        fog_points.push_back(rx);
+        fog_points.push_back(ry);
+        fog_points.push_back(rz);
+    }
+
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 3 * _fog_density, fog_points.data(), GL_STATIC_DRAW);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    glUseProgram(_program_fogpart);
+    _uniforms.fog_projectionMatrix = glGetUniformLocation(_program_fogpart, "projectionMatrix");
+    _uniforms.fog_viewMatrix = glGetUniformLocation(_program_fogpart, "viewMatrix");
+    _uniforms.fog_time = glGetUniformLocation(_program_fogpart, "time");
+
+    glUniformMatrix4fv(_uniforms.fog_projectionMatrix, 1, GL_FALSE, &camera->projectionMatrix[0][0]);
 }
 
 Renderer::DrawList::~DrawList()
 {
-    L_TRACE("~DrawList()");
     for(auto i : instances)
     {
         delete i;
@@ -489,16 +621,53 @@ Renderer::DrawList::~DrawList()
     instances.clear();
     glDeleteProgram(_program_nrmpass);
     glDeleteProgram(_program_sobfilter);
+    glDeleteProgram(_program_fogpart);
 
     glDeleteVertexArrays(1, &_vao_screen);
     glDeleteBuffers(1, &_vbo_screen);
 
+    glDeleteVertexArrays(1, &_vao_fog);
+    glDeleteBuffers(1, &_vbo_fog);
+
     glDeleteTextures(3, _rendertarget.texid);
     glDeleteFramebuffers(1, &_rendertarget.framebuffer_id);
+
+    glDeleteTextures(1, &_finalrender.texid);
+    glDeleteFramebuffers(1, &_finalrender.framebuffer_id);
+
+    glDeleteTextures(1, &_fog_perlin_texid);
+
+    L_TRACE("~DrawList()");
+}
+
+void Renderer::DrawList::updateFramebufferTextures()
+{
+    glBindTexture(GL_TEXTURE_2D, _rendertarget.texid[0]);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, (GLsizei)screen_size[0], (GLsizei)screen_size[1], 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
+
+    glBindTexture(GL_TEXTURE_2D, _rendertarget.texid[1]);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, (GLsizei)screen_size[0], (GLsizei)screen_size[1], 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
+
+    glBindTexture(GL_TEXTURE_2D, _rendertarget.texid[2]);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32, (GLsizei)screen_size[0], (GLsizei)screen_size[1], 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, 0);
+
+    glBindTexture(GL_TEXTURE_2D, _finalrender.texid);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, (GLsizei)screen_size[0], (GLsizei)screen_size[1], 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
 }
 
 void Renderer::DrawList::render(GLFWwindow* window, NodeWindow* nodeWindow)
-{ 
+{
+    if(viewport_changed)
+    {
+        updateFramebufferTextures();
+
+        glUseProgram(_program_nrmpass);
+        glUniformMatrix4fv(_uniforms.projectionMatrix, 1, GL_FALSE, &camera->projectionMatrix[0][0]);
+
+        glUseProgram(_program_fogpart);
+        glUniformMatrix4fv(_uniforms.fog_projectionMatrix, 1, GL_FALSE, &camera->projectionMatrix[0][0]);
+    }
+
     static float last_time = (float)glfwGetTime();
     RenderNode* outNode = dynamic_cast<RenderNode*>(nodeWindow->getRenderOutputNode());
 
@@ -517,17 +686,74 @@ void Renderer::DrawList::render(GLFWwindow* window, NodeWindow* nodeWindow)
 
         if(outNode->renderDataChanged())
         {
-            // TODO: Do something with the new data / init it in the graphics memory
-            // RenderNodeData nodeData = outNode->data.getValue<RenderNodeData>();
             instances[0]->_instanceCount = nodeData._instanceCount;
 
-            // TODO: This is dumb, create a function and update it only when it changes
+
             MeshNodeData* mesh = *(nodeData._meshPtr);
             if(mesh != nullptr)
             {
                 glBindBuffer(GL_ARRAY_BUFFER, instances[0]->_vbo);
                 glBufferData(GL_ARRAY_BUFFER, mesh->data_size * sizeof(float), mesh->vertex_data, GL_STATIC_DRAW);
                 instances[0]->_idxcount = (GLsizei)mesh->data_size / 6;
+            }
+        }
+
+        if(outNode->data.dataChanged())
+        {
+            if(nodeData._fogChanged)
+            {
+                // NOTE: Using glGetUniformLocation should be ok: this won't change that often and I'm lazy
+                glUseProgram(_program_sobfilter);
+                glUniform1f(glGetUniformLocation(_program_sobfilter, "fogMax"), nodeData._fogMax);
+                glUniform1f(glGetUniformLocation(_program_sobfilter, "fogMin"), nodeData._fogMin);
+                // fogcolor is background basically (no volumetric fog)
+                glClearColor(nodeData._fogColor.x, nodeData._fogColor.y, nodeData._fogColor.z, 1.0f);
+            }
+
+            glUseProgram(_program_sobfilter);
+            glUniform1f(glGetUniformLocation(_program_sobfilter, "fogMax"), nodeData._fogMax);
+
+            if(nodeData._repeatBlocks && nodeData._motifChanged)
+            {
+                instances[0]->_motif_span = nodeData._motifInstances[0] * nodeData._motifInstances[1] * nodeData._motifInstances[2] * 8;
+                L_DEBUG("New motif total span: %u", instances[0]->_motif_span);
+
+                if(instances[0]->_motif_model_matrices != nullptr)
+                {
+                    delete[] instances[0]->_motif_model_matrices;
+                }
+                instances[0]->_motif_model_matrices = new glm::mat4[instances[0]->_motif_span];
+
+                int span_x = (int)nodeData._motifInstances[0];
+                int span_y = (int)nodeData._motifInstances[1];
+                int span_z = (int)nodeData._motifInstances[2];
+
+                for(int z = -span_z; z < span_z; z++)
+                {
+                    for(int y = -span_y; y < span_y; y++)
+                    {
+                        for(int x = -span_x; x < span_x; x++)
+                        {
+                            int idx = (x + span_x) + (y + span_y) * span_x + (z + span_z) * span_x * span_y;
+                            instances[0]->_motif_model_matrices[idx] = glm::translate(
+                                glm::vec3(
+                                    nodeData._motifSize.x * x,
+                                    nodeData._motifSize.y * y,
+                                    nodeData._motifSize.z * z
+                                )
+                            );
+                        }
+                    }
+                }
+            }
+            else if(!nodeData._repeatBlocks)
+            {
+                instances[0]->_motif_span = 1;
+                if(instances[0]->_motif_model_matrices != nullptr)
+                {
+                    delete[] instances[0]->_motif_model_matrices;
+                }
+                instances[0]->_motif_model_matrices = new glm::mat4[1]{ glm::mat4(1.0f) };
             }
         }
 
@@ -551,16 +777,6 @@ void Renderer::DrawList::render(GLFWwindow* window, NodeWindow* nodeWindow)
             glBindBuffer(GL_ARRAY_BUFFER, instances[0]->_icb);
             glBufferData(GL_ARRAY_BUFFER, instances[0]->_instanceCount * sizeof(Vector4), col, GL_DYNAMIC_DRAW);
         }
-
-        if(nodeData._fogChanged)
-        {
-            // NOTE: Using glGetUniformLocation should be ok: this won't change that often and I'm lazy
-            glUseProgram(_program_sobfilter);
-            glUniform1f(glGetUniformLocation(_program_sobfilter, "fogMax"), nodeData._fogMax);
-            glUniform1f(glGetUniformLocation(_program_sobfilter, "fogMin"), nodeData._fogMin);
-            // fogcolor is background basically (no volumetric fog)
-            glClearColor(nodeData._fogColor.x, nodeData._fogColor.y, nodeData._fogColor.z, 1.0f);
-        }
     }
 
     // Update camera
@@ -570,17 +786,38 @@ void Renderer::DrawList::render(GLFWwindow* window, NodeWindow* nodeWindow)
 
     // Render using normals to create an image to the sobel filter for edge detection
     glUseProgram(_program_nrmpass);
-    glUniformMatrix4fv(_uniforms.modelMatrix, 1, GL_FALSE, &camera->modelMatrix[0][0]);
     glUniformMatrix4fv(_uniforms.viewMatrix, 1, GL_FALSE, &camera->viewMatrix[0][0]);
     glBindFramebuffer(GL_FRAMEBUFFER, _rendertarget.framebuffer_id);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    // TODO: Add glViewport() here to the size of the framebuffer's texture
     glBindVertexArray(instances[0]->_vao);
-    glDrawArraysInstanced(GL_TRIANGLES, 0, instances[0]->_idxcount, instances[0]->_instanceCount);
+
+    for(int i = 0; i < (int)instances[0]->_motif_span; i++)
+    {
+        // TODO : Follow camera movement and update transforms
+        glUniformMatrix4fv(_uniforms.motifModelMatrix, 1, GL_FALSE, &instances[0]->_motif_model_matrices[i][0][0]);
+        glDrawArraysInstanced(GL_TRIANGLES, 0, instances[0]->_idxcount, instances[0]->_instanceCount);
+    }
+
+    // Render fog and particles to the final texture for displaying
+    float time = (float)NodeWindow::GetApptimeMs() / 1000.0f;
+    glUseProgram(_program_fogpart);
+    glUniform1f(_uniforms.fog_time, time);
+    glUniformMatrix4fv(_uniforms.fog_viewMatrix, 1, GL_FALSE, &camera->viewMatrix[0][0]);
+    glBindVertexArray(_vao_fog);
+    // Don't write to the normal color buffer
+    glColorMaski(0, GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+    // Don't write to the depth buffer
+    // glDepthMask(GL_FALSE);
+    glDrawArrays(GL_POINTS, 0, _fog_density);
+    // glDepthMask(GL_TRUE);
+    glColorMaski(0, GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 
     // Render the filter calculated outlines into the screen alongside the diffuse data
     glUseProgram(_program_sobfilter);
+    glUniform1f(_uniforms.sobel_time, time);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    // TODO : Render to texture
+    // glBindFramebuffer(GL_FRAMEBUFFER, _finalrender.framebuffer_id);
     glBindVertexArray(_vao_screen);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, _rendertarget.texid[0]);
@@ -592,4 +829,6 @@ void Renderer::DrawList::render(GLFWwindow* window, NodeWindow* nodeWindow)
     
     glBindVertexArray(0);
     glUseProgram(0);
+
+    viewport_changed = false;
 }

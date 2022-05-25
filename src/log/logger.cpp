@@ -1,7 +1,7 @@
 #include "logger.h"
 #include <stdarg.h>
 
-// BUG: This can be an issue
+// NOTE: This can be an issue
 static struct LogFileGuard
 {
     LogFileGuard()

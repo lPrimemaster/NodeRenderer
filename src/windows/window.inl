@@ -14,7 +14,7 @@ public:
     {
         if(open && ImGui::Begin(window_name.c_str(), &open, 0))
         {
-            render(); // TODO: Separate a render from an update, so we can update the screen with the node's window close
+            render(); // TODO: Separate a render from an update, so we can update the screen with the node's window closed
             ImGui::End();
         }
     }

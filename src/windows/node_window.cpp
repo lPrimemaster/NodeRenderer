@@ -231,13 +231,12 @@ void NodeWindow::render()
     }
 
     // Open context menu
-    if (ImGui::IsMouseReleased(ImGuiMouseButton_Right))
-        if (ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup) || !ImGui::IsAnyItemHovered())
-        {
-            node_selected = node_hovered_in_list = node_hovered_in_scene = -1;
-            open_context_menu = true;
-        }
-    if (open_context_menu)
+    if(ImGui::IsMouseReleased(ImGuiMouseButton_Right) && ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup))
+    {
+        node_selected = node_hovered_in_list = node_hovered_in_scene = -1;
+        open_context_menu = true;
+    }
+    if(open_context_menu)
     {
         ImGui::OpenPopup("context_menu");
         if (node_hovered_in_list != -1)

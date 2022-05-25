@@ -7,7 +7,8 @@ layout (location = 7) in mat4 instanceRotMatrix;
 
 uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;
-uniform mat4 modelMatrix; // TODO: Remove
+
+uniform mat4 motifModelMatrix;
 
 out vec4 iColorOut;
 out vec3 normal;
@@ -16,5 +17,5 @@ void main()
 {
     iColorOut = instanceColor;
     normal = nrm;
-    gl_Position = projectionMatrix * viewMatrix * instancePosMatrix * instanceRotMatrix * modelMatrix * vec4(pos, 1.0);
+    gl_Position = projectionMatrix * viewMatrix * motifModelMatrix * instancePosMatrix * instanceRotMatrix * vec4(pos, 1.0);
 }

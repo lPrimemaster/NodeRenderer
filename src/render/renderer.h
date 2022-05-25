@@ -12,7 +12,6 @@ namespace Renderer
     struct DrawInstance
     {
         DrawInstance();
-        DrawInstance(const char* filename);
         ~DrawInstance();
 
         GLuint _vao;
@@ -30,6 +29,9 @@ namespace Renderer
         Vector4** _instanceColorsPtr;
 
         unsigned int _instanceCount;
+
+        unsigned int _motif_span;
+        glm::mat4* _motif_model_matrices;
     };
 
     struct Camera
@@ -50,6 +52,8 @@ namespace Renderer
                     unsigned int BACKWARD : 1;
                     unsigned int LEFT     : 1;
                     unsigned int RIGHT    : 1;
+                    unsigned int UP       : 1;
+                    unsigned int DOWN     : 1;
                 };
                 unsigned int _flags;
             };
@@ -60,12 +64,14 @@ namespace Renderer
             DirectionFlag_FORWARD  = 0x1,
             DirectionFlag_BACKWARD = 0x2,
             DirectionFlag_LEFT     = 0x4,
-            DirectionFlag_RIGHT    = 0x8
+            DirectionFlag_RIGHT    = 0x8,
+            DirectionFlag_UP       = 0x10,
+            DirectionFlag_DOWN     = 0x20,
         };
 
         Camera(float fov);
 
-        static constexpr float aspectRatio = 16.0f/9.0f;
+        static constexpr float initialAspectRatio = 16.0f/9.0f;
 
         void update(float frame_mouse_scroll, float frame_mouse_x, float frame_mouse_y, DirectionFlag dir, float dt);
 
@@ -85,6 +91,7 @@ namespace Renderer
         float move_speed = 2.5f;
         float look_speed = 0.1f;
         float zoom = 45.0f; // NOTE: Not currently in use
+        float fov;
     };
 
     struct DrawList
@@ -94,11 +101,19 @@ namespace Renderer
 
         void render(GLFWwindow* window, NodeWindow* nodeWindow);
 
+        void updateFramebufferTextures();
+
         struct
         {
             GLuint projectionMatrix;
             GLuint viewMatrix;
-            GLuint modelMatrix;
+            GLuint motifModelMatrix;
+
+            GLuint fog_projectionMatrix;
+            GLuint fog_viewMatrix;
+            GLuint fog_time;
+
+            GLuint sobel_time;
         } _uniforms;
 
         struct
@@ -108,10 +123,22 @@ namespace Renderer
         } _rendertarget;
 
         GLuint _program_nrmpass;
+        GLuint _program_fogpart;
         GLuint _program_sobfilter;
 
         GLuint _vao_screen;
         GLuint _vbo_screen;
+
+        GLuint _vao_fog;
+        GLuint _vbo_fog;
+        int _fog_density;
+        GLuint _fog_perlin_texid;
+
+        struct
+        {
+            GLuint framebuffer_id;
+            GLuint texid;
+        } _finalrender;
 
         Camera* camera;
         std::vector<DrawInstance*> instances;

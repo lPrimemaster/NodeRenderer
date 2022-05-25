@@ -3,6 +3,8 @@
 #include "../../util/imgui_ext.inl"
 #include "../../util/objloader.h"
 #include <future>
+#include <glad/glad.h>
+#include <GLFW/glfw3.h>
 
 struct MeshNodeData
 {
@@ -18,6 +20,19 @@ struct MeshNode final : public PropertyNode
         _input_count = 0;
         _output_count = 1;
         name = "Mesh Node #" + std::to_string(inc++);
+
+        // glGenVertexArrays(1, &_preview_vao);
+        // glBindVertexArray(_preview_vao);
+
+        // glGenBuffers(1, &_preview_vbo);
+        // glBindBuffer(GL_ARRAY_BUFFER, _preview_vbo);
+        // glBufferData(GL_ARRAY_BUFFER, 0, nullptr, GL_STATIC_DRAW);
+
+        // GLuint _preview_vao;
+        // GLuint _preview_vbo;
+        // GLuint _preview_prog;
+        // GLuint _preview_fbo;
+        // GLuint _preview_tex;
     }
     
     ~MeshNode()
@@ -36,6 +51,9 @@ struct MeshNode final : public PropertyNode
         if(valid_model)
         {
             //TODO: Display a model preview on the node
+            ImGui::Text("Currently loaded: %s", std::filesystem::path(to_load).filename().string().c_str());
+
+
         }
         
         bool closepopup = false;
@@ -105,4 +123,11 @@ private:
     bool valid_model = false;
     bool loading = false;
     bool popupOpened = false;
+
+    // NOTE: We are inside a gl context, so this should be fine
+    GLuint _preview_vao;
+    GLuint _preview_vbo;
+    GLuint _preview_prog;
+    GLuint _preview_fbo;
+    GLuint _preview_tex;
 };

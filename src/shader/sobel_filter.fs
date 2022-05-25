@@ -6,12 +6,13 @@ uniform sampler2D screenNormalTexture;
 uniform sampler2D screenDiffuseTexture;
 uniform sampler2D screenDepthTexture;
 
+uniform float time;
+
 uniform float fogMax = 50.0;
 uniform float fogMin = 10.0;
 
 const float zNear = 0.1;
 const float zFar = 100.0;
-
 
 const mat3 sx = mat3( 
     1.0, 2.0, 1.0, 
@@ -109,6 +110,7 @@ void main()
         }
     }
     f_color.a = 1.0 - fog;
+    // f_color = texture(screenDiffuseTexture, texCoords.st);
     // f_color = vec4(vec3(linearizeDepth(texelFetch(screenDepthTexture, ivec2(gl_FragCoord), 0).r)), 1.0);
 }
 

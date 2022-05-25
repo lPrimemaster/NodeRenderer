@@ -33,7 +33,7 @@ struct ListJoinNode final : public PropertyNode
         
     }
 
-    // TODO: Instead of a hard copy, why not move the input value (?)
+    
     inline virtual void render() override
     {
         data.resetDataUpdate();
