@@ -14,12 +14,12 @@ uniform float fogMin = 10.0;
 const float zNear = 0.1;
 const float zFar = 100.0;
 
-const mat3 sx = mat3( 
+const mat3 sx = mat3(
     1.0, 2.0, 1.0, 
     0.0, 0.0, 0.0, 
    -1.0, -2.0, -1.0 
 );
-const mat3 sy = mat3( 
+const mat3 sy = mat3(
     1.0, 0.0, -1.0, 
     2.0, 0.0, -2.0, 
     1.0, 0.0, -1.0 
@@ -100,7 +100,7 @@ void main()
     else
     {
         float gd = sobelDepth();
-        if(gd > 0.1)
+        if(gd > 0.03)
         {
             f_color = vec4(0.0, 0.0, 0.0, 1.0);
         }

@@ -55,12 +55,6 @@ struct ListNode final : public PropertyNode
 
     inline virtual void render() override
     {
-        data.resetDataUpdate();
-
-        disconnectInputIfNotOfType<unsigned int>("sizex");
-        disconnectInputIfNotOfType<unsigned int>("sizey");
-        disconnectInputIfNotOfType<unsigned int>("sizez");
-
         static const char* const type_names[] = {
             "float",
             "int",
@@ -79,50 +73,8 @@ struct ListNode final : public PropertyNode
             "3D"
         };
 
-        bool dim_changed = ImGui::Combo("Dim", &currentdimid, dim_names, sizeof(dim_names) / sizeof(dim_names[0]));
+        dim_changed = ImGui::Combo("Dim", &currentdimid, dim_names, sizeof(dim_names) / sizeof(dim_names[0]));
         dim = static_cast<Dim>(currentdimid);
-
-        unsigned int size_x = 1;
-        unsigned int size_y = 1;
-        unsigned int size_z = 1;
-        bool has_a_dim = false;
-
-        switch (dim)
-        {
-        case Dim::D3:
-        {
-            auto listsizeLocal = inputs_named.find("sizez");
-            if(listsizeLocal != inputs_named.end())
-            {
-                size_z = listsizeLocal->second->data.getValue<unsigned int>();
-                has_a_dim = true;
-            }
-        }
-        [[fallthrough]];
-        case Dim::D2:
-        {
-            auto listsizeLocal = inputs_named.find("sizey");
-            if(listsizeLocal != inputs_named.end())
-            {
-                size_y = listsizeLocal->second->data.getValue<unsigned int>();
-                has_a_dim = true;
-            }
-        }
-        [[fallthrough]];
-        case Dim::D1:
-        {
-            auto listsizeLocal = inputs_named.find("sizex");
-            if(listsizeLocal != inputs_named.end())
-            {
-                size_x = listsizeLocal->second->data.getValue<unsigned int>();
-                has_a_dim = true;
-            }
-        }
-        break;
-        
-        default:
-            break;
-        }
 
         if(dim_changed)
         {
@@ -159,6 +111,81 @@ struct ListNode final : public PropertyNode
             default:
                 break;
             }
+        }
+                
+        std::string vars;
+        switch (dim)
+        {
+            case Dim::D1: vars = "i";       break;
+            case Dim::D2: vars = "i, j";    break;
+            case Dim::D3: vars = "i, j, k"; break;
+            default: break;
+        }
+
+        _expr_changed0 = false;
+        _expr_changed1 = false;
+        _expr_changed2 = false;
+        _expr_changed3 = false;
+
+        if(has_a_dim)
+        {
+            ImGui::Text("Semi-colon separated. [ex.: \"a;b;\"]");
+            extra_vars_changed = ImGui::InputText("Extra variables", _extra_vars, 128);
+            _expr_changed0 = ImGui::InputText((std::string("x(") + vars + ")").c_str(), _expr_str_0, 128);
+            _expr_changed1 = currenttypeid > 2 && ImGui::InputText((std::string("y(") + vars + ")").c_str(), _expr_str_1, 128);
+            _expr_changed2 = currenttypeid > 3 && ImGui::InputText((std::string("z(") + vars + ")").c_str(), _expr_str_2, 128);
+            _expr_changed3 = currenttypeid > 4 && ImGui::InputText((std::string("w(") + vars + ")").c_str(), _expr_str_3, 128);
+        }
+    }
+
+    inline virtual void update() override
+    {
+        data.resetDataUpdate();
+
+        disconnectInputIfNotOfType<unsigned int>("sizex");
+        disconnectInputIfNotOfType<unsigned int>("sizey");
+        disconnectInputIfNotOfType<unsigned int>("sizez");
+
+        unsigned int size_x = 1;
+        unsigned int size_y = 1;
+        unsigned int size_z = 1;
+        has_a_dim = false;
+
+        switch (dim)
+        {
+        case Dim::D3:
+        {
+            auto listsizeLocal = inputs_named.find("sizez");
+            if(listsizeLocal != inputs_named.end())
+            {
+                size_z = listsizeLocal->second->data.getValue<unsigned int>();
+                has_a_dim = true;
+            }
+        }
+        [[fallthrough]];
+        case Dim::D2:
+        {
+            auto listsizeLocal = inputs_named.find("sizey");
+            if(listsizeLocal != inputs_named.end())
+            {
+                size_y = listsizeLocal->second->data.getValue<unsigned int>();
+                has_a_dim = true;
+            }
+        }
+        [[fallthrough]];
+        case Dim::D1:
+        {
+            auto listsizeLocal = inputs_named.find("sizex");
+            if(listsizeLocal != inputs_named.end())
+            {
+                size_x = listsizeLocal->second->data.getValue<unsigned int>();
+                has_a_dim = true;
+            }
+        }
+        break;
+        
+        default:
+            break;
         }
 
         bool funcChanged = false;
@@ -267,8 +294,7 @@ struct ListNode final : public PropertyNode
                 listsize = size;
             }
 
-            ImGui::Text("Semi-colon separated. [ex.: \"a;b;\"]");
-            if(ImGui::InputText("Extra variables", _extra_vars, 128) || dim_changed)
+            if(extra_vars_changed || dim_changed)
             {
                 std::vector<std::string> strings;
                 int it_inc = 1 + static_cast<int>(dim);
@@ -374,7 +400,7 @@ struct ListNode final : public PropertyNode
                 }
             }
 
-            if(ImGui::InputText("x(i)", _expr_str_0, 128))
+            if(_expr_changed0)
             {
                 try
                 {
@@ -386,7 +412,7 @@ struct ListNode final : public PropertyNode
                     L_ERROR("Function x set failed: %s", e.GetMsg().c_str());
                 }
             }
-            if(currenttypeid > 2 && ImGui::InputText("y(i)", _expr_str_1, 128))
+            if(_expr_changed1)
             {
                 try
                 {
@@ -398,7 +424,7 @@ struct ListNode final : public PropertyNode
                     L_ERROR("Function y set failed: %s", e.GetMsg().c_str());
                 }
             }
-            if(currenttypeid > 3 && ImGui::InputText("z(i)", _expr_str_2, 128))
+            if(_expr_changed2)
             {
                 try
                 {
@@ -410,7 +436,7 @@ struct ListNode final : public PropertyNode
                     L_ERROR("Function z set failed: %s", e.GetMsg().c_str());
                 }
             }
-            if(currenttypeid > 4 && ImGui::InputText("w(i)", _expr_str_3, 128))
+            if(_expr_changed3)
             {
                 try
                 {
@@ -602,6 +628,14 @@ private:
 
     int currentdimid = 0;
     int lastdimid = 0;
+    
+    bool has_a_dim = false;
+    bool dim_changed;
+    bool extra_vars_changed;
+    bool _expr_changed0;
+    bool _expr_changed1;
+    bool _expr_changed2;
+    bool _expr_changed3;
 
     char _expr_str_0[128];
     char _expr_str_1[128];

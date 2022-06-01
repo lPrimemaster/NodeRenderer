@@ -18,6 +18,8 @@ static float mouse_delta[2];
 static float mouse_scroll;
 static bool holding_mouse_right;
 static Renderer::Camera::DirectionFlags cam_dir_f;
+constexpr static Vector3 infinityVec3 = Vector3(std::numeric_limits<float>::infinity(), std::numeric_limits<float>::infinity(), std::numeric_limits<float>::infinity());
+static Vector3 mcm_motif_size = infinityVec3;
 
 static void _key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
@@ -95,8 +97,8 @@ static void _framebuffer_size_callback(GLFWwindow* window, int width, int height
 {
     glViewport(0, 0, width, height);
 
-    screen_size[0] = width;
-    screen_size[1] = height;
+    screen_size[0] = (float)width;
+    screen_size[1] = (float)height;
 
     screen_halfsize[0] = width  / 2.0f;
     screen_halfsize[1] = height / 2.0f;
@@ -297,6 +299,7 @@ Renderer::DrawInstance::DrawInstance()
 
     _idxcount = 36;
     _instanceCount = 1;
+    _motif_span = 1;
     glGenBuffers(1, &_ipb);
     glBindBuffer(GL_ARRAY_BUFFER, _ipb);
     _intancePositionMatrixPtr = nullptr;
@@ -345,25 +348,63 @@ Renderer::DrawInstance::DrawInstance()
     glVertexAttribDivisor(9, 1);
     glVertexAttribDivisor(10, 1);
 
-    glBindVertexArray(0);
+    glGenBuffers(1, &_mpb);
+    glBindBuffer(GL_ARRAY_BUFFER, _mpb);
+    _motifPositionMatrixPtr = nullptr;
+    glBufferData(GL_ARRAY_BUFFER, _motif_span * _instanceCount * sizeof(glm::mat4), nullptr, GL_DYNAMIC_DRAW);
 
-    _motif_model_matrices = new glm::mat4[1]{ glm::mat4(1.0f) };
-    _motif_span = 1;
+    glVertexAttribPointer(11, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(glm::vec4), (void*)0);
+    glEnableVertexAttribArray(11);
+    glVertexAttribPointer(12, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(glm::vec4), (void*)(1 * sizeof(glm::vec4)));
+    glEnableVertexAttribArray(12);
+    glVertexAttribPointer(13, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(glm::vec4), (void*)(2 * sizeof(glm::vec4)));
+    glEnableVertexAttribArray(13);
+    glVertexAttribPointer(14, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(glm::vec4), (void*)(3 * sizeof(glm::vec4)));
+    glEnableVertexAttribArray(14);
+
+    glVertexAttribDivisor(11, 1);
+    glVertexAttribDivisor(12, 1);
+    glVertexAttribDivisor(13, 1);
+    glVertexAttribDivisor(14, 1);
+
+    glBindVertexArray(0);
+}
+
+void Renderer::DrawInstance::updateMotifInstanceForVertexArray()
+{
+    glBindVertexArray(_vao);
+
+    // position
+    glVertexAttribDivisor(2, _motif_span);
+    glVertexAttribDivisor(3, _motif_span);
+    glVertexAttribDivisor(4, _motif_span);
+    glVertexAttribDivisor(5, _motif_span);
+
+    // color
+    glVertexAttribDivisor(6, _motif_span);
+
+    // rotation
+    glVertexAttribDivisor(7, _motif_span);
+    glVertexAttribDivisor(8, _motif_span);
+    glVertexAttribDivisor(9, _motif_span);
+    glVertexAttribDivisor(10, _motif_span);
+
+    // motif
+    glVertexAttribDivisor(11, 1);
+    glVertexAttribDivisor(12, 1);
+    glVertexAttribDivisor(13, 1);
+    glVertexAttribDivisor(14, 1);
 }
 
 Renderer::DrawInstance::~DrawInstance()
 {
     glDeleteVertexArrays(1, &_vao);
     glDeleteBuffers(1, &_vbo);
-    // glDeleteBuffers(1, &_ebo);
     glDeleteBuffers(1, &_ipb);
     glDeleteBuffers(1, &_icb);
     glDeleteBuffers(1, &_irb);
+    glDeleteBuffers(1, &_mpb);
 
-    if(_motif_model_matrices != nullptr)
-    {
-        delete[] _motif_model_matrices;
-    }
     L_TRACE("~DrawInstance()");
 }
 
@@ -439,6 +480,10 @@ void Renderer::Camera::update(float frame_mouse_scroll, float frame_mouse_x, flo
     if(zoom < 1.0f)  zoom = 1.0f;
     if(zoom > 45.0f) zoom = 45.0f;
 
+    position.x = fmodf(position.x, mcm_motif_size.x);
+    position.y = fmodf(position.y, mcm_motif_size.y);
+    position.z = fmodf(position.z, mcm_motif_size.z);
+
     viewMatrix = glm::lookAt(position, position + front, up);
 }
 
@@ -449,7 +494,7 @@ static void GeneratePerlin2DTex(GLsizei w, GLsizei h, unsigned char* buffer)
     if(buffer != nullptr)
     {
         std::srand(std::time(nullptr)); // Random seed
-        float seed = std::rand() / ((RAND_MAX + 1u) / 2048);
+        unsigned int seed = std::rand() / ((RAND_MAX + 1u) / 2048);
         for(int x = 0; x < w; x++)
         {
             for(int y = 0; y < h; y++)
@@ -493,7 +538,6 @@ Renderer::DrawList::DrawList(GLFWwindow* window, const int sw, const int sh)
     glUseProgram(_program_nrmpass);
     _uniforms.projectionMatrix = glGetUniformLocation(_program_nrmpass, "projectionMatrix");
     _uniforms.viewMatrix = glGetUniformLocation(_program_nrmpass, "viewMatrix");
-    _uniforms.motifModelMatrix = glGetUniformLocation(_program_nrmpass, "motifModelMatrix");
     
     glUniformMatrix4fv(_uniforms.projectionMatrix, 1, GL_FALSE, &camera->projectionMatrix[0][0]);
 
@@ -605,8 +649,40 @@ Renderer::DrawList::DrawList(GLFWwindow* window, const int sw, const int sh)
     _uniforms.fog_projectionMatrix = glGetUniformLocation(_program_fogpart, "projectionMatrix");
     _uniforms.fog_viewMatrix = glGetUniformLocation(_program_fogpart, "viewMatrix");
     _uniforms.fog_time = glGetUniformLocation(_program_fogpart, "time");
+    _uniforms.fog_motifSize = glGetUniformLocation(_program_fogpart, "ymotifsize");
 
     glUniformMatrix4fv(_uniforms.fog_projectionMatrix, 1, GL_FALSE, &camera->projectionMatrix[0][0]);
+    glUniform1f(_uniforms.fog_motifSize, 0.0f);
+}
+
+void Renderer::DrawList::updateFogParticlesMotifSize()
+{
+    glBindBuffer(GL_ARRAY_BUFFER, _vbo_fog);
+    
+
+    float fog_range_x = mcm_motif_size.x * 10.0f;
+    float fog_range_y = mcm_motif_size.y * 10.0f;
+    float fog_range_z = mcm_motif_size.z * 10.0f;
+
+    _fog_density = 10 * fog_range_x * fog_range_y * fog_range_z;
+    std::vector<float> fog_points;
+    fog_points.reserve(3 * _fog_density);
+
+    // Random AABB around view fustrum
+    for(int i = 0; i < 3 * _fog_density; i++)
+    {
+        float rx = (((float)std::rand() / RAND_MAX) * 2.0f - 1.0f) * fog_range_x;
+        float ry = (((float)std::rand() / RAND_MAX) * 2.0f - 1.0f) * fog_range_y - fog_range_y / 2.0f;
+        float rz = (((float)std::rand() / RAND_MAX) * 2.0f - 1.0f) * fog_range_z;
+        fog_points.push_back(rx);
+        fog_points.push_back(ry);
+        fog_points.push_back(rz);
+    }
+
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 3 * _fog_density, fog_points.data(), GL_STATIC_DRAW);
+
+    glUseProgram(_program_fogpart);
+    glUniform1f(_uniforms.fog_motifSize, fog_range_y);
 }
 
 Renderer::DrawList::~DrawList()
@@ -666,6 +742,10 @@ void Renderer::DrawList::render(GLFWwindow* window, NodeWindow* nodeWindow)
 
         glUseProgram(_program_fogpart);
         glUniformMatrix4fv(_uniforms.fog_projectionMatrix, 1, GL_FALSE, &camera->projectionMatrix[0][0]);
+
+        // Resize the node window
+        nodeWindow->setWindowSize(ImVec2(screen_size[0], screen_size[1] / 3));
+        nodeWindow->setWindowPos(ImVec2(0, 0));
     }
 
     static float last_time = (float)glfwGetTime();
@@ -715,45 +795,35 @@ void Renderer::DrawList::render(GLFWwindow* window, NodeWindow* nodeWindow)
 
             if(nodeData._repeatBlocks && nodeData._motifChanged)
             {
-                instances[0]->_motif_span = nodeData._motifInstances[0] * nodeData._motifInstances[1] * nodeData._motifInstances[2] * 8;
-                L_DEBUG("New motif total span: %u", instances[0]->_motif_span);
+                mcm_motif_size = nodeData._motifSize; // NOTE : This only works for a single active render node like this
+                instances[0]->_motif_span = nodeData._motif_span;
 
-                if(instances[0]->_motif_model_matrices != nullptr)
+                glm::mat4* mpos = *(nodeData._motifPositionPtr);
+                if(mpos != nullptr)
                 {
-                    delete[] instances[0]->_motif_model_matrices;
+                    glBindBuffer(GL_ARRAY_BUFFER, instances[0]->_mpb);
+                    glBufferData(GL_ARRAY_BUFFER, instances[0]->_motif_span * instances[0]->_instanceCount * sizeof(glm::mat4), mpos, GL_DYNAMIC_DRAW);
+                    instances[0]->updateMotifInstanceForVertexArray();
                 }
-                instances[0]->_motif_model_matrices = new glm::mat4[instances[0]->_motif_span];
-
-                int span_x = (int)nodeData._motifInstances[0];
-                int span_y = (int)nodeData._motifInstances[1];
-                int span_z = (int)nodeData._motifInstances[2];
-
-                for(int z = -span_z; z < span_z; z++)
-                {
-                    for(int y = -span_y; y < span_y; y++)
-                    {
-                        for(int x = -span_x; x < span_x; x++)
-                        {
-                            int idx = (x + span_x) + (y + span_y) * span_x + (z + span_z) * span_x * span_y;
-                            instances[0]->_motif_model_matrices[idx] = glm::translate(
-                                glm::vec3(
-                                    nodeData._motifSize.x * x,
-                                    nodeData._motifSize.y * y,
-                                    nodeData._motifSize.z * z
-                                )
-                            );
-                        }
-                    }
-                }
+                // FIXME : Fog Updater SLOOOOW
+                // updateFogParticlesMotifSize();
             }
             else if(!nodeData._repeatBlocks)
             {
                 instances[0]->_motif_span = 1;
-                if(instances[0]->_motif_model_matrices != nullptr)
-                {
-                    delete[] instances[0]->_motif_model_matrices;
-                }
-                instances[0]->_motif_model_matrices = new glm::mat4[1]{ glm::mat4(1.0f) };
+                glBindBuffer(GL_ARRAY_BUFFER, instances[0]->_mpb);
+                glm::mat4 identity = glm::mat4(1.0f);
+                glBufferData(GL_ARRAY_BUFFER, sizeof(glm::mat4), &identity, GL_DYNAMIC_DRAW);
+                instances[0]->updateMotifInstanceForVertexArray();
+                glBindVertexArray(instances[0]->_vao);
+                glVertexAttribDivisor(11, instances[0]->_instanceCount);
+                glVertexAttribDivisor(12, instances[0]->_instanceCount);
+                glVertexAttribDivisor(13, instances[0]->_instanceCount);
+                glVertexAttribDivisor(14, instances[0]->_instanceCount);
+                mcm_motif_size = infinityVec3;
+
+                // FIXME : Take care of this please
+                // updateFogParticlesMotifSize();
             }
         }
 
@@ -791,26 +861,22 @@ void Renderer::DrawList::render(GLFWwindow* window, NodeWindow* nodeWindow)
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glBindVertexArray(instances[0]->_vao);
 
-    for(int i = 0; i < (int)instances[0]->_motif_span; i++)
-    {
-        // TODO : Follow camera movement and update transforms
-        glUniformMatrix4fv(_uniforms.motifModelMatrix, 1, GL_FALSE, &instances[0]->_motif_model_matrices[i][0][0]);
-        glDrawArraysInstanced(GL_TRIANGLES, 0, instances[0]->_idxcount, instances[0]->_instanceCount);
-    }
+    glDrawArraysInstanced(GL_TRIANGLES, 0, instances[0]->_idxcount, instances[0]->_instanceCount * instances[0]->_motif_span);
 
+    // FIXME : Fog/dust particles rendering by putting them at the origin with camera scroll
     // Render fog and particles to the final texture for displaying
     float time = (float)NodeWindow::GetApptimeMs() / 1000.0f;
-    glUseProgram(_program_fogpart);
-    glUniform1f(_uniforms.fog_time, time);
-    glUniformMatrix4fv(_uniforms.fog_viewMatrix, 1, GL_FALSE, &camera->viewMatrix[0][0]);
-    glBindVertexArray(_vao_fog);
-    // Don't write to the normal color buffer
-    glColorMaski(0, GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-    // Don't write to the depth buffer
-    // glDepthMask(GL_FALSE);
-    glDrawArrays(GL_POINTS, 0, _fog_density);
-    // glDepthMask(GL_TRUE);
-    glColorMaski(0, GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    // glUseProgram(_program_fogpart);
+    // glUniform1f(_uniforms.fog_time, time);
+    // glUniformMatrix4fv(_uniforms.fog_viewMatrix, 1, GL_FALSE, &camera->viewMatrix[0][0]);
+    // glBindVertexArray(_vao_fog);
+    // // Don't write to the normal color buffer
+    // // glColorMaski(0, GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+    // // Don't write to the depth buffer
+    // // glDepthMask(GL_FALSE);
+    // glDrawArrays(GL_POINTS, 0, _fog_density);
+    // // glDepthMask(GL_TRUE);
+    // // glColorMaski(0, GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 
     // Render the filter calculated outlines into the screen alongside the diffuse data
     glUseProgram(_program_sobfilter);

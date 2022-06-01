@@ -5,21 +5,52 @@
 class Window
 {
 public:
-    Window(const std::string& name) : window_name(name) {  }
+    constexpr Window(const char* name, const bool closeable) : window_name(name), closeable(closeable) {  }
     virtual ~Window() {  }
 
     virtual void render() = 0;
+    virtual void update() = 0;
+
+    inline void setWindowSize(ImVec2 windowSize)
+    {
+        this->windowSize = windowSize;
+    }
+
+    inline void setWindowPos(ImVec2 windowPos)
+    {
+        this->windowPos = windowPos;
+    }
 
     void finalRender()
     {
-        if(open && ImGui::Begin(window_name.c_str(), &open, 0))
+        update();
+        ImGui::SetNextWindowSize(windowSize);
+        ImGui::SetNextWindowPos(windowPos);
+        if(closeable)
         {
-            render(); // TODO: Separate a render from an update, so we can update the screen with the node's window closed
-            ImGui::End();
+            if(open && ImGui::Begin(window_name, &open, window_flags))
+            {
+                render();
+                ImGui::End();
+            }
+        }
+        else
+        {
+            if(ImGui::Begin(window_name, nullptr, window_flags))
+            {
+                render();
+                ImGui::End();
+            }
         }
     }
 
 protected:
     bool open = false;
-    std::string window_name;
+    const char* window_name;
+    ImGuiWindowFlags window_flags = 0;
+    const bool closeable;
+    
+private:
+    ImVec2 windowSize;
+    ImVec2 windowPos;
 };

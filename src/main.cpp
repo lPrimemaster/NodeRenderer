@@ -58,6 +58,10 @@ int main(int argc, char* argv[])
     WindowManager& windowManager = WindowManager::Instance();
     NodeWindow* nodeWindow = WindowManager::GetNodeWindow();
     Renderer::DrawList dl(window, DEF_SCREEN_PX_W, DEF_SCREEN_PX_H);
+    nodeWindow->setDrawActiveList(&dl);
+
+    nodeWindow->setWindowSize(ImVec2((float)DEF_SCREEN_PX_W, (float)DEF_SCREEN_PX_H / 3.0f));
+    nodeWindow->setWindowPos(ImVec2(0, 0));
 
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LEQUAL);

@@ -1,6 +1,7 @@
 #include "node_window.h"
 #include "../log/logger.h"
 #include "../render/nodes/nodedef.h"
+#include "../render/renderer.h"
 #include <chrono>
 
 static inline ImVec2 operator+(const ImVec2& lhs, const ImVec2& rhs) { return ImVec2(lhs.x + rhs.x, lhs.y + rhs.y); }
@@ -11,6 +12,11 @@ static const std::chrono::steady_clock::time_point app_start = std::chrono::stea
 const long long NodeWindow::GetApptimeMs()
 {
     return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - app_start).count();
+}
+
+void NodeWindow::setDrawActiveList(Renderer::DrawList* dl)
+{
+    activeDL = dl;
 }
 
 void NodeWindow::render()
@@ -299,7 +305,7 @@ void NodeWindow::render()
                 }
                 if (ImGui::MenuItem("WorldPos Node"))
                 {
-                    newNode = new WorldPosNode();
+                    newNode = new WorldPosNode(activeDL->camera);
                 }
                 if (ImGui::MenuItem("Render Node"))
                 {

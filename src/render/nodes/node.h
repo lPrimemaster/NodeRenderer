@@ -324,5 +324,10 @@ struct PropertyNode
         ImGui::Text("A sample node");
     }
 
+    inline virtual void update()
+    {
+        
+    }
+
     inline virtual ~PropertyNode() = 0 {  }
 };

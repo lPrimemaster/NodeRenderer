@@ -4,10 +4,19 @@
 #include "window.inl"
 #include "../render/nodes/node.h"
 
+namespace Renderer
+{
+    struct DrawList;
+}
+
 class NodeWindow : public Window
 {
 public:
-    NodeWindow(const std::string& name) : Window(name) { open = true; }
+    NodeWindow(const char* name) : Window(name, false) 
+    { 
+        open = true; 
+        window_flags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize; 
+    }
 
     ~NodeWindow()
     {
@@ -35,7 +44,17 @@ public:
         return false;
     }
 
+    void setDrawActiveList(Renderer::DrawList* dl);
+
     virtual void render() override;
+
+    inline virtual void update() override
+    {
+        for (int node_idx = 0; node_idx < nodes.size(); node_idx++)
+        {
+            nodes[node_idx]->update();
+        }
+    }
 
     inline void deleteNode(int idx)
     {
@@ -98,4 +117,6 @@ private:
 
     static constexpr float  NODE_SLOT_RADIUS = 5.5f;
     static constexpr ImVec2 NODE_WINDOW_PADDING = ImVec2(8.0f, 8.0f);
+
+    Renderer::DrawList* activeDL = nullptr;
 };

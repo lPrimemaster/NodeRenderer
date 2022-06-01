@@ -14,24 +14,27 @@ namespace Renderer
         DrawInstance();
         ~DrawInstance();
 
-        GLuint _vao;
-        GLuint _vbo;
-        GLuint _ebo;
+        void updateMotifInstanceForVertexArray();
+
+        GLuint  _vao;
+        GLuint  _vbo;
+        GLuint  _ebo;
         GLsizei _idxcount;
 
-        GLuint _ipb;
+        GLuint      _ipb;
         glm::mat4** _intancePositionMatrixPtr;
 
-        GLuint _irb;
+        GLuint      _irb;
         glm::mat4** _intanceRotationMatrixPtr;
 
-        GLuint _icb;
+        GLuint    _icb;
         Vector4** _instanceColorsPtr;
 
-        unsigned int _instanceCount;
+        GLuint      _mpb;
+        glm::mat4** _motifPositionMatrixPtr;
 
+        unsigned int _instanceCount;
         unsigned int _motif_span;
-        glm::mat4* _motif_model_matrices;
     };
 
     struct Camera
@@ -75,6 +78,16 @@ namespace Renderer
 
         void update(float frame_mouse_scroll, float frame_mouse_x, float frame_mouse_y, DirectionFlag dir, float dt);
 
+        inline Vector3 getPosition() const
+        {
+            return Vector3(position.x, position.y, position.z);
+        }
+
+        inline const glm::vec3& getPositionGLM() const
+        {
+            return position;
+        }
+
 
         glm::mat4 modelMatrix;
         glm::mat4 viewMatrix;
@@ -102,16 +115,17 @@ namespace Renderer
         void render(GLFWwindow* window, NodeWindow* nodeWindow);
 
         void updateFramebufferTextures();
+        void updateFogParticlesMotifSize();
 
         struct
         {
             GLuint projectionMatrix;
             GLuint viewMatrix;
-            GLuint motifModelMatrix;
 
             GLuint fog_projectionMatrix;
             GLuint fog_viewMatrix;
             GLuint fog_time;
+            GLuint fog_motifSize;
 
             GLuint sobel_time;
         } _uniforms;

@@ -6,7 +6,6 @@ layout (location = 1) out vec4 f_diffuse;
 void main()
 {
     discarded_color_attch = vec4(0, 0, 0, 0);
-    // f_diffuse = vec4(1.0, 1.0, 1.0, 0.3);
 
     if(dot(gl_PointCoord-0.5,gl_PointCoord-0.5)>0.25)
         discard;

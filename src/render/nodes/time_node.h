@@ -15,14 +15,19 @@ struct TimeNode final : public PropertyNode
 
     inline virtual void render() override
     {
-        data.resetDataUpdate();
-        
         ImGui::BeginDisabled();
-        float s = NodeWindow::GetApptimeMs() / 1000.0f;
-        s = std::ceil(s * 100.0f) / 100.0f;
         ImGui::InputFloat("Time (s)", &s, 0.0f, 0.0f, "%.2f");
-        // ImGui::InputScalar("Time (ms)", ImGuiDataType_S64, &ms);
-        data.setValue(s);
         ImGui::EndDisabled();
     }
+
+    inline virtual void update() override
+    {
+        data.resetDataUpdate();
+        s = NodeWindow::GetApptimeMs() / 1000.0f;
+        s = std::ceil(s * 100.0f) / 100.0f;
+        data.setValue(s);
+    }
+
+private:
+    float s = 0.0f;
 };
