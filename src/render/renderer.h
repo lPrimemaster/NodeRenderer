@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include "../../glm/glm/glm.hpp"
 #include "../windows/node_window.h"
+#include "../windows/analytics_window.h"
 #include "../math/vector.h"
 
 namespace Renderer
@@ -88,6 +89,20 @@ namespace Renderer
             return position;
         }
 
+        inline void setPositionAndForwardVectorsAutomatic(const Vector3& p, const Vector3& f)
+        {
+            // This frame the position is auto
+            is_automatic = true;
+
+            position = glm::vec3(p.x, p.y, p.z);
+            front    = glm::vec3(f.x, f.y, f.z);
+        }
+
+        inline bool isAutomatic() const
+        {
+            return is_automatic;
+        }
+
 
         glm::mat4 modelMatrix;
         glm::mat4 viewMatrix;
@@ -98,6 +113,8 @@ namespace Renderer
         glm::vec3 up;
         glm::vec3 right;
         glm::vec3 front;
+
+        bool is_automatic = false;
 
         float yaw   = -90.0f;
         float pitch = 0.0f;
@@ -112,7 +129,7 @@ namespace Renderer
         DrawList(GLFWwindow* window, const int sw, const int sh);
         ~DrawList();
 
-        void render(GLFWwindow* window, NodeWindow* nodeWindow);
+        void render(GLFWwindow* window, NodeWindow* nodeWindow, AnalyticsWindow* analyticsWindow);
 
         void updateFramebufferTextures();
         void updateFogParticlesMotifSize();

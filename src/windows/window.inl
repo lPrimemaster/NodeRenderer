@@ -21,6 +21,16 @@ public:
         this->windowPos = windowPos;
     }
 
+    inline ImVec2 getWindowSize() const
+    {
+        return windowSize;
+    }
+
+    inline bool isCollapsed() const
+    {
+        return collapsed;
+    }
+
     void finalRender()
     {
         update();
@@ -28,7 +38,8 @@ public:
         ImGui::SetNextWindowPos(windowPos);
         if(closeable)
         {
-            if(open && ImGui::Begin(window_name, &open, window_flags))
+            collapsed = !ImGui::Begin(window_name, &open, window_flags);
+            if(open && !collapsed)
             {
                 render();
                 ImGui::End();
@@ -36,7 +47,9 @@ public:
         }
         else
         {
-            if(ImGui::Begin(window_name, nullptr, window_flags))
+            
+            collapsed = !ImGui::Begin(window_name, nullptr, window_flags);
+            if(!collapsed)
             {
                 render();
                 ImGui::End();
@@ -46,6 +59,7 @@ public:
 
 protected:
     bool open = false;
+    bool collapsed = false;
     const char* window_name;
     ImGuiWindowFlags window_flags = 0;
     const bool closeable;

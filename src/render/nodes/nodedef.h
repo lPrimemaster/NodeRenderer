@@ -11,3 +11,5 @@
 #include "list_access_node.h"
 #include "list_join_node.h"
 #include "mesh_node.h"
+#include "path_node.h"
+#include "camera_node.h"

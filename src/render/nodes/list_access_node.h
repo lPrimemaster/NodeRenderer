@@ -25,35 +25,19 @@ struct ListAccessNode final : public PropertyNode
 
     }
 
+    enum class DisplayType
+    {
+        FLOAT,
+        INT,
+        UNSIGNED_INT,
+        VECTOR2,
+        VECTOR3,
+        VECTOR4
+    };
+
     inline virtual void render() override
     {
-        data.resetDataUpdate();
-
-        disconnectInputIfNotOfType<unsigned int, int>("index");
-
-        disconnectInputIfNotOfType<
-            std::vector<float>, 
-            std::vector<int>, 
-            std::vector<unsigned int>,
-            std::vector<Vector2>,
-            std::vector<Vector3>,
-            std::vector<Vector4>
-        >("list");
-
-        // TODO: Make own map implementation with cached iterators for every frame
         auto idx_it = inputs_named.find("index");
-        if(idx_it != inputs_named.end())
-        {
-            if(idx_it->second->data.isOfType<unsigned int>())
-            {
-                idx = (int)idx_it->second->data.getValue<unsigned int>();
-            }
-            else if(idx_it->second->data.isOfType<int>())
-            {
-                idx = idx_it->second->data.getValue<int>();
-            }
-        }
-
         if(idx_it != inputs_named.end())
         {
             ImGui::BeginDisabled();
@@ -64,8 +48,6 @@ struct ListAccessNode final : public PropertyNode
         {
             ImGui::InputInt("Index", &idx);
         }
-
-        if(idx < 0) idx = 0;
 
         if(ImGui::Checkbox("Modifiable", &mod))
         {
@@ -91,15 +73,72 @@ struct ListAccessNode final : public PropertyNode
             }
         }
 
+        if(list_connected)
+        {
+            ImGui::BeginDisabled(!mod && !val_connected);
+            switch(dtype)
+            {
+            case DisplayType::FLOAT:
+                ImGui::InputFloat("Value", data.getValuePtr<float>());
+                break;
+            case DisplayType::INT:
+                ImGui::InputInt("Value", data.getValuePtr<int>());
+                break;
+            case DisplayType::UNSIGNED_INT:
+                ImGui::InputScalar("Value", ImGuiDataType_U32, data.getValuePtr<unsigned int>());
+                break;
+            case DisplayType::VECTOR2:
+                ImGui::InputFloat2("Value", data.getValuePtr<Vector2>()->data);
+                break;
+            case DisplayType::VECTOR3:
+                ImGui::InputFloat3("Value", data.getValuePtr<Vector3>()->data);
+                break;
+            case DisplayType::VECTOR4:
+                ImGui::InputFloat4("Value", data.getValuePtr<Vector4>()->data);
+                break;
+            }
+            ImGui::EndDisabled();
+        }
+    }
+
+    inline virtual void update() override
+    {
+        data.resetDataUpdate();
+
+        disconnectInputIfNotOfType<unsigned int, int>("index");
+
+        disconnectInputIfNotOfType<
+            std::vector<float>, 
+            std::vector<int>, 
+            std::vector<unsigned int>,
+            std::vector<Vector2>,
+            std::vector<Vector3>,
+            std::vector<Vector4>
+        >("list");
+
+        auto idx_it = inputs_named.find("index");
+        if(idx_it != inputs_named.end())
+        {
+            if(idx_it->second->data.isOfType<unsigned int>())
+            {
+                idx = (int)idx_it->second->data.getValue<unsigned int>();
+            }
+            else if(idx_it->second->data.isOfType<int>())
+            {
+                idx = idx_it->second->data.getValue<int>();
+            }
+            if(idx < 0) idx = 0;
+        }
+
         auto list_it = inputs_named.find("list");
 
         // Is there a value input connected?
         auto value = inputs_named.find("value");
-        bool val_connected = (value != inputs_named.end());
+        val_connected = (value != inputs_named.end());
+        list_connected = (list_it != inputs_named.end());
 
         if(list_it != inputs_named.end())
         {
-            ImGui::BeginDisabled(!mod && !val_connected);
             if(list_it->second->data.isOfType<std::vector<float>>())
             {
                 auto& list = list_it->second->data.getValue<std::vector<float>>();
@@ -109,7 +148,7 @@ struct ListAccessNode final : public PropertyNode
                 }
 
                 data.setValue(list[idx]);
-                ImGui::InputFloat("Value", list.data() + idx);
+                dtype = DisplayType::FLOAT;
 
                 if(val_connected && !disconnectInputIfNotOfType<float>("value"))
                 {
@@ -131,7 +170,7 @@ struct ListAccessNode final : public PropertyNode
                 }
 
                 data.setValue(list[idx]);
-                ImGui::InputInt("Value", list.data() + idx);
+                dtype = DisplayType::INT;
 
                 if(val_connected && !disconnectInputIfNotOfType<int>("value"))
                 {
@@ -153,7 +192,8 @@ struct ListAccessNode final : public PropertyNode
                 }
 
                 data.setValue(list[idx]);
-                ImGui::InputScalar("Value", ImGuiDataType_U32, list.data() + idx);
+                dtype = DisplayType::UNSIGNED_INT;
+                
 
                 if(val_connected && !disconnectInputIfNotOfType<unsigned int>("value"))
                 {
@@ -175,7 +215,7 @@ struct ListAccessNode final : public PropertyNode
                 }
 
                 data.setValue(list[idx]);
-                ImGui::InputFloat2("Value", (list.data() + idx)->data);
+                dtype = DisplayType::VECTOR2;
 
                 if(val_connected && !disconnectInputIfNotOfType<Vector2>("value"))
                 {
@@ -197,7 +237,7 @@ struct ListAccessNode final : public PropertyNode
                 }
 
                 data.setValue(list[idx]);
-                ImGui::InputFloat3("Value", (list.data() + idx)->data);
+                dtype = DisplayType::VECTOR3;
 
                 if(val_connected && !disconnectInputIfNotOfType<Vector3>("value"))
                 {
@@ -219,7 +259,7 @@ struct ListAccessNode final : public PropertyNode
                 }
 
                 data.setValue(list[idx]);
-                ImGui::InputFloat4("Value", (list.data() + idx)->data);
+                dtype = DisplayType::VECTOR4;
                 
                 if(val_connected && !disconnectInputIfNotOfType<Vector4>("value"))
                 {
@@ -232,11 +272,14 @@ struct ListAccessNode final : public PropertyNode
                     }
                 }
             }
-            ImGui::EndDisabled();
         }
     }
 
 private:
     int idx = 0;
     bool mod = false;
+    bool val_connected = false;
+    bool list_connected = false;
+
+    DisplayType dtype;
 };

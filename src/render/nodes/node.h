@@ -6,6 +6,7 @@
 #include <typeindex>
 #include <algorithm>
 #include <iterator>
+#include <vector>
 #include "../../../imgui/imgui.h"
 #include "../../log/logger.h"
 

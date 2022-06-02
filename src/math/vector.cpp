@@ -44,3 +44,13 @@ Vector4 operator+(const Vector4& lhs, const Vector4& rhs) { return Vector4(lhs.x
 Vector4 operator-(const Vector4& lhs, const Vector4& rhs) { return Vector4(lhs.x - rhs.x, lhs.y - rhs.y, lhs.z - rhs.z, lhs.w - rhs.w); }
 Vector4 operator*(const Vector4& lhs, const Vector4& rhs) { return Vector4(lhs.x * rhs.x, lhs.y * rhs.y, lhs.z * rhs.z, lhs.w * rhs.w); }
 Vector4 operator/(const Vector4& lhs, const Vector4& rhs) { return Vector4(lhs.x / rhs.x, lhs.y / rhs.y, lhs.z / rhs.z, lhs.w / rhs.w); }
+
+Vector3 operator*(const float& lhs, const Vector3& rhs)
+{
+    return Vector3(lhs * rhs.x, lhs * rhs.y, lhs * rhs.z);
+}
+
+Vector3 operator*(const Vector3& lhs, const float& rhs)
+{
+    return operator*(rhs, lhs);
+}

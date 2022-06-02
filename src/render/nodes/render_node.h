@@ -64,7 +64,7 @@ struct RenderNode final : public PropertyNode
 
         _renderData._motifPositionPtr = (glm::mat4**)malloc(sizeof(glm::mat4*));
         *(_renderData._motifPositionPtr) = nullptr;
-        L_TRACE("_meshPtr : 0x%X", _renderData._motifPositionPtr);
+        L_TRACE("_motifPositionPtr : 0x%X", _renderData._motifPositionPtr);
 
         name = "Render Node #" + std::to_string(inc++);
 

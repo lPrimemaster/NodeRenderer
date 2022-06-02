@@ -46,6 +46,11 @@ public:
 
     void setDrawActiveList(Renderer::DrawList* dl);
 
+    inline Renderer::DrawList* getDrawActiveList() const
+    {
+        return activeDL;
+    }
+
     virtual void render() override;
 
     inline virtual void update() override

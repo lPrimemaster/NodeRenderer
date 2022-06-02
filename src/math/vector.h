@@ -1,4 +1,5 @@
 #pragma once
+#include <cmath>
 
 struct Vector2
 {
@@ -20,6 +21,21 @@ struct Vector3
 {
     Vector3() { x = 0.0f; y = 0.0f; z = 0.0f; }
     constexpr Vector3(float x, float y, float z) : x(x), y(y), z(z) {  }
+
+    Vector3& operator+=(const Vector3& rhs)
+    {
+        this->x += rhs.x;
+        this->y += rhs.y;
+        this->x += rhs.z;
+        return *this;
+    }
+
+    static Vector3 Normalize(const Vector3& v)
+    {
+        float sqr2 = std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+        return Vector3(v.x / sqr2, v.y / sqr2, v.z / sqr2);
+    }
+
     union
     {
         struct
@@ -70,3 +86,7 @@ Vector4 operator+(const Vector4& lhs, const Vector4& rhs);
 Vector4 operator-(const Vector4& lhs, const Vector4& rhs);
 Vector4 operator*(const Vector4& lhs, const Vector4& rhs);
 Vector4 operator/(const Vector4& lhs, const Vector4& rhs);
+
+
+Vector3 operator*(const float& lhs, const Vector3& rhs);
+Vector3 operator*(const Vector3& lhs, const float& rhs);

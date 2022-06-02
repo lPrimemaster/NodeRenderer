@@ -428,50 +428,55 @@ void Renderer::Camera::update(float frame_mouse_scroll, float frame_mouse_x, flo
         projectionMatrix = glm::perspective(fov, screen_size[0] / screen_size[1], 0.1f, 100.0f);
     }
 
-    // Update position
-    float v = move_speed * dt;
-    if(dir.FORWARD)
+    // Disable manual controls in automatic mode
+    if(!is_automatic)
     {
-        position += front * v;
-    }
-    if(dir.BACKWARD)
-    {
-        position -= front * v;
-    }
-    if(dir.LEFT)
-    {
-        position -= right * v;
-    }
-    if(dir.RIGHT)
-    {
-        position += right * v;
-    }
-    if(dir.UP)
-    {
-        position += up * v;
-    }
-    if(dir.DOWN)
-    {
-        position -= up * v;
+        // Update position
+        float v = move_speed * dt;
+        if(dir.FORWARD)
+        {
+            position += front * v;
+        }
+        if(dir.BACKWARD)
+        {
+            position -= front * v;
+        }
+        if(dir.LEFT)
+        {
+            position -= right * v;
+        }
+        if(dir.RIGHT)
+        {
+            position += right * v;
+        }
+        if(dir.UP)
+        {
+            position += up * v;
+        }
+        if(dir.DOWN)
+        {
+            position -= up * v;
+        }
+
+        // Update look
+        frame_mouse_x *= look_speed;
+        frame_mouse_y *= look_speed;
+
+        yaw   -= frame_mouse_x;
+        pitch += frame_mouse_y;
+
+        if(pitch > 89.0f) pitch = 89.0f;
+        if(pitch < -89.0f) pitch = -89.0f;
+
+        front = glm::normalize(
+            glm::vec3(
+                cos(glm::radians(yaw)) * cos(glm::radians(pitch)),
+                sin(glm::radians(pitch)),
+                sin(glm::radians(yaw)) * cos(glm::radians(pitch))
+            )
+        );
     }
 
-    // Update look
-    frame_mouse_x *= look_speed;
-    frame_mouse_y *= look_speed;
-
-    yaw   -= frame_mouse_x;
-    pitch += frame_mouse_y;
-
-    if(pitch > 89.0f) pitch = 89.0f;
-    if(pitch < -89.0f) pitch = -89.0f;
-
-    front = glm::normalize(
-        glm::vec3(
-            cos(glm::radians(yaw)) * cos(glm::radians(pitch)),
-            sin(glm::radians(pitch)),
-            sin(glm::radians(yaw)) * cos(glm::radians(pitch))
-        )
-    );
     right = glm::normalize(glm::cross(front, glm::vec3(0, 1, 0)));
     up    = glm::normalize(glm::cross(right, front));
 
@@ -485,6 +490,7 @@ void Renderer::Camera::update(float frame_mouse_scroll, float frame_mouse_x, flo
     position.z = fmodf(position.z, mcm_motif_size.z);
 
     viewMatrix = glm::lookAt(position, position + front, up);
+    is_automatic = false; // Next frame might be manual
 }
 
 static void GeneratePerlin2DTex(GLsizei w, GLsizei h, unsigned char* buffer)
@@ -731,7 +737,7 @@ void Renderer::DrawList::updateFramebufferTextures()
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, (GLsizei)screen_size[0], (GLsizei)screen_size[1], 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
 }
 
-void Renderer::DrawList::render(GLFWwindow* window, NodeWindow* nodeWindow)
+void Renderer::DrawList::render(GLFWwindow* window, NodeWindow* nodeWindow, AnalyticsWindow* analyticsWindow)
 {
     if(viewport_changed)
     {
@@ -746,6 +752,19 @@ void Renderer::DrawList::render(GLFWwindow* window, NodeWindow* nodeWindow)
         // Resize the node window
         nodeWindow->setWindowSize(ImVec2(screen_size[0], screen_size[1] / 3));
         nodeWindow->setWindowPos(ImVec2(0, 0));
+
+        analyticsWindow->setWindowSize(ImVec2(AnalyticsWindow::WIDTH, screen_size[1] / 3.0f));
+
+        if(analyticsWindow->isCollapsed())
+        {
+            analyticsWindow->setWindowPos(ImVec2(0, screen_size[1] - 19.0f));
+            analyticsWindow->setCollapsedPosY(screen_size[1] - 19.0f);
+        }
+        else
+        {
+            analyticsWindow->setWindowPos(ImVec2(0, screen_size[1] - analyticsWindow->getWindowSize().y));
+            analyticsWindow->setCollapsedPosY(screen_size[1] - 19.0f);
+        }
     }
 
     static float last_time = (float)glfwGetTime();

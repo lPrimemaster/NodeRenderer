@@ -176,7 +176,7 @@ void NodeWindow::render()
                     if(drawing_line > 0 && !ImGui::IsMouseDown(ImGuiMouseButton_Left))
                     {
                         drawing_line = 0;
-                        // TODO: Prevent link with self
+                        
                         if(link_from_id == node_idx)
                         {
                             L_ERROR("Unable to link node with itself.");
@@ -336,6 +336,14 @@ void NodeWindow::render()
                 if (ImGui::MenuItem("Mesh Node"))
                 {
                     newNode = new MeshNode();
+                }
+                if (ImGui::MenuItem("Path Node"))
+                {
+                    newNode = new PathNode();
+                }
+                if (ImGui::MenuItem("Camera Node"))
+                {
+                    newNode = new CameraNode(activeDL->camera);
                 }
 
                 if(newNode)

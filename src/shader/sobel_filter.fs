@@ -113,5 +113,3 @@ void main()
     // f_color = texture(screenDiffuseTexture, texCoords.st);
     // f_color = vec4(vec3(linearizeDepth(texelFetch(screenDepthTexture, ivec2(gl_FragCoord), 0).r)), 1.0);
 }
-
-// TODO: Fog color and density control
