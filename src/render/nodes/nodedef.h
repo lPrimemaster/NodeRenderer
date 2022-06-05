@@ -13,3 +13,4 @@
 #include "mesh_node.h"
 #include "path_node.h"
 #include "camera_node.h"
+#include "audio_node.h"

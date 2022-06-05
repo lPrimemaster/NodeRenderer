@@ -89,6 +89,12 @@ namespace Renderer
             return position;
         }
 
+        inline Vector3 getHeading() const
+        {
+            return Vector3(front.x, front.y, front.z);
+        }
+
+
         inline void setPositionAndForwardVectorsAutomatic(const Vector3& p, const Vector3& f)
         {
             // This frame the position is auto

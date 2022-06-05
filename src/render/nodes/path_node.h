@@ -152,7 +152,7 @@ struct PathNode final : public PropertyNode
 
             calculated_pos = start_pos + forward * t;
         }
-        else // Bezier clamped t -> [0, 1]
+        else // Bezier clamped segments t -> [0, 1]
         {
             disconnectInputIfNotOfType<std::vector<Vector3>>("points");
             auto points_in = inputs_named.find("points");
@@ -166,6 +166,12 @@ struct PathNode final : public PropertyNode
                     for(int i = 0; i < points_copy.size(); i++) L_TRACE("(%.1f, %.1f, %.1f)", points_copy[i].x, points_copy[i].y, points_copy[i].z);
                     curve_inited = true;
                 }
+
+                // What segment are we in ?
+                const int segments = points_copy.size();
+                int seg = (int)(segments * t); // TODO : Assert t is between 0 and 1
+                
+
                 calculated_pos = bezierAt(t);
             }
         }

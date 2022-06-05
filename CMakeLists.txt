@@ -10,6 +10,8 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
 
 add_subdirectory(glfw)
 
+find_package (Python REQUIRED COMPONENTS Interpreter Development)
+
 # Stop being nasty
 file(GLOB IMGUI_SRC
     ${CMAKE_SOURCE_DIR}/imgui/*.cpp
@@ -44,13 +46,25 @@ add_executable(cbg64
     src/util/objloader.h
     src/util/objloader.cpp
 
+    src/python/loader.h
+
     src/main.cpp
 )
 
-target_include_directories(cbg64 PRIVATE glad/include glfw/include)
-target_link_libraries(cbg64 glfw ${GLFW_LIBRARIES} muparser tinyobjloader)
+target_include_directories(cbg64 PRIVATE glad/include glfw/include ${Python_INCLUDE_DIRS})
+target_link_libraries(cbg64 glfw ${GLFW_LIBRARIES} muparser tinyobjloader ${Python_LIBRARIES})
 
 add_custom_target(copy-runtime-files ALL
     COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/src/shader ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Release/shader
+    DEPENDS cbg64
+)
+
+add_custom_target(copy-runtime-files-py ALL
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/src/python/scripts ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Release/scripts
+    DEPENDS cbg64
+)
+
+add_custom_target(copy-runtime-files-res ALL
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/res ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Release/res
     DEPENDS cbg64
 )

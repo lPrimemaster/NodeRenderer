@@ -181,21 +181,23 @@ void NodeWindow::render()
                         {
                             L_ERROR("Unable to link node with itself.");
                         }
+                        else
+                        {
+                            L_DEBUG("Make a link (%d) :-:=:-: From (%s:%d) to (%s:%d)",
+                                drawing_line,
+                                nodes[link_from_id]->name.c_str(),
+                                link_from_id,
+                                node->name.c_str(),
+                                node_idx
+                            );
 
-                        L_DEBUG("Make a link (%d) :-:=:-: From (%s:%d) to (%s:%d)",
-                            drawing_line,
-                            nodes[link_from_id]->name.c_str(),
-                            link_from_id,
-                            node->name.c_str(),
-                            node_idx
-                        );
-
-                        IOIdxData idxd;
-                        idxd.other_idx = link_output_slot;
-                        idxd.self_idx = slot_idx;
-                        node->inputs.emplace(idxd, nodes[link_from_id]);
-                        node->inputs_named.emplace(node->_input_labels[slot_idx], nodes[link_from_id]);
-                        nodes[link_from_id]->output_dependencies.push_back(idxd);
+                            IOIdxData idxd;
+                            idxd.other_idx = link_output_slot;
+                            idxd.self_idx = slot_idx;
+                            node->inputs.emplace(idxd, nodes[link_from_id]);
+                            node->inputs_named.emplace(node->_input_labels[slot_idx], nodes[link_from_id]);
+                            nodes[link_from_id]->output_dependencies.push_back(idxd);
+                        }
                     }
                 }
 
@@ -344,6 +346,10 @@ void NodeWindow::render()
                 if (ImGui::MenuItem("Camera Node"))
                 {
                     newNode = new CameraNode(activeDL->camera);
+                }
+                if (ImGui::MenuItem("Audio Node"))
+                {
+                    newNode = new AudioNode();
                 }
 
                 if(newNode)

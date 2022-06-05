@@ -4,7 +4,7 @@
 
 namespace ImGuiExt
 {
-    inline bool FileBrowser(std::string* out_path)
+    inline bool FileBrowser(std::string* out_path, std::vector<std::string> exts)
     {
         if(ImGui::Button("Select Mesh File"))
         {
@@ -88,8 +88,9 @@ namespace ImGuiExt
                     selected = dir_entry.path() == curr_selected;
                     bool isdir = dir_entry.is_directory();
                     char ifdir = isdir ? '/' : ' ';
-
-                    if(isdir || dir_entry.path().extension().string() == ".obj")
+                    bool isvalidext = false;
+                    for(auto ext : exts) isvalidext |= dir_entry.path().extension().string() == ext;
+                    if(isdir || isvalidext)
                     {
                         if(ImGui::Selectable(((--dir_entry.path().end())->string() + ifdir).c_str(), &selected, ImGuiSelectableFlags_AllowDoubleClick))
                         {
@@ -104,7 +105,7 @@ namespace ImGuiExt
                                 validLoadPath = false;
                                 curr_path = std::filesystem::absolute(dir_entry.path());
                             }
-                            else // Select the item if it is an .obj
+                            else // Select the item if it is an .ext
                             {
                                 if(out_path != nullptr)
                                 {

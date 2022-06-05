@@ -57,7 +57,8 @@ struct MeshNode final : public PropertyNode
         }
         
         bool closepopup = false;
-        if(ImGuiExt::FileBrowser(&to_load))
+        static const std::vector<std::string> ext = { ".obj" };
+        if(ImGuiExt::FileBrowser(&to_load, ext))
         {
             // Thread the file loading
             if(!loading)

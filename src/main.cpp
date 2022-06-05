@@ -10,6 +10,8 @@
 
 #include "render/renderer.h"
 
+#include "python/loader.h"
+
 static constexpr int DEF_SCREEN_PX_W = 1280;
 static constexpr int DEF_SCREEN_PX_H =  720;
 
