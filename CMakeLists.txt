@@ -46,13 +46,17 @@ add_executable(cbg64
     src/util/objloader.h
     src/util/objloader.cpp
 
+    src/util/audio.h
+    src/util/audio.cpp
+
     src/python/loader.h
+    src/python/loader.cpp
 
     src/main.cpp
 )
 
 target_include_directories(cbg64 PRIVATE glad/include glfw/include ${Python_INCLUDE_DIRS})
-target_link_libraries(cbg64 glfw ${GLFW_LIBRARIES} muparser tinyobjloader ${Python_LIBRARIES})
+target_link_libraries(cbg64 glfw ${GLFW_LIBRARIES} muparser tinyobjloader ${Python_LIBRARIES} Winmm.lib)
 
 add_custom_target(copy-runtime-files ALL
     COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/src/shader ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Release/shader

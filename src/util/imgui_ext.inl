@@ -4,9 +4,9 @@
 
 namespace ImGuiExt
 {
-    inline bool FileBrowser(std::string* out_path, std::vector<std::string> exts)
+    inline bool FileBrowser(std::string* out_path, std::vector<std::string> exts, const std::string& button_name = "Select File")
     {
-        if(ImGui::Button("Select Mesh File"))
+        if(ImGui::Button(button_name.c_str()))
         {
             ImGui::OpenPopup("File Browser");
         }

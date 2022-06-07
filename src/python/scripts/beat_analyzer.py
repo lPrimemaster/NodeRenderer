@@ -1,13 +1,7 @@
 import librosa as lr
-import librosa.display as lrd
-import time
-import matplotlib.pyplot as plt
 import numpy as np
-import math
 import struct
-import ctypes
-from ctypes import c_long, c_wchar_p, c_ulong, c_void_p
-gHandle = ctypes.windll.kernel32.GetStdHandle(c_long(-11))
+import subprocess
 
 def find_nearest_idx(array, value, N=1):
     return np.argpartition(np.abs(array - value), N)[:N]
@@ -16,118 +10,153 @@ def interpolate(RMS, times, t):
     nt = find_nearest_idx(times, t, 1)
     return RMS[nt]
 
-def move (y, x):
-   """Move cursor to position indicated by x and y."""
-   value = x + (y << 16)
-   ctypes.windll.kernel32.SetConsoleCursorPosition(gHandle, c_ulong(value))
 
+class AudioAttrs:
+    waveform = None
+    sample_rate = None
+    estimated_tempo = None
+    beat_times = None
 
-def main(song_name):
+    f_avg_rms_power = None
+    f_amps = None
+    f_times = None
+
+    freqs = None
+
+    sizes = []
+
+g_audio_attrs = AudioAttrs()
+file = ''
+
+def convert_audio(song_name):
+    # Check if audio is already there (NOTE: this won't work for files with the same name)
     song_name = str(song_name, 'utf-8')
-    y, sr = lr.load(f'{song_name}')
+    name = song_name.split('\\')[-1].split('.')[0]
+    global file
+    file = f'res/sound/{name}.wav'
+    subprocess.call(['ffmpeg', '-y', '-i', song_name, file], stdout = subprocess.DEVNULL, stderr = subprocess.DEVNULL)
+
+    # Assuming nothing fails
+    return struct.pack(f'<i', 0)
+
+def load_audio():
+    global g_audio_attrs
+
+    y, sr = lr.load(file)
     tempo, beat_frames = lr.beat.beat_track(y=y, sr=sr)
     beat_times = lr.frames_to_time(beat_frames, sr=sr)
-    freq = lr.fft_frequencies()
-    print(freq)
+    freq = lr.fft_frequencies(sr=sr)
     S, _ = lr.magphase(lr.stft(y))
     rms = lr.feature.rms(S=S)
     times = lr.times_like(rms)
 
-    # _, ax = plt.subplots(nrows=1, sharex=True)
-    # print(rms[0])
-    # ax.plot(times, rms[0], label='RMS Energy')
-    # ax.set(xticks=[])
-    # ax.legend()
-    # ax.label_outer()
+    g_audio_attrs.waveform = y
+    g_audio_attrs.sample_rate = sr
+    g_audio_attrs.estimated_tempo = tempo
+    g_audio_attrs.beat_times = beat_times
+    g_audio_attrs.f_avg_rms_power = rms[0]
+    g_audio_attrs.f_amps = S
+    g_audio_attrs.f_times = times
+    g_audio_attrs.freqs = freq
 
-    # plt.show()
+    # Assuming nothing fails
+    return struct.pack(f'<i', 0)
 
-    # ti = time.time()
-    # t = 0
+def get_audio_params_size():
+    global g_audio_attrs
 
-    # for t in [3, 2, 1]:
-    #     print(t)
-    #     time.sleep(1)
-    # print('Go!')
-    # print('\n' * 100)
+    g_audio_attrs.sizes.append(len(g_audio_attrs.waveform))
+    g_audio_attrs.sizes.append(len(g_audio_attrs.beat_times))
+    g_audio_attrs.sizes.append(len(g_audio_attrs.f_avg_rms_power))
+    g_audio_attrs.sizes.append(g_audio_attrs.f_amps.size)
+    g_audio_attrs.sizes.append(len(g_audio_attrs.f_times))
+    g_audio_attrs.sizes.append(len(g_audio_attrs.freqs))
 
-    # mr = 100
-    # ra = []
-    # rt = []
-    # lt = ti - 1
-    # minrms = 50
-    # maxrms = 0
+    return struct.pack(
+        '<iiiiii',
+        g_audio_attrs.sizes[0],
+        g_audio_attrs.sizes[1],
+        g_audio_attrs.sizes[2],
+        g_audio_attrs.sizes[3],
+        g_audio_attrs.sizes[4],
+        g_audio_attrs.sizes[5]
+    )
 
-    # while t < 200:
-    #     t = time.time() - ti
-    #     r = int(interpolate(rms[0], times, t)[0] * 100)
-    #     ft = t - lt
-    #     ra.append(r)
-    #     rt.append(ft)
-    #     lt = t
+def get_audio_params():
+    global g_audio_attrs
+    c = g_audio_attrs.sizes
+    return struct.pack(
+        f'<{c[0]}fif{c[1]}f{c[2]}f{c[3]}f{c[4]}f{c[5]}f',
+        *g_audio_attrs.waveform,
+        g_audio_attrs.sample_rate,
+        g_audio_attrs.estimated_tempo,
+        *g_audio_attrs.beat_times,
+        *g_audio_attrs.f_avg_rms_power,
+        *g_audio_attrs.f_amps.flatten(),
+        *g_audio_attrs.f_times,
+        *g_audio_attrs.freqs
+    )
 
-    #     if sum(rt[1:]) > 3:
-    #         ra.pop(0)
-    #         rt.pop(0)
+import matplotlib.pyplot as plt
+from scipy.interpolate import interp1d
 
-    #     lra = len(ra)
-    #     if lra <= 0:
-    #         lra = 1
-        
-    #     avgrms = sum(ra) / lra
+def moving_average(a, n=3) :
+    ret = np.cumsum(a, dtype=float)
+    ret[n:] = ret[n:] - ret[:-n]
+    return ret[n - 1:] / n
 
-    #     c = '*' * r
-    #     w = ' ' * (100 - r)
+def hl_envelopes_idx(s, dmin=1, dmax=1, split=False):
+    """
+    Input :
+    s: 1d-array, data signal from which to extract high and low envelopes
+    dmin, dmax: int, optional, size of chunks, use this if the size of the input signal is too big
+    split: bool, optional, if True, split the signal in half along its mean, might help to generate the envelope in some cases
+    Output :
+    lmin,lmax : high/low envelope idx of input signal s
+    """
 
-    #     move(0, 0)
-    #     print(f'Power RMS : {c}{w}')
+    # locals min      
+    lmin = (np.diff(np.sign(np.diff(s))) > 0).nonzero()[0] + 1 
+    # locals max
+    lmax = (np.diff(np.sign(np.diff(s))) < 0).nonzero()[0] + 1 
+    
 
-    #     r1 = int(interpolate(S[0][:], times, t)[0] * 0.1)
-    #     c1 = '*' * r1
-    #     w1 = ' ' * (70 - r1)
-    #     move(1, 0)
-    #     print(f'~{freq[0]:.1f}Hz RMS : {c1}{w1}')
+    if split:
+        # s_mid is zero if s centered around x-axis or more generally mean of signal
+        s_mid = np.mean(s) 
+        # pre-sorting of locals min based on relative position with respect to s_mid 
+        lmin = lmin[s[lmin]<s_mid]
+        # pre-sorting of local max based on relative position with respect to s_mid 
+        lmax = lmax[s[lmax]>s_mid]
 
-    #     r1 = int(interpolate(S[1][:], times, t)[0] * 0.1)
-    #     c1 = '*' * r1
-    #     w1 = ' ' * (70 - r1)
-    #     move(2, 0)
-    #     print(f'~{freq[1]:.1f}Hz RMS : {c1}{w1}')
 
-    #     r1 = int(interpolate(S[2][:], times, t)[0] * 0.1)
-    #     c1 = '*' * r1
-    #     w1 = ' ' * (70 - r1)
-    #     move(3, 0)
-    #     print(f'~{freq[2]:.1f}Hz RMS : {c1}{w1}')
+    # global max of dmax-chunks of locals max 
+    lmin = lmin[[i+np.argmin(s[lmin[i:i+dmin]]) for i in range(0,len(lmin),dmin)]]
+    # global min of dmin-chunks of locals min 
+    lmax = lmax[[i+np.argmax(s[lmax[i:i+dmax]]) for i in range(0,len(lmax),dmax)]]
+    
+    return lmin,lmax
 
-    #     r1 = int(interpolate(S[3][:], times, t)[0] * 0.1)
-    #     c1 = '*' * r1
-    #     w1 = ' ' * (70 - r1)
-    #     move(4, 0)
-    #     print(f'~{freq[3]:.1f}Hz RMS : {c1}{w1}')
+def run_manually_test():
+    global file
+    file = f'res/sound/scatman.wav'
+    load_audio()
+    figure, axis = plt.subplots(2, 1)
+    normalized = g_audio_attrs.f_avg_rms_power / np.max(g_audio_attrs.f_avg_rms_power)
+    t = np.linspace(0, 200, num=len(normalized), endpoint=True)
+    _, hi = hl_envelopes_idx(normalized, 2, 10)
 
-    #     r1 = int(interpolate(S[4][:], times, t)[0] * 0.1)
-    #     c1 = '*' * r1
-    #     w1 = ' ' * (70 - r1)
-    #     move(5, 0)
-    #     print(f'~{freq[4]:.1f}Hz RMS : {c1}{w1}')
+    axis[0].plot(t, normalized)
+    axis[0].plot(t[hi], normalized[hi])
+    # f = interp1d(t[hi], normalized[hi], kind='cubic')
+    # ny = np.array([f(i) if i > np.min(t) and i < np.max(t) else 0.0 for i in t])
+    # axis[0].plot(t, ny)
+    # axis[0].plot(t[hi][:-4]+5, moving_average(normalized[hi], n=5))
+    # axis[1].plot(moving_average(g_audio_attrs.f_avg_rms_power, n=21) / np.max(moving_average(g_audio_attrs.f_avg_rms_power, n=21)))
+    # axis[1].plot(moving_average(g_audio_attrs.f_avg_rms_power, n=51) / np.max(moving_average(g_audio_attrs.f_avg_rms_power, n=51)))
+    # axis[1].plot(moving_average(g_audio_attrs.f_avg_rms_power, n=101) / np.max(moving_average(g_audio_attrs.f_avg_rms_power, n=101)))
+    # axis[0].plot(moving_average(g_audio_attrs.f_avg_rms_power, n=201) / np.max(moving_average(g_audio_attrs.f_avg_rms_power, n=201)))
+    plt.show()
 
-    #     move(6, 0)
-    #     print(f'Power Rolling Avg RMS     ( 3s) : {avgrms:.2f}')
 
-    #     if minrms > avgrms: minrms = avgrms
-    #     move(7, 0)
-    #     print(f'Power Rolling Min RMS     ( 3s) : {minrms:.2f}')
-
-    #     if maxrms < avgrms: maxrms = avgrms
-    #     move(8, 0)
-    #     print(f'Power Rolling Max RMS     ( 3s) : {maxrms:.2f}')
-
-    #     move(9, 0)
-    #     fpower = 2**avgrms
-    #     print(f'F-Power Rolling Avg RMS   ( 3s) : {fpower:.2f}')
-
-    #     move(10, 0)
-    #     print(f'Frame time : {ft:.5f}')
-
-    return struct.pack(f'<i{len(rms[0])}f', len(rms[0]), *(rms[0]))
+run_manually_test()

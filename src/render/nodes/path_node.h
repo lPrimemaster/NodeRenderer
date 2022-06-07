@@ -144,8 +144,8 @@ struct PathNode final : public PropertyNode
                 {
                     if(!along_inited || forward_in->second->data.dataChanged())
                     {
-                        forward = forward_in->second->data.getValue<Vector3>();
-                        along_inited= true;
+                        forward = Vector3::Normalize(forward_in->second->data.getValue<Vector3>());
+                        along_inited = true;
                     }
                 }
             }

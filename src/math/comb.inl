@@ -76,4 +76,37 @@ namespace Math
 
         return result;
     }
+
+    template<typename T>
+    inline int FindClosestIdx(T* arr, int size, T target)
+    {
+        if(target <= arr[0]) return 0;
+        if(target > arr[size - 1]) return size - 1;
+
+        // Binary search the sorted array
+        int i = 0, j = size, mid = 0;
+        while(i < j)
+        {
+            mid = (i + j) / 2;
+
+            if(target < arr[mid])
+            {
+                if(mid > 0 && target > arr[mid - 1])
+                {
+                    return (target - arr[mid - 1] >= arr[mid] - target) ? mid : mid - 1;
+                }
+
+                j = mid;
+            }
+            else if(target >= arr[mid])
+            {
+                if(mid < size - 1 && target < arr[mid + 1])
+                {
+                    return (target - arr[mid] >= arr[mid + 1] - target) ? mid + 1 : mid;
+                }
+                i = mid + 1;
+            }
+        }
+        return mid;
+    }
 }
