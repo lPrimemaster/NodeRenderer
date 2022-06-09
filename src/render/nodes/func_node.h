@@ -5,15 +5,9 @@
 
 struct FunctionNode final : public PropertyNode
 {
-    inline FunctionNode() : PropertyNode()
+    inline FunctionNode() : PropertyNode(1, { "x" }, 1, { "value" })
     {
         static int inc = 0;
-        setInputsOrdered(
-            {
-                "x"
-            }
-        );
-        _output_count = 1;
         name = "Function Node #" + std::to_string(inc++);
 
         px.DefineVar("x", &var_x);
@@ -30,7 +24,7 @@ struct FunctionNode final : public PropertyNode
 
     inline virtual void render() override
     {
-        data.resetDataUpdate();
+        resetOutputsDataUpdate();
 
         disconnectInputIfNotOfType<float>("x");
         disconnectInputIfNotOfType<float>("y");
@@ -91,17 +85,17 @@ struct FunctionNode final : public PropertyNode
             switch (_input_count)
             {
                 case 1:
-                    var_x = inputs.begin()->second->data.getValue<float>();
+                    var_x = inputs.begin()->second->getValue<float>();
                     break;
                 case 2:
                     {
                         auto it = inputs.begin();
                         auto it2 = ++inputs.begin();
-                        var_x = it->second->data.getValue<float>();
+                        var_x = it->second->getValue<float>();
 
                         if(it2 != inputs.end())
                         {
-                            var_y = it2->second->data.getValue<float>();
+                            var_y = it2->second->getValue<float>();
                         }
                         else
                         {
@@ -114,15 +108,15 @@ struct FunctionNode final : public PropertyNode
                         auto it = inputs.begin();
                         auto it2 = ++inputs.begin();
                         auto it3 = ++++inputs.begin();
-                        var_x = it->second->data.getValue<float>();
+                        var_x = it->second->getValue<float>();
 
                         if(it2 != inputs.end())
                         {
-                            var_y = it2->second->data.getValue<float>();
+                            var_y = it2->second->getValue<float>();
 
                             if(it3 != inputs.end())
                             {
-                                var_z = it3->second->data.getValue<float>();
+                                var_z = it3->second->getValue<float>();
                             }
                             else
                             {
@@ -150,9 +144,9 @@ struct FunctionNode final : public PropertyNode
                 L_ERROR("Function evaluation failed: %s", e.GetMsg().c_str());
             }
 
-            data.setValue(r);
+            setNamedOutput("value", r);
             ImGui::BeginDisabled();
-            ImGui::InputFloat("Result", &data.getValue<float>());
+            ImGui::InputFloat("Result", &r);
             ImGui::EndDisabled();
         }
     }

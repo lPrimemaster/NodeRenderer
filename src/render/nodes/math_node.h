@@ -12,16 +12,9 @@ struct MathNode final : public PropertyNode
         DIV
     } mode;
 
-    inline MathNode(Mode m = Mode::ADD) : PropertyNode()
+    inline MathNode(Mode m = Mode::ADD) : PropertyNode(2, { "A", "B" }, 1, { "result" })
     {
         static int inc = 0;
-        setInputsOrdered(
-            {
-                "A",
-                "B"
-            }
-        );
-        _output_count = 1;
         name = "Math Node #" + std::to_string(inc++);
         mode = m;
     }
@@ -30,7 +23,8 @@ struct MathNode final : public PropertyNode
 
     inline virtual void render() override
     {
-        data.resetDataUpdate();
+        auto data = outputs[0];
+        data->resetDataUpdate();
 
         static const char* const mode_names[] = {
             "A+B",
@@ -47,20 +41,20 @@ struct MathNode final : public PropertyNode
 
         if(!inputs.empty())
         {   
-            PropertyNode* first_node = inputs.begin()->second;
-            PropertyNode* second_node = nullptr;
+            PropertyGenericData* first_data = inputs.begin()->second;
+            PropertyGenericData* second_data = nullptr;
             auto it = ++inputs.begin();
             if(it != inputs.end())
             {
                 // There is a second node connected available
-                second_node = it->second;
+                second_data = it->second;
             }
 
-            if(second_node)
+            if(second_data)
             {
-                if(second_node->data.type == first_node->data.type)
+                if(second_data->type == first_data->type)
                 {
-                    assingAllTypes<int, unsigned int, float, Vector2, Vector3, Vector4>(first_node, second_node);
+                    assingAllTypes<int, unsigned int, float, Vector2, Vector3, Vector4>(first_data, second_data);
                 }
                 else
                 {
@@ -69,33 +63,33 @@ struct MathNode final : public PropertyNode
             }
             else
             {
-                assingAllTypes<int, unsigned int, float, Vector2, Vector3, Vector4>(first_node, nullptr);
+                assingAllTypes<int, unsigned int, float, Vector2, Vector3, Vector4>(first_data, nullptr);
             }
 
             ImGui::BeginDisabled();
-            if(data.isOfType<int>())
+            if(data->isOfType<int>())
             {
-                ImGui::InputInt("Result", &data.getValue<int>());
+                ImGui::InputInt("Result", &data->getValue<int>());
             }
-            else if(data.isOfType<unsigned int>())
+            else if(data->isOfType<unsigned int>())
             {
-                ImGui::InputScalar("Result", ImGuiDataType_U32, &data.getValue<unsigned int>());
+                ImGui::InputScalar("Result", ImGuiDataType_U32, &data->getValue<unsigned int>());
             }
-            else if(data.isOfType<float>())
+            else if(data->isOfType<float>())
             {
-                ImGui::InputFloat("Result", &data.getValue<float>());
+                ImGui::InputFloat("Result", &data->getValue<float>());
             }
-            else if(data.isOfType<Vector2>())
+            else if(data->isOfType<Vector2>())
             {
-                ImGui::InputFloat2("Result", data.getValue<Vector2>().data);
+                ImGui::InputFloat2("Result", data->getValue<Vector2>().data);
             }
-            else if(data.isOfType<Vector3>())
+            else if(data->isOfType<Vector3>())
             {
-                ImGui::InputFloat3("Result", data.getValue<Vector3>().data);
+                ImGui::InputFloat3("Result", data->getValue<Vector3>().data);
             }
-            else if(data.isOfType<Vector4>())
+            else if(data->isOfType<Vector4>())
             {
-                ImGui::InputFloat4("Result", data.getValue<Vector4>().data);
+                ImGui::InputFloat4("Result", data->getValue<Vector4>().data);
             }
             ImGui::EndDisabled();
         }
@@ -105,21 +99,21 @@ private:
     int currentmodeid = 0;
 
     template<typename T1, typename T2, typename... Args>
-    inline bool assingAllTypes(PropertyNode* f, PropertyNode* s)
+    inline bool assingAllTypes(PropertyGenericData* f, PropertyGenericData* s)
     {
         if(s == nullptr)
         {
-            if(f->data.isOfType<T1>())
+            if(f->isOfType<T1>())
             {
-                data.setValue(f->data.getValue<T1>());
+                outputs[0]->setValue(f->getValue<T1>());
                 return true;
             }
         }
         else
         {
-            if(f->data.isOfType<T1>() && s->data.isOfType<T1>())
+            if(f->isOfType<T1>() && s->isOfType<T1>())
             {
-                data.setValue(math_op(f->data.getValue<T1>(), s->data.getValue<T1>()));
+                outputs[0]->setValue(math_op(f->getValue<T1>(), s->getValue<T1>()));
                 return true;
             }
         }
@@ -127,21 +121,21 @@ private:
     }
 
     template<typename T>
-    inline bool assingAllTypes(PropertyNode* f, PropertyNode* s)
+    inline bool assingAllTypes(PropertyGenericData* f, PropertyGenericData* s)
     {
         if(s == nullptr)
         {
-            if(f->data.isOfType<T>())
+            if(f->isOfType<T>())
             {
-                data.setValue(f->data.getValue<T>());
+                outputs[0]->setValue(f->getValue<T>());
                 return true;
             }
         }
         else
         {
-            if(f->data.isOfType<T>() && s->data.isOfType<T>())
+            if(f->isOfType<T>() && s->isOfType<T>())
             {
-                data.setValue(math_op(f->data.getValue<T>(), s->data.getValue<T>()));
+                outputs[0]->setValue(math_op(f->getValue<T>(), s->getValue<T>()));
                 return true;
             }
         }

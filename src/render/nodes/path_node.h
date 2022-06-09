@@ -6,15 +6,9 @@
 
 struct PathNode final : public PropertyNode
 {
-    inline PathNode() : PropertyNode(Vector3(0, 0, 0))
+    inline PathNode() : PropertyNode(1, { "t" }, 1, { "position" })
     {
         static int inc = 0;
-        setInputsOrdered(
-            {
-                "t"
-            }
-        );
-        _output_count = 1;
         name = "Path Node #" + std::to_string(inc++);
     }
     
@@ -121,7 +115,8 @@ struct PathNode final : public PropertyNode
 
     inline virtual void update() override
     {
-        data.resetDataUpdate();
+        auto data = outputs[0];
+        data->resetDataUpdate();
 
         disconnectInputIfNotOfType<float>("t");
 
@@ -130,7 +125,7 @@ struct PathNode final : public PropertyNode
         auto param = inputs_named.find("t");
         if(param != inputs_named.end())
         {
-            t = param->second->data.getValue<float>();
+            t = param->second->getValue<float>();
         }
         
         // Straight line umclamped t
@@ -142,9 +137,9 @@ struct PathNode final : public PropertyNode
                 auto forward_in = inputs_named.find("forward");
                 if(forward_in != inputs_named.end())
                 {
-                    if(!along_inited || forward_in->second->data.dataChanged())
+                    if(!along_inited || forward_in->second->dataChanged())
                     {
-                        forward = Vector3::Normalize(forward_in->second->data.getValue<Vector3>());
+                        forward = Vector3::Normalize(forward_in->second->getValue<Vector3>());
                         along_inited = true;
                     }
                 }
@@ -158,9 +153,9 @@ struct PathNode final : public PropertyNode
             auto points_in = inputs_named.find("points");
             if(points_in != inputs_named.end())
             {
-                if(!curve_inited || points_in->second->data.dataChanged())
+                if(!curve_inited || points_in->second->dataChanged())
                 {
-                    auto points = points_in->second->data.getValue<std::vector<Vector3>>();
+                    auto points = points_in->second->getValue<std::vector<Vector3>>();
                     points_copy = points;
                     L_TRACE("points:");
                     for(int i = 0; i < points_copy.size(); i++) L_TRACE("(%.1f, %.1f, %.1f)", points_copy[i].x, points_copy[i].y, points_copy[i].z);
@@ -175,7 +170,7 @@ struct PathNode final : public PropertyNode
                 calculated_pos = bezierAt(t);
             }
         }
-        data.setValue(calculated_pos);
+        data->setValue(calculated_pos);
     }
 
 private:

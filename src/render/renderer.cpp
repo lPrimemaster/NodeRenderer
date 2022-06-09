@@ -772,7 +772,7 @@ void Renderer::DrawList::render(GLFWwindow* window, NodeWindow* nodeWindow, Anal
 
     if(outNode != nullptr)
     {
-        RenderNodeData nodeData = outNode->data.getValue<RenderNodeData>();
+        RenderNodeData nodeData = outNode->outputs[0]->getValue<RenderNodeData>();
 
         if(nodeWindow->isRenderOutputNodeChanged())
         {
@@ -797,7 +797,7 @@ void Renderer::DrawList::render(GLFWwindow* window, NodeWindow* nodeWindow, Anal
             }
         }
 
-        if(outNode->data.dataChanged())
+        if(outNode->outputs[0]->dataChanged())
         {
             if(nodeData._fogChanged)
             {

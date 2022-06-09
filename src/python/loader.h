@@ -84,11 +84,15 @@ namespace PythonLoader
     struct PyEnvExt
     {
         PyObject* pModule = nullptr;
+        PyGILState_STATE gstate;
     };
 
     PyEnvExt StartPythonScriptEnv(const std::string& script_name);
 
     void EndPythonScriptEnv(PyEnvExt& env);
+
+    void Init();
+    void Deinit();
 
     template<POData RT, typename... Args>
     PythonReturn<RT> RunPythonScriptFunction(const PyEnvExt& env, const std::string& func_name, Args... args)

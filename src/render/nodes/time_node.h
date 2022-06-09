@@ -3,11 +3,9 @@
 
 struct TimeNode final : public PropertyNode
 {
-    inline TimeNode() : PropertyNode()
+    inline TimeNode() : PropertyNode(0, {}, 1, { "t" })
     {
         static int inc = 0;
-        _input_count = 0;
-        _output_count = 1;
         name = "Time Node #" + std::to_string(inc++);
     }
     
@@ -22,10 +20,11 @@ struct TimeNode final : public PropertyNode
 
     inline virtual void update() override
     {
-        data.resetDataUpdate();
+        auto data = outputs[0];
+        data->resetDataUpdate();
         s = NodeWindow::GetApptimeMs() / 1000.0f;
         s = std::ceil(s * 100.0f) / 100.0f;
-        data.setValue(s);
+        data->setValue(s);
     }
 
 private:

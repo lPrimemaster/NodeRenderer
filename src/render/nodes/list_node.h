@@ -24,15 +24,9 @@ struct ListNode final : public PropertyNode
         D3
     } dim;
 
-    inline ListNode() : PropertyNode()
+    inline ListNode() : PropertyNode(1, { "sizex" }, 1, { "list" })
     {
         static int inc = 0;
-        setInputsOrdered(
-            {
-                "sizex"
-            }
-        );
-        _output_count = 1;
 
         px.DefineVar("i", &i_var);
         py.DefineVar("i", &i_var);
@@ -140,7 +134,8 @@ struct ListNode final : public PropertyNode
 
     inline virtual void update() override
     {
-        data.resetDataUpdate();
+        auto data = outputs[0];
+        data->resetDataUpdate();
 
         disconnectInputIfNotOfType<unsigned int>("sizex");
         disconnectInputIfNotOfType<unsigned int>("sizey");
@@ -158,7 +153,7 @@ struct ListNode final : public PropertyNode
             auto listsizeLocal = inputs_named.find("sizez");
             if(listsizeLocal != inputs_named.end())
             {
-                size_z = listsizeLocal->second->data.getValue<unsigned int>();
+                size_z = listsizeLocal->second->getValue<unsigned int>();
                 has_a_dim = true;
             }
         }
@@ -168,7 +163,7 @@ struct ListNode final : public PropertyNode
             auto listsizeLocal = inputs_named.find("sizey");
             if(listsizeLocal != inputs_named.end())
             {
-                size_y = listsizeLocal->second->data.getValue<unsigned int>();
+                size_y = listsizeLocal->second->getValue<unsigned int>();
                 has_a_dim = true;
             }
         }
@@ -178,7 +173,7 @@ struct ListNode final : public PropertyNode
             auto listsizeLocal = inputs_named.find("sizex");
             if(listsizeLocal != inputs_named.end())
             {
-                size_x = listsizeLocal->second->data.getValue<unsigned int>();
+                size_x = listsizeLocal->second->getValue<unsigned int>();
                 has_a_dim = true;
             }
         }
@@ -202,14 +197,14 @@ struct ListNode final : public PropertyNode
                     {
                         std::vector<float> newData;
                         newData.resize(size, 0.0f);
-                        data.setValue<std::vector<float>>(newData);
+                        data->setValue<std::vector<float>>(newData);
                         lasttypeid = currenttypeid;
                     }
                     else
                     {
                         std::vector<float> newData;
                         newData.resize(size, 0.0f);
-                        data.setValue<std::vector<float>>(newData);
+                        data->setValue<std::vector<float>>(newData);
                     }
                     break;
                 case Type::INT:
@@ -217,14 +212,14 @@ struct ListNode final : public PropertyNode
                     {
                         std::vector<int> newData;
                         newData.resize(size, 0);
-                        data.setValue<std::vector<int>>(newData);
+                        data->setValue<std::vector<int>>(newData);
                         lasttypeid = currenttypeid;
                     }
                     else
                     {
                         std::vector<int> newData;
                         newData.resize(size, 0);
-                        data.setValue<std::vector<int>>(newData);
+                        data->setValue<std::vector<int>>(newData);
                     }
                     break;
                 case Type::UINT:
@@ -232,14 +227,14 @@ struct ListNode final : public PropertyNode
                     {
                         std::vector<unsigned int> newData;
                         newData.resize(size, 0);
-                        data.setValue<std::vector<unsigned int>>(newData);
+                        data->setValue<std::vector<unsigned int>>(newData);
                         lasttypeid = currenttypeid;
                     }
                     else
                     {
                         std::vector<unsigned int> newData;
                         newData.resize(size, 0);
-                        data.setValue<std::vector<unsigned int>>(newData);
+                        data->setValue<std::vector<unsigned int>>(newData);
                     }
                     break;
                 case Type::VECTOR2:
@@ -247,14 +242,14 @@ struct ListNode final : public PropertyNode
                     {
                         std::vector<Vector2> newData;
                         newData.resize(size, Vector2(0, 0));
-                        data.setValue<std::vector<Vector2>>(newData);
+                        data->setValue<std::vector<Vector2>>(newData);
                         lasttypeid = currenttypeid;
                     }
                     else
                     {
                         std::vector<Vector2> newData;
                         newData.resize(size, Vector2(0, 0));
-                        data.setValue<std::vector<Vector2>>(newData);
+                        data->setValue<std::vector<Vector2>>(newData);
                     }
                     break;
                 case Type::VECTOR3:
@@ -262,14 +257,14 @@ struct ListNode final : public PropertyNode
                     {
                         std::vector<Vector3> newData;
                         newData.resize(size, Vector3(0, 0, 0));
-                        data.setValue<std::vector<Vector3>>(newData);
+                        data->setValue<std::vector<Vector3>>(newData);
                         lasttypeid = currenttypeid;
                     }
                     else
                     {
                         std::vector<Vector3> newData;
                         newData.resize(size, Vector3(0, 0, 0));
-                        data.setValue<std::vector<Vector3>>(newData);
+                        data->setValue<std::vector<Vector3>>(newData);
                     }
                     break;
                 case Type::VECTOR4:
@@ -277,14 +272,14 @@ struct ListNode final : public PropertyNode
                     {
                         std::vector<Vector4> newData;
                         newData.resize(size, Vector4(0, 0, 0, 0));
-                        data.setValue<std::vector<Vector4>>(newData);
+                        data->setValue<std::vector<Vector4>>(newData);
                         lasttypeid = currenttypeid;
                     }
                     else
                     {
                         std::vector<Vector4> newData;
                         newData.resize(size, Vector4(0, 0, 0, 0));
-                        data.setValue<std::vector<Vector4>>(newData);
+                        data->setValue<std::vector<Vector4>>(newData);
                     }
                     break;
                 
@@ -386,7 +381,7 @@ struct ListNode final : public PropertyNode
                 auto _var_it = inputs_named.find(_vars_name[i]);
                 if(_var_it != inputs_named.end())
                 {
-                    _vars[i] = _var_it->second->data.getValue<float>();
+                    _vars[i] = _var_it->second->getValue<float>();
                 }
                 else
                 {
@@ -451,7 +446,7 @@ struct ListNode final : public PropertyNode
 
             if(funcChanged || types_or_size_diff || variables_changed)
             {
-                data.setDataChanged();
+                data->setDataChanged();
 
                 try
                 {
@@ -459,7 +454,7 @@ struct ListNode final : public PropertyNode
                     {
                     case Type::FLOAT:
                         {
-                            std::vector<float>* dataVal = data.getValuePtr<std::vector<float>>();
+                            std::vector<float>* dataVal = data->getValuePtr<std::vector<float>>();
                             for(k_it = 0; k_it < (int)size_z; k_it++)
                             {
                                 k_var = k_it;
@@ -478,7 +473,7 @@ struct ListNode final : public PropertyNode
                         break;
                     case Type::INT:
                         {
-                            std::vector<int>* dataVal = data.getValuePtr<std::vector<int>>();
+                            std::vector<int>* dataVal = data->getValuePtr<std::vector<int>>();
                             for(k_it = 0; k_it < (int)size_z; k_it++)
                             {
                                 k_var = k_it;
@@ -497,7 +492,7 @@ struct ListNode final : public PropertyNode
                         break;
                     case Type::UINT:
                         {
-                            std::vector<unsigned int>* dataVal = data.getValuePtr<std::vector<unsigned int>>();
+                            std::vector<unsigned int>* dataVal = data->getValuePtr<std::vector<unsigned int>>();
                             for(k_it = 0; k_it < (int)size_z; k_it++)
                             {
                                 k_var = k_it;
@@ -516,7 +511,7 @@ struct ListNode final : public PropertyNode
                         break;
                     case Type::VECTOR2:
                         {
-                            std::vector<Vector2>* dataVal = data.getValuePtr<std::vector<Vector2>>();
+                            std::vector<Vector2>* dataVal = data->getValuePtr<std::vector<Vector2>>();
                             for(k_it = 0; k_it < (int)size_z; k_it++)
                             {
                                 k_var = k_it;
@@ -536,7 +531,7 @@ struct ListNode final : public PropertyNode
                         break;
                     case Type::VECTOR3:
                         {
-                            std::vector<Vector3>* dataVal = data.getValuePtr<std::vector<Vector3>>();
+                            std::vector<Vector3>* dataVal = data->getValuePtr<std::vector<Vector3>>();
                             for(k_it = 0; k_it < (int)size_z; k_it++)
                             {
                                 k_var = k_it;
@@ -557,7 +552,7 @@ struct ListNode final : public PropertyNode
                         break;
                     case Type::VECTOR4:
                         {
-                            std::vector<Vector4>* dataVal = data.getValuePtr<std::vector<Vector4>>();
+                            std::vector<Vector4>* dataVal = data->getValuePtr<std::vector<Vector4>>();
                             for(k_it = 0; k_it < (int)size_z; k_it++)
                             {
                                 k_var = k_it;

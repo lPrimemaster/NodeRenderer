@@ -27,18 +27,20 @@ struct IOIdxData
     }
 };
 
-// FIXME: Disable copy constructor for PropertyGenericData
+struct PropertyNode;
+
+
 struct PropertyGenericData
 {
     template<typename T>
-    PropertyGenericData(T value) : type(typeid(T))
+    PropertyGenericData(T value, PropertyNode* data_holder) : type(typeid(T)), _data_holder_instance(data_holder)
     {
         data = new T(value);
         _data_changed = true;
     }
 
     template<typename T, size_t N>
-    PropertyGenericData(const T (&arr)[N]) : type(typeid(T*))
+    PropertyGenericData(const T (&arr)[N], PropertyNode* data_holder) : type(typeid(T*)), _data_holder_instance(data_holder)
     {
         size = N;
         data = new T[N];
@@ -46,6 +48,9 @@ struct PropertyGenericData
         is_fixed_array = true;
         _data_changed = true;
     }
+
+    // No copy
+    PropertyGenericData(const PropertyGenericData& p) = delete;
 
     ~PropertyGenericData()
     {
@@ -200,6 +205,7 @@ struct PropertyGenericData
     size_t size = 0ULL;
     bool is_fixed_array = false;
     bool _data_changed = false;
+    PropertyNode* _data_holder_instance = nullptr;
 };
 
 // TODO: Node and in/out types color
@@ -207,13 +213,50 @@ struct PropertyNode
 {
     struct EmptyType {  };
 
-    PropertyNode() : data(PropertyGenericData(EmptyType())) {  }
+    PropertyNode
+    (
+        int inputs_count = 0, 
+        std::vector<std::string> inputs_name = std::vector<std::string>(), 
+        int outputs_count = 1, 
+        std::vector<std::string> outputs_name = std::vector<std::string>()
+    )
+    {
+        if(inputs_count > 0)
+        {
+            if(inputs_name.size() != inputs_count)
+            {
+                L_ERROR("PropertyNode set to hold %d inputs but %d names were specified.", inputs_count, inputs_name.size());
+            }
+            setInputsOrdered(inputs_name);
+        }
+        if(outputs_count >= 1)
+        {
+            if(outputs_name.size() == 0 && outputs_count == 1)
+            {
+                outputs.push_back(new PropertyGenericData(EmptyType(), this));
+            }
+            else if(outputs_name.size() == outputs_count)
+            {
+                setOutputsOrdered(outputs_name);
+            }
+            else
+            {
+                L_ERROR("PropertyNode set to hold %d inputs but %d names were specified.", outputs_count, outputs_name.size());
+            }
+        }
+        else
+        {
+            L_ERROR("A PropertyNode needs to have at least one output.");
+        }
+    }
 
-    template<typename T>
-    PropertyNode(T value) : data(PropertyGenericData(value)) {  }
-
-    template<typename T, size_t N>
-    PropertyNode(const T (&arr)[N]) : data(PropertyGenericData(arr)) {  }
+    inline virtual ~PropertyNode()
+    { 
+        for(auto data : outputs)
+        {
+            delete data;
+        }
+    }
     
     // Identification
     int id;
@@ -227,15 +270,51 @@ struct PropertyNode
     float _input_max_pad_px = 0.0f;
     float _output_max_pad_px = 0.0f;
     inline static constexpr float _text_pad_pad_px = 20.0f;
-    std::map<IOIdxData, PropertyNode*> inputs;
-    std::map<std::string, PropertyNode*> inputs_named;
+
+    std::map<IOIdxData, PropertyGenericData*> inputs;
+    std::map<std::string, PropertyGenericData*> inputs_named;
     
     // Outputs
     int _output_count = 0;
     std::vector<IOIdxData> output_dependencies;
 
     // This is the "main" output
-    PropertyGenericData data;
+    std::vector<PropertyGenericData*> outputs;
+    std::map<std::string, PropertyGenericData*> outputs_named;
+
+    template<typename T>
+    inline bool setNamedOutput(const std::string& name, T data)
+    {
+        auto output = outputs_named.find(name);
+        if(output != outputs_named.end())
+        {
+            output->second->setValue<T>(data);
+            return true;
+        }
+        L_ERROR("Node %s does not have an output named %s.", this->name.c_str(), name.c_str());
+        return false;
+    }
+
+    template<typename T, size_t N>
+    inline bool setNamedOutput(const std::string& name, const T (&arr)[N])
+    {
+        auto output = outputs_named.find(name);
+        if(output != outputs_named.end())
+        {
+            output->second->setValue<T, N>(arr);
+            return true;
+        }
+        L_ERROR("Node %s does not have an output named %s.", this->name.c_str(), name.c_str());
+        return false;
+    }
+
+    inline void resetOutputsDataUpdate()
+    {
+        for(int i = 0; i < outputs.size(); i++)
+        {
+            outputs[i]->resetDataUpdate();
+        }
+    }
 
     // Display
     NodeRenderData _render_data;
@@ -246,8 +325,9 @@ struct PropertyNode
         auto input = inputs_named.find(inputName);
         if(input != inputs_named.end())
         {
-            PropertyNode* other = input->second;
-            if(!other->data.isOfType<Args...>())
+            PropertyNode* other = input->second->_data_holder_instance;
+            PropertyGenericData* other_data = input->second;
+            if(!other_data->isOfType<Args...>())
             {
                 // Clear the input dependencies of the node links
                 for(IOIdxData out_dep : other->output_dependencies)
@@ -265,7 +345,7 @@ struct PropertyNode
                 {
                     L_WARNING("%s", tid.name());
                 }
-                L_WARNING("Supplied type: %s", other->data.type.name());
+                L_WARNING("Supplied type:\n%s", other_data->type.name());
                 return true;
             }
         }
@@ -290,6 +370,13 @@ struct PropertyNode
 
     inline void setOutputsOrdered(std::vector<std::string> out)
     {
+        for(auto o : outputs) delete o; outputs.clear();
+        outputs.reserve(out.size());
+        for(int i = 0; i < out.size(); i++)
+        {
+            outputs.push_back(new PropertyGenericData(EmptyType(), this));
+            outputs_named.emplace(out[i], outputs[i]);
+        }
         _output_count = (int)out.size();
         _output_labels = out;
 
@@ -320,15 +407,7 @@ struct PropertyNode
         ); 
     }
 
-    inline virtual void render()
-    {
-        ImGui::Text("A sample node");
-    }
-
-    inline virtual void update()
-    {
-        
-    }
-
-    inline virtual ~PropertyNode() = 0 {  }
+    inline virtual void render() = 0;
+    inline virtual void update() {  }
 };
+

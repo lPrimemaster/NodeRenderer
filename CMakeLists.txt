@@ -22,6 +22,9 @@ file(GLOB WINDOWS_SRC
     ${CMAKE_SOURCE_DIR}/src/windows/*.h
     ${CMAKE_SOURCE_DIR}/src/windows/*.inl
 )
+file(GLOB NODES_SRC
+    ${CMAKE_SOURCE_DIR}/render/nodes/*.h
+)
 
 add_subdirectory(muparser)
 
@@ -33,6 +36,7 @@ add_executable(cbg64
 
     ${IMGUI_SRC}
     ${WINDOWS_SRC}
+    ${NODES_SRC}
 
     src/log/logger.h
     src/log/logger.cpp

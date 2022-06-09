@@ -10,21 +10,19 @@ struct ValueNode final : public PropertyNode
         UINT
     } type;
 
-    inline explicit ValueNode(float val = 0.0f) : PropertyNode(0.0f)
+    inline explicit ValueNode(float val = 0.0f) : PropertyNode(0, {}, 1, { "value" })
     {
         static int inc = 0;
-        _input_count = 0;
-        _output_count = 1;
         name = "Value Node #" + std::to_string(inc++);
         type = Type::FLOAT;
-        data.setValue(val);
+        outputs[0]->setValue(val);
     }
     
     ~ValueNode() {  }
 
     inline virtual void render() override
     {
-        data.resetDataUpdate();
+        outputs[0]->resetDataUpdate();
 
         static const char* const type_names[] = {
             "float",
@@ -41,34 +39,34 @@ struct ValueNode final : public PropertyNode
         case Type::FLOAT:
             if(currenttypeid != lasttypeid)
             {
-                data.setValue<float>(1.0f);
+                outputs[0]->setValue<float>(1.0f);
                 lasttypeid = currenttypeid;
             }
-            if(ImGui::InputFloat("Value", &data.getValue<float>()))
+            if(ImGui::InputFloat("Value", &outputs[0]->getValue<float>()))
             {
-                data.setDataChanged();
+                outputs[0]->setDataChanged();
             }
             break;
         case Type::INT:
             if(currenttypeid != lasttypeid)
             {
-                data.setValue<int>(1);
+                outputs[0]->setValue<int>(1);
                 lasttypeid = currenttypeid;
             }
-            if(ImGui::InputInt("Value", &data.getValue<int>()))
+            if(ImGui::InputInt("Value", &outputs[0]->getValue<int>()))
             {
-                data.setDataChanged();
+                outputs[0]->setDataChanged();
             }
             break;
         case Type::UINT:
             if(currenttypeid != lasttypeid)
             {
-                data.setValue<unsigned int>(1U);
+                outputs[0]->setValue<unsigned int>(1U);
                 lasttypeid = currenttypeid;
             }
-            if(ImGui::InputScalar("Value", ImGuiDataType_U32, &data.getValue<unsigned int>()))
+            if(ImGui::InputScalar("Value", ImGuiDataType_U32, &outputs[0]->getValue<unsigned int>()))
             {
-                data.setDataChanged();
+                outputs[0]->setDataChanged();
             }
             break;
         

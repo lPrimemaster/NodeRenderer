@@ -15,7 +15,7 @@ void AnalyticsWindow::render()
     auto renderNode = nodeWindow->getRenderOutputNode();
     if(renderNode)
     {
-        RenderNodeData renderData = nodeWindow->getRenderOutputNode()->data.getValue<RenderNodeData>();
+        RenderNodeData renderData = nodeWindow->getRenderOutputNode()->outputs[0]->getValue<RenderNodeData>();
         ImGui::TextColored(textColor, "instances: %u", renderData._instanceCount);
         ImGui::TextColored(textColor, "   motifs: %u",    renderData._motif_span);
         ImGui::TextColored(textColor, "  objects: %u", renderData._instanceCount * renderData._motif_span);

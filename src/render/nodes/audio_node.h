@@ -13,20 +13,25 @@ struct AudioParams
     int waveform_sz;
     int beat_times_sz;
     int f_avg_rms_power_sz;
+    int f_avg_rms_power_env_sz;
     int f_amps_sz;
     int f_times_sz;
+    int f_times_env_sz;
     int freqs_sz;
 };
 
 struct AudioData
 {
-    float* waveform;
     int sample_rate;
     float estimated_tempo;
+
+    float* waveform;
     float* beat_times;
     float* f_avg_rms_power;
+    float* f_avg_rms_power_env;
     float* f_amps;
     float* f_times;
+    float* f_times_env;
     float* freqs;
 
     AudioParams sizes;
@@ -39,12 +44,13 @@ struct AudioNode final : public PropertyNode
         char data[64];
     };
 
-    inline AudioNode() : PropertyNode(AudioData())
+    inline AudioNode() : PropertyNode(0, {}, 2, { "power", "envelope" })
     {
         static int inc = 0;
-        _input_count = 0;
-        _output_count = 1;
         name = "Audio Node #" + std::to_string(inc++);
+
+        setNamedOutput("power", 0.0f);
+        setNamedOutput("envelope", 0.0f);
     }
     
     ~AudioNode()
@@ -58,14 +64,17 @@ struct AudioNode final : public PropertyNode
 
     inline virtual void update() override
     {
-        data.resetDataUpdate();
+        resetOutputsDataUpdate();
 
         if(playing)
         {
             // Send a float with current power rms for testing
             float s = (float)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - audio_start).count() / 1000.0f;
             int closest_power_rms_idx = Math::FindClosestIdx(fdata.f_times, fdata.sizes.f_times_sz, s);
-            data.setValue(fdata.f_avg_rms_power[closest_power_rms_idx]);
+            setNamedOutput("power", fdata.f_avg_rms_power[closest_power_rms_idx]);
+
+            int closest_power_rms_env_idx = Math::FindClosestIdx(fdata.f_times_env, fdata.sizes.f_times_env_sz, s);
+            setNamedOutput("envelope", fdata.f_avg_rms_power_env[closest_power_rms_env_idx]);
         }
     }
 
@@ -132,41 +141,62 @@ struct AudioNode final : public PropertyNode
                     {
                         delete[] audioDataMemory;
                     }
-                    int totalSize = sizes.waveform_sz +
+                    int totalSize = sizeof(int) +
+                                    sizeof(float) +
+                                    sizes.waveform_sz +
                                     sizes.beat_times_sz +
                                     sizes.f_avg_rms_power_sz +
+                                    sizes.f_avg_rms_power_env_sz +
                                     sizes.f_amps_sz +
                                     sizes.f_times_sz +
+                                    sizes.f_times_env_sz +
                                     sizes.freqs_sz;
                     
                     audioDataMemory = new char[totalSize * sizeof(float)];
-                    float* memPtr = (float*)audioDataMemory;
+                    float* memPtr = (float*)(audioDataMemory + sizeof(int) + sizeof(float));
 
                     AudioData adata;
                     adata.waveform = memPtr; memPtr += sizes.waveform_sz;
                     adata.beat_times = memPtr; memPtr += sizes.beat_times_sz;
                     adata.f_avg_rms_power = memPtr; memPtr += sizes.f_avg_rms_power_sz;
+                    adata.f_avg_rms_power_env = memPtr; memPtr += sizes.f_avg_rms_power_env_sz;
                     adata.f_amps = memPtr; memPtr += sizes.f_amps_sz;
                     adata.f_times = memPtr; memPtr += sizes.f_times_sz;
+                    adata.f_times_env = memPtr; memPtr += sizes.f_times_env_sz;
                     adata.freqs = memPtr;
                     adata.sizes = sizes;
 
                     valid = PythonLoader::RunPythonScriptFunctionCopyReturn(senv, "get_audio_params", audioDataMemory, totalSize * sizeof(float));
 
+                    adata.sample_rate = *(int*)(audioDataMemory);
+                    adata.estimated_tempo = *(float*)(audioDataMemory + sizeof(int));
+
                     displayMsg("Normalizing Power...\0");
-                    float max = 0.0;
-                    for(int i = 0; i < adata.sizes.f_avg_rms_power_sz; i++)
-                    {
-                        if(adata.f_avg_rms_power[i] > 100.0f) continue;
-                        if(adata.f_avg_rms_power[i] > max) max = adata.f_avg_rms_power[i];
-                    }
+                    // float max = 0.0;
+                    // for(int i = 0; i < adata.sizes.f_avg_rms_power_sz; i++)
+                    // {
+                    //     if(adata.f_avg_rms_power[i] > 100.0f) continue;
+                    //     if(adata.f_avg_rms_power[i] > max) max = adata.f_avg_rms_power[i];
+                    // }
 
-                    for(int i = 0; i < adata.sizes.f_avg_rms_power_sz; i++)
-                    {
-                        adata.f_avg_rms_power[i] /= max;
-                    }
-
+                    // for(int i = 0; i < adata.sizes.f_avg_rms_power_sz; i++)
+                    // {
+                    //     adata.f_avg_rms_power[i] /= max;
+                    // }
                     
+                    // max = 0.0;
+                    // for(int i = 0; i < adata.sizes.f_avg_rms_power_env_sz; i++)
+                    // {
+                    //     if(adata.f_avg_rms_power_env[i] > 100.0f) continue;
+                    //     if(adata.f_avg_rms_power_env[i] > max) max = adata.f_avg_rms_power_env[i];
+                    // }
+
+                    // for(int i = 0; i < adata.sizes.f_times_env_sz; i++)
+                    // {
+                    //     L_TRACE("%f", adata.f_times_env[i]);
+                    //     adata.f_avg_rms_power_env[i] /= max;
+                    // }
+
 
                     displayMsg("Turning off the gas...\0");
 
@@ -192,7 +222,8 @@ struct AudioNode final : public PropertyNode
 
                 if(valid)
                 {
-                    data.setValue(fdata);
+                    setNamedOutput("power", 0.0f);
+                    setNamedOutput("envelope", 0.0f);
                 }
                 else
                 {
@@ -203,7 +234,7 @@ struct AudioNode final : public PropertyNode
                     fdata.f_times = nullptr;
                     fdata.freqs = nullptr;
 
-                    data.setValue(fdata);
+                    setNamedOutput("power", fdata);
                 }
             }
             else if(loading && !popupOpened)

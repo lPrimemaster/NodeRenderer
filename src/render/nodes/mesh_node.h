@@ -14,11 +14,9 @@ struct MeshNodeData
 
 struct MeshNode final : public PropertyNode
 {
-    inline MeshNode() : PropertyNode(MeshNodeData())
+    inline MeshNode() : PropertyNode(0, {}, 1, { "mesh" })
     {
         static int inc = 0;
-        _input_count = 0;
-        _output_count = 1;
         name = "Mesh Node #" + std::to_string(inc++);
 
         // glGenVertexArrays(1, &_preview_vao);
@@ -45,15 +43,14 @@ struct MeshNode final : public PropertyNode
 
     inline virtual void render() override
     {
-        data.resetDataUpdate();
+        auto data = outputs[0];
+        data->resetDataUpdate();
         // TODO: Make this node a file drag and drop from windows as well
 
         if(valid_model)
         {
             //TODO: Display a model preview on the node
             ImGui::Text("Currently loaded: %s", std::filesystem::path(to_load).filename().string().c_str());
-
-
         }
         
         bool closepopup = false;
@@ -97,7 +94,7 @@ struct MeshNode final : public PropertyNode
 
                 memcpy(vertices_data.vertex_data, fdata.data(), fdata.size() * sizeof(float));
 
-                data.setValue(vertices_data);
+                data->setValue(vertices_data);
                 fdata.clear();
             }
         }

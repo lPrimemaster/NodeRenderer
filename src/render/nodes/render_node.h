@@ -32,19 +32,9 @@ struct RenderNodeData
 
 struct RenderNode final : public PropertyNode
 {
-    inline RenderNode() : PropertyNode(RenderNodeData())
+    inline RenderNode() : PropertyNode(5, { "instanceCount", "worldPosition", "worldRotation", "mesh", "colors" }, 1, {})
     {
         static int inc = 0;
-        setInputsOrdered(
-            {
-                "instanceCount",
-                "worldPosition",
-                "worldRotation",
-                "mesh",
-                "colors"
-            }
-        );
-        _output_count = 0;
 
         _renderData._worldPositionPtr = (glm::mat4**)malloc(sizeof(glm::mat4*));
         *(_renderData._worldPositionPtr) = nullptr;
@@ -68,7 +58,7 @@ struct RenderNode final : public PropertyNode
 
         name = "Render Node #" + std::to_string(inc++);
 
-        data.setValue(_renderData);
+        outputs[0]->setValue(_renderData);
     }
     
     ~RenderNode()
@@ -157,12 +147,12 @@ struct RenderNode final : public PropertyNode
             if(_renderData._fogChanged)
             {
                 _fog_changed_last_frame = true;
-                data.setValue(_renderData);
+                outputs[0]->setValue(_renderData);
             }
             else if(_fog_changed_last_frame)
             {
                 _fog_changed_last_frame = false;
-                data.setValue(_renderData);
+                outputs[0]->setValue(_renderData);
             }
 
             ImGui::EndChild();
@@ -191,7 +181,7 @@ struct RenderNode final : public PropertyNode
                 auto worldPositionLocal = inputs_named.find("worldPosition");
                 if(worldPositionLocal != inputs_named.end())
                 {
-                    auto data = worldPositionLocal->second->data.getValue<std::vector<Vector3>>().data();
+                    auto data = worldPositionLocal->second->getValue<std::vector<Vector3>>().data();
                     float maxx = positionMaxFromArray(data, 0);
                     float maxy = positionMaxFromArray(data, 1);
                     float maxz = positionMaxFromArray(data, 2);
@@ -272,7 +262,7 @@ struct RenderNode final : public PropertyNode
                     _renderData._motifChanged = false;
                 }
 
-                data.setValue(_renderData);
+                outputs[0]->setValue(_renderData);
             }
 
             ImGui::EndChild();
@@ -332,12 +322,12 @@ struct RenderNode final : public PropertyNode
             L_DEBUG("Motif Instance Attr size: %d kb", _renderData._motif_span * _renderData._instanceCount * sizeof(glm::mat4) / 1024);
             L_DEBUG("New Total Instance Count: %u", _renderData._motif_span * _renderData._instanceCount);
             _renderData._motifChanged = true;
-            data.setValue(_renderData);
+            outputs[0]->setValue(_renderData);
         }
         else if(_renderData._motifChanged)
         {
             _renderData._motifChanged = false;
-            data.setValue(_renderData);
+            outputs[0]->setValue(_renderData);
         }
 
         ImGui::EndChild();
@@ -345,7 +335,7 @@ struct RenderNode final : public PropertyNode
 
     inline virtual void update() override
     {
-        data.resetDataUpdate();
+        outputs[0]->resetDataUpdate();
         _render_data_changed = false;
 
         disconnectInputIfNotOfType<unsigned int>("instanceCount");
@@ -373,7 +363,7 @@ struct RenderNode final : public PropertyNode
                 auto worldPositionLocal = inputs_named.find("worldPosition");
                 if(worldPositionLocal != inputs_named.end())
                 {
-                    auto worldPositions = worldPositionLocal->second->data.getValue<std::vector<Vector3>>();
+                    auto worldPositions = worldPositionLocal->second->getValue<std::vector<Vector3>>();
                     worldPosLocal[0] = glm::translate(
                                                 glm::vec3(
                                                     worldPositions[0].x, 
@@ -397,7 +387,7 @@ struct RenderNode final : public PropertyNode
                 auto colorLocal = inputs_named.find("colors");
                 if(colorLocal != inputs_named.end())
                 {
-                    auto colors = colorLocal->second->data.getValue<std::vector<Vector4>>();
+                    auto colors = colorLocal->second->getValue<std::vector<Vector4>>();
                     instanceColorLocal[0] = colors[0];
                 }
                 else
@@ -415,7 +405,7 @@ struct RenderNode final : public PropertyNode
                 auto rotationLocal = inputs_named.find("worldRotation");
                 if(rotationLocal != inputs_named.end())
                 {
-                    auto rots = rotationLocal->second->data.getValue<std::vector<Vector4>>();
+                    auto rots = rotationLocal->second->getValue<std::vector<Vector4>>();
                     worldRotationLocal[0] = glm::eulerAngleYXZ(rots[0].y, rots[0].x, rots[0].z);
                 }
                 else
@@ -427,12 +417,12 @@ struct RenderNode final : public PropertyNode
                 *(_renderData._worldPositionPtr) = worldPosLocal;
                 *(_renderData._instanceColorsPtr) = instanceColorLocal;
                 *(_renderData._worldRotationPtr) = worldRotationLocal;
-                data.setValue(_renderData);
+                outputs[0]->setValue(_renderData);
             }
         }
         else
         {
-            unsigned int instanceCount = instanceCountLocal->second->data.getValue<unsigned int>();
+            unsigned int instanceCount = instanceCountLocal->second->getValue<unsigned int>();
             auto worldPositionLocal = inputs_named.find("worldPosition");
             bool worldPositionOkay = true;
 
@@ -448,15 +438,15 @@ struct RenderNode final : public PropertyNode
             }
             else
             {
-                if(colorLocal->second->data.dataChanged())
+                if(colorLocal->second->dataChanged())
                 {
-                    auto colors = colorLocal->second->data.getValue<std::vector<Vector4>>();
+                    auto colors = colorLocal->second->getValue<std::vector<Vector4>>();
                     Vector4* color = *(_renderData._instanceColorsPtr);
 
                     memcpy(color, colors.data(), colors.size() * sizeof(Vector4));
 
                     *(_renderData._instanceColorsPtr) = color;
-                    data.setDataChanged();
+                    outputs[0]->setDataChanged();
                 }
             }
 
@@ -466,9 +456,9 @@ struct RenderNode final : public PropertyNode
             }
             else
             {
-                if(worldPositionLocal->second->data.dataChanged())
+                if(worldPositionLocal->second->dataChanged())
                 {
-                    auto worldPositions = worldPositionLocal->second->data.getValue<std::vector<Vector3>>();
+                    auto worldPositions = worldPositionLocal->second->getValue<std::vector<Vector3>>();
                     glm::mat4* worldPosLocal = *(_renderData._worldPositionPtr);
 
                     for(unsigned int i = 0; i < _renderData._instanceCount; i++)
@@ -483,7 +473,7 @@ struct RenderNode final : public PropertyNode
                     }
 
                     *(_renderData._worldPositionPtr) = worldPosLocal;
-                    data.setDataChanged();
+                    outputs[0]->setDataChanged();
                 }
             }
 
@@ -493,9 +483,9 @@ struct RenderNode final : public PropertyNode
             }
             else
             {
-                if(worldRotationLocal->second->data.dataChanged())
+                if(worldRotationLocal->second->dataChanged())
                 {
-                    auto worldRotations = worldRotationLocal->second->data.getValue<std::vector<Vector3>>();
+                    auto worldRotations = worldRotationLocal->second->getValue<std::vector<Vector3>>();
                     glm::mat4* worldRotLocal = *(_renderData._worldRotationPtr);
 
                     for(unsigned int i = 0; i < _renderData._instanceCount; i++)
@@ -504,7 +494,7 @@ struct RenderNode final : public PropertyNode
                     }
 
                     *(_renderData._worldRotationPtr) = worldRotLocal;
-                    data.setDataChanged();
+                    outputs[0]->setDataChanged();
                 }
             }
 
@@ -521,7 +511,7 @@ struct RenderNode final : public PropertyNode
 
                 if(worldPositionOkay)
                 {
-                    auto worldPositions = worldPositionLocal->second->data.getValue<std::vector<Vector3>>();
+                    auto worldPositions = worldPositionLocal->second->getValue<std::vector<Vector3>>();
 
                     for(unsigned int i = 0; i < _renderData._instanceCount; i++)
                     {
@@ -551,7 +541,7 @@ struct RenderNode final : public PropertyNode
 
                 if(worldRotationOkay)
                 {
-                    auto worldRotations = worldRotationLocal->second->data.getValue<std::vector<Vector3>>();
+                    auto worldRotations = worldRotationLocal->second->getValue<std::vector<Vector3>>();
 
                     for(unsigned int i = 0; i < _renderData._instanceCount; i++)
                     {
@@ -575,7 +565,7 @@ struct RenderNode final : public PropertyNode
 
                 if(colorOkay)
                 {
-                    auto color = colorLocal->second->data.getValue<std::vector<Vector4>>();
+                    auto color = colorLocal->second->getValue<std::vector<Vector4>>();
                     memcpy(colors, color.data(), instanceCount * sizeof(Vector4));
                 }
                 else
@@ -592,7 +582,7 @@ struct RenderNode final : public PropertyNode
                 *(_renderData._worldRotationPtr) = worldRotLocal;
                 *(_renderData._instanceColorsPtr) = colors;
 
-                data.setValue(_renderData);
+                outputs[0]->setValue(_renderData);
             }
         }
 
@@ -600,16 +590,16 @@ struct RenderNode final : public PropertyNode
         auto meshLocal = inputs_named.find("mesh");
         if(meshLocal != inputs_named.end())
         {
-            if(meshLocal->second->data.dataChanged() || *(_renderData._meshPtr) == nullptr)
+            if(meshLocal->second->dataChanged() || *(_renderData._meshPtr) == nullptr)
             {
                 // We have a new mesh for displaying
                 // Handle it
-                auto newMeshPtr = meshLocal->second->data.getValuePtr<MeshNodeData>();
+                auto newMeshPtr = meshLocal->second->getValuePtr<MeshNodeData>();
                 if(newMeshPtr->data_size > 0)
                 {
                     _render_data_changed = true;
                     *(_renderData._meshPtr) = newMeshPtr;
-                    data.setValue(_renderData);
+                    outputs[0]->setValue(_renderData);
                 }
             }
         }

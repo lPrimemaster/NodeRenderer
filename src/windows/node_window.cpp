@@ -89,7 +89,7 @@ void NodeWindow::render()
             PropertyNode* self = nodes[node_idx];
             for(auto i : nodes[node_idx]->inputs)
             {
-                PropertyNode* other = i.second;
+                PropertyNode* other = i.second->_data_holder_instance;
 
                 ImVec2 p1 = offset + other->getOutputPos(i.first.other_idx);
                 ImVec2 p2 = offset + self->getInputPos(i.first.self_idx);
@@ -194,8 +194,8 @@ void NodeWindow::render()
                             IOIdxData idxd;
                             idxd.other_idx = link_output_slot;
                             idxd.self_idx = slot_idx;
-                            node->inputs.emplace(idxd, nodes[link_from_id]);
-                            node->inputs_named.emplace(node->_input_labels[slot_idx], nodes[link_from_id]);
+                            node->inputs.emplace(idxd, nodes[link_from_id]->outputs[link_output_slot]);
+                            node->inputs_named.emplace(node->_input_labels[slot_idx], nodes[link_from_id]->outputs[link_output_slot]);
                             nodes[link_from_id]->output_dependencies.push_back(idxd);
                         }
                     }
@@ -285,13 +285,9 @@ void NodeWindow::render()
                 {
                     newNode = new ValueNode(1);
                 }
-                if (ImGui::MenuItem("Vector Node"))
-                {
-                    newNode = new VectorNode(0, 0, 0, 0);
-                }
                 if (ImGui::MenuItem("Color Node"))
                 {
-                    newNode = new ColorNode(1, 1, 1, 1);
+                    newNode = new ColorNode();
                 }
                 if (ImGui::MenuItem("Math Node"))
                 {
@@ -350,6 +346,10 @@ void NodeWindow::render()
                 if (ImGui::MenuItem("Audio Node"))
                 {
                     newNode = new AudioNode();
+                }
+                if (ImGui::MenuItem("Test Node"))
+                {
+                    newNode = new TestNode();
                 }
 
                 if(newNode)

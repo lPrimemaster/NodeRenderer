@@ -2,8 +2,9 @@
 
 PythonLoader::PyEnvExt PythonLoader::StartPythonScriptEnv(const std::string& script_name)
 {
+
     PyEnvExt ret;
-    Py_Initialize();
+    ret.gstate = PyGILState_Ensure();
     PyObject* pName = PyUnicode_DecodeFSDefault(script_name.c_str());
     if(!pName)
     {
@@ -38,12 +39,22 @@ void PythonLoader::EndPythonScriptEnv(PythonLoader::PyEnvExt& env)
     {
         Py_DECREF(env.pModule);
         env.pModule = nullptr;
+        PyGILState_Release(env.gstate);
     }
     else
     {
         L_ERROR("Cannot close an invalid PyEnvExt.");
     }
+}
 
+void PythonLoader::Init()
+{
+    Py_Initialize();
+    PyEval_InitThreads();
+}
+
+void PythonLoader::Deinit()
+{
     if (Py_FinalizeEx() < 0)
     {
         L_ERROR("Py_FinalizeEx() failed.");

@@ -6,17 +6,9 @@
 
 struct ListAccessNode final : public PropertyNode
 {
-    inline ListAccessNode() : PropertyNode()
+    inline ListAccessNode() : PropertyNode(2, { "index", "list" }, 1, { "value" })
     {
         static int inc = 0;
-        setInputsOrdered(
-            {
-                "index",
-                "list"
-            }
-        );
-        _output_count = 1;
-        
         name = "List Access Node #" + std::to_string(inc++);
     }
     
@@ -37,6 +29,7 @@ struct ListAccessNode final : public PropertyNode
 
     inline virtual void render() override
     {
+        auto data = outputs[0];
         auto idx_it = inputs_named.find("index");
         if(idx_it != inputs_named.end())
         {
@@ -79,22 +72,22 @@ struct ListAccessNode final : public PropertyNode
             switch(dtype)
             {
             case DisplayType::FLOAT:
-                ImGui::InputFloat("Value", data.getValuePtr<float>());
+                ImGui::InputFloat("Value", data->getValuePtr<float>());
                 break;
             case DisplayType::INT:
-                ImGui::InputInt("Value", data.getValuePtr<int>());
+                ImGui::InputInt("Value", data->getValuePtr<int>());
                 break;
             case DisplayType::UNSIGNED_INT:
-                ImGui::InputScalar("Value", ImGuiDataType_U32, data.getValuePtr<unsigned int>());
+                ImGui::InputScalar("Value", ImGuiDataType_U32, data->getValuePtr<unsigned int>());
                 break;
             case DisplayType::VECTOR2:
-                ImGui::InputFloat2("Value", data.getValuePtr<Vector2>()->data);
+                ImGui::InputFloat2("Value", data->getValuePtr<Vector2>()->data);
                 break;
             case DisplayType::VECTOR3:
-                ImGui::InputFloat3("Value", data.getValuePtr<Vector3>()->data);
+                ImGui::InputFloat3("Value", data->getValuePtr<Vector3>()->data);
                 break;
             case DisplayType::VECTOR4:
-                ImGui::InputFloat4("Value", data.getValuePtr<Vector4>()->data);
+                ImGui::InputFloat4("Value", data->getValuePtr<Vector4>()->data);
                 break;
             }
             ImGui::EndDisabled();
@@ -103,7 +96,8 @@ struct ListAccessNode final : public PropertyNode
 
     inline virtual void update() override
     {
-        data.resetDataUpdate();
+        auto data = outputs[0];
+        data->resetDataUpdate();
 
         disconnectInputIfNotOfType<unsigned int, int>("index");
 
@@ -119,13 +113,13 @@ struct ListAccessNode final : public PropertyNode
         auto idx_it = inputs_named.find("index");
         if(idx_it != inputs_named.end())
         {
-            if(idx_it->second->data.isOfType<unsigned int>())
+            if(idx_it->second->isOfType<unsigned int>())
             {
-                idx = (int)idx_it->second->data.getValue<unsigned int>();
+                idx = (int)idx_it->second->getValue<unsigned int>();
             }
-            else if(idx_it->second->data.isOfType<int>())
+            else if(idx_it->second->isOfType<int>())
             {
-                idx = idx_it->second->data.getValue<int>();
+                idx = idx_it->second->getValue<int>();
             }
             if(idx < 0) idx = 0;
         }
@@ -139,134 +133,134 @@ struct ListAccessNode final : public PropertyNode
 
         if(list_it != inputs_named.end())
         {
-            if(list_it->second->data.isOfType<std::vector<float>>())
+            if(list_it->second->isOfType<std::vector<float>>())
             {
-                auto& list = list_it->second->data.getValue<std::vector<float>>();
+                auto& list = list_it->second->getValue<std::vector<float>>();
                 if(idx >= list.size())
                 {
                     idx = (int)list.size() - 1;
                 }
 
-                data.setValue(list[idx]);
+                data->setValue(list[idx]);
                 dtype = DisplayType::FLOAT;
 
                 if(val_connected && !disconnectInputIfNotOfType<float>("value"))
                 {
-                    auto& valueData = value->second->data;
-                    auto valueValue = valueData.getValue<float>();
+                    auto& valueData = value->second;
+                    auto valueValue = valueData->getValue<float>();
 
-                    if(valueData.dataChanged() || (valueValue != list[idx]))
+                    if(valueData->dataChanged() || (valueValue != list[idx]))
                     {
                         list[idx] = valueValue;
                     }
                 }
             }
-            else if(list_it->second->data.isOfType<std::vector<int>>())
+            else if(list_it->second->isOfType<std::vector<int>>())
             {
-                auto& list = list_it->second->data.getValue<std::vector<int>>();
+                auto& list = list_it->second->getValue<std::vector<int>>();
                 if(idx >= list.size())
                 {
                     idx = (int)list.size() - 1;
                 }
 
-                data.setValue(list[idx]);
+                data->setValue(list[idx]);
                 dtype = DisplayType::INT;
 
                 if(val_connected && !disconnectInputIfNotOfType<int>("value"))
                 {
-                    auto& valueData = value->second->data;
-                    auto valueValue = valueData.getValue<int>();
+                    auto& valueData = value->second;
+                    auto valueValue = valueData->getValue<int>();
 
-                    if(valueData.dataChanged() || (valueValue != list[idx]))
+                    if(valueData->dataChanged() || (valueValue != list[idx]))
                     {
                         list[idx] = valueValue;
                     }
                 }
             }
-            else if(list_it->second->data.isOfType<std::vector<unsigned int>>())
+            else if(list_it->second->isOfType<std::vector<unsigned int>>())
             {
-                auto& list = list_it->second->data.getValue<std::vector<unsigned int>>();
+                auto& list = list_it->second->getValue<std::vector<unsigned int>>();
                 if(idx >= list.size())
                 {
                     idx = (int)list.size() - 1;
                 }
 
-                data.setValue(list[idx]);
+                data->setValue(list[idx]);
                 dtype = DisplayType::UNSIGNED_INT;
                 
 
                 if(val_connected && !disconnectInputIfNotOfType<unsigned int>("value"))
                 {
-                    auto& valueData = value->second->data;
-                    auto valueValue = valueData.getValue<unsigned int>();
+                    auto& valueData = value->second;
+                    auto valueValue = valueData->getValue<unsigned int>();
 
-                    if(valueData.dataChanged() || (valueValue != list[idx]))
+                    if(valueData->dataChanged() || (valueValue != list[idx]))
                     {
                         list[idx] = valueValue;
                     }
                 }
             }
-            else if(list_it->second->data.isOfType<std::vector<Vector2>>())
+            else if(list_it->second->isOfType<std::vector<Vector2>>())
             {
-                auto& list = list_it->second->data.getValue<std::vector<Vector2>>();
+                auto& list = list_it->second->getValue<std::vector<Vector2>>();
                 if(idx >= list.size())
                 {
                     idx = (int)list.size() - 1;
                 }
 
-                data.setValue(list[idx]);
+                data->setValue(list[idx]);
                 dtype = DisplayType::VECTOR2;
 
                 if(val_connected && !disconnectInputIfNotOfType<Vector2>("value"))
                 {
-                    auto& valueData = value->second->data;
-                    auto valueValue = valueData.getValue<Vector2>();
+                    auto& valueData = value->second;
+                    auto valueValue = valueData->getValue<Vector2>();
 
-                    if(valueData.dataChanged() || (valueValue != list[idx]))
+                    if(valueData->dataChanged() || (valueValue != list[idx]))
                     {
                         list[idx] = valueValue;
                     }
                 }
             }
-            else if(list_it->second->data.isOfType<std::vector<Vector3>>())
+            else if(list_it->second->isOfType<std::vector<Vector3>>())
             {
-                auto& list = list_it->second->data.getValue<std::vector<Vector3>>();
+                auto& list = list_it->second->getValue<std::vector<Vector3>>();
                 if(idx >= list.size())
                 {
                     idx = (int)list.size() - 1;
                 }
 
-                data.setValue(list[idx]);
+                data->setValue(list[idx]);
                 dtype = DisplayType::VECTOR3;
 
                 if(val_connected && !disconnectInputIfNotOfType<Vector3>("value"))
                 {
-                    auto& valueData = value->second->data;
-                    auto valueValue = valueData.getValue<Vector3>();
+                    auto& valueData = value->second;
+                    auto valueValue = valueData->getValue<Vector3>();
 
-                    if(valueData.dataChanged() || (valueValue != list[idx]))
+                    if(valueData->dataChanged() || (valueValue != list[idx]))
                     {
                         list[idx] = valueValue;
                     }
                 }
             }
-            else if(list_it->second->data.isOfType<std::vector<Vector4>>())
+            else if(list_it->second->isOfType<std::vector<Vector4>>())
             {
-                auto& list = list_it->second->data.getValue<std::vector<Vector4>>();
+                auto& list = list_it->second->getValue<std::vector<Vector4>>();
                 if(idx >= list.size())
                 {
                     idx = (int)list.size() - 1;
                 }
 
-                data.setValue(list[idx]);
+                data->setValue(list[idx]);
                 dtype = DisplayType::VECTOR4;
                 
                 if(val_connected && !disconnectInputIfNotOfType<Vector4>("value"))
                 {
-                    auto& valueData = value->second->data;
-                    auto valueValue = valueData.getValue<Vector4>();
+                    auto& valueData = value->second;
+                    auto valueValue = valueData->getValue<Vector4>();
 
-                    if(valueData.dataChanged() || (valueValue != list[idx]))
+                    if(valueData->dataChanged() || (valueValue != list[idx]))
                     {
                         list[idx] = valueValue;
                     }
