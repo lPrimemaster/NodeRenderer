@@ -370,12 +370,47 @@ struct PropertyNode
 
     inline void setOutputsOrdered(std::vector<std::string> out)
     {
-        for(auto o : outputs) delete o; outputs.clear();
-        outputs.reserve(out.size());
-        for(int i = 0; i < out.size(); i++)
+        int diff = (int)(out.size() - outputs.size());
+        if(diff > 0)
         {
-            outputs.push_back(new PropertyGenericData(EmptyType(), this));
-            outputs_named.emplace(out[i], outputs[i]);
+            // Grow
+            int old_size = (int)outputs.size();
+            int new_size = old_size + diff;
+            outputs.resize(new_size);
+            for(int i = old_size; i < new_size; i++)
+            {
+                outputs[i] = new PropertyGenericData(EmptyType(), this);
+            }
+            outputs_named.clear();
+            for(int i = 0; i < out.size(); i++)
+            {
+                outputs_named.emplace(out[i], outputs[i]);
+            }
+        }
+        else if(diff < 0)
+        {
+            // Shrink
+            int old_size = (int)outputs.size();
+            int new_size = old_size + diff;
+            for(int i = old_size - 1; i > old_size + diff - 1; i--)
+            {
+                delete outputs[i];
+            }
+            outputs.resize(new_size);
+            outputs_named.clear();
+            for(int i = 0; i < (int)out.size(); i++)
+            {
+                outputs_named.emplace(out[i], outputs[i]);
+            }
+        }
+        else
+        {
+            // Only rename
+            outputs_named.clear();
+            for(int i = 0; i < (int)out.size(); i++)
+            {
+                outputs_named.emplace(out[i], outputs[i]);
+            }
         }
         _output_count = (int)out.size();
         _output_labels = out;

@@ -14,9 +14,9 @@ def hl_envelopes_idx(s, dmin=1, dmax=1, split=False):
     """
 
     # locals min      
-    lmin = (np.diff(np.sign(np.diff(s))) > 0).nonzero()[0] + 1 
+    lmin = (np.diff(np.sign(np.diff(s))) > 0).nonzero()[0] + 1
     # locals max
-    lmax = (np.diff(np.sign(np.diff(s))) < 0).nonzero()[0] + 1 
+    lmax = (np.diff(np.sign(np.diff(s))) < 0).nonzero()[0] + 1
     
 
     if split:
