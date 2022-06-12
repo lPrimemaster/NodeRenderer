@@ -737,7 +737,7 @@ void Renderer::DrawList::updateFramebufferTextures()
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, (GLsizei)screen_size[0], (GLsizei)screen_size[1], 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
 }
 
-void Renderer::DrawList::render(GLFWwindow* window, NodeWindow* nodeWindow, AnalyticsWindow* analyticsWindow)
+void Renderer::DrawList::render(GLFWwindow* window, NodeWindow* nodeWindow, AnalyticsWindow* analyticsWindow, OptionsWindow* optionsWindow)
 {
     if(viewport_changed)
     {
@@ -764,6 +764,19 @@ void Renderer::DrawList::render(GLFWwindow* window, NodeWindow* nodeWindow, Anal
         {
             analyticsWindow->setWindowPos(ImVec2(0, screen_size[1] - analyticsWindow->getWindowSize().y));
             analyticsWindow->setCollapsedPosY(screen_size[1] - 19.0f);
+        }
+
+        optionsWindow->setWindowSize(ImVec2(OptionsWindow::WIDTH, screen_size[1] / 3.0f));
+
+        if(optionsWindow->isCollapsed())
+        {
+            optionsWindow->setWindowPos(ImVec2(AnalyticsWindow::WIDTH, screen_size[1] - 19.0f));
+            optionsWindow->setCollapsedPosY(screen_size[1] - 19.0f);
+        }
+        else
+        {
+            optionsWindow->setWindowPos(ImVec2(AnalyticsWindow::WIDTH, screen_size[1] - optionsWindow->getWindowSize().y));
+            optionsWindow->setCollapsedPosY(screen_size[1] - 19.0f);
         }
     }
 

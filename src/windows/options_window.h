@@ -11,17 +11,17 @@ namespace Renderer
 
 class NodeWindow;
 
-class AnalyticsWindow : public Window
+class OptionsWindow : public Window
 {
 public:
-    AnalyticsWindow(const char* name, NodeWindow* nodeWindow) : Window(name, false), nodeWindow(nodeWindow)
+    OptionsWindow(const char* name, NodeWindow* nodeWindow) : Window(name, false), nodeWindow(nodeWindow)
     {
-        open = true; 
-        setWindowCollapsed(false);
+        open = true;
+        setWindowCollapsed(true);
         window_flags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBackground;
     }
 
-    ~AnalyticsWindow() {  }
+    ~OptionsWindow() {  }
 
     inline void setCollapsedPosY(float y)
     {

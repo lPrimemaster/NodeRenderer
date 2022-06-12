@@ -3,6 +3,7 @@
 #include "window.inl"
 #include "node_window.h"
 #include "analytics_window.h"
+#include "options_window.h"
 
 class WindowManager
 {
@@ -30,12 +31,18 @@ public:
         return dynamic_cast<AnalyticsWindow*>(Instance().windows[1]);
     }
 
+    static OptionsWindow* GetOptionsWindow()
+    {
+        return dynamic_cast<OptionsWindow*>(Instance().windows[2]);
+    }
+
 private:
     WindowManager()
     {
         NodeWindow* nodeEditor = new NodeWindow("Node Editor");
         windows.push_back(nodeEditor);
         windows.push_back(new AnalyticsWindow("Analytics", nodeEditor));
+        windows.push_back(new OptionsWindow("Options", nodeEditor));
     }
 
     ~WindowManager()

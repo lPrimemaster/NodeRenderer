@@ -6,6 +6,7 @@
 #include "../../glm/glm/glm.hpp"
 #include "../windows/node_window.h"
 #include "../windows/analytics_window.h"
+#include "../windows/options_window.h"
 #include "../math/vector.h"
 
 namespace Renderer
@@ -135,7 +136,7 @@ namespace Renderer
         DrawList(GLFWwindow* window, const int sw, const int sh);
         ~DrawList();
 
-        void render(GLFWwindow* window, NodeWindow* nodeWindow, AnalyticsWindow* analyticsWindow);
+        void render(GLFWwindow* window, NodeWindow* nodeWindow, AnalyticsWindow* analyticsWindow, OptionsWindow* optionsWindow);
 
         void updateFramebufferTextures();
         void updateFogParticlesMotifSize();
