@@ -6,35 +6,49 @@
 struct FunctionNode final : public PropertyNode
 {
     // TODO: Refactor for any number of variables, and output types, like list node
-    inline FunctionNode() : PropertyNode(1, { "x" }, 1, { "f1" })
+    inline FunctionNode() : PropertyNode(1, { "x" }, 1, { "value" })
     {
         static int inc = 0;
         name = "Function Node #" + std::to_string(inc++);
 
-        px.DefineVar("x", &var_x);
-        px.DefineVar("y", &var_y);
-        px.DefineVar("z", &var_z);
+        _vars_name = std::vector<std::string>(1, "x");
+        for(auto s : _vars_name)
+        {
+            L_TRACE("Found var = %s", s.c_str());
+        }
 
-        py.DefineVar("x", &var_x);
-        py.DefineVar("y", &var_y);
-        py.DefineVar("z", &var_z);
+        _vars.reserve(1);
+        for(auto s : _vars_name)
+        {
+            _vars.push_back(0.0);
+            double* v = &*(_vars.end() - 1);
+            px.DefineVar(s, v);
+            py.DefineVar(s, v);
+            pz.DefineVar(s, v);
+            pw.DefineVar(s, v);
+        }
+        _vars_last = _vars;
 
-        pz.DefineVar("x", &var_x);
-        pz.DefineVar("y", &var_y);
-        pz.DefineVar("z", &var_z);
+        outputs[0]->setValue(0.0f);
 
         px.SetExpr("x");
         py.SetExpr("x");
         pz.SetExpr("x");
+        pw.SetExpr("x");
 
-        _expr_str0[0] = 'x';
-        _expr_str0[1] = '\0';
+        strcpy(_vars_str, "x;");
 
-        _expr_str1[0] = 'x';
-        _expr_str1[1] = '\0';
+        _expr_str_0[0] = 'x';
+        _expr_str_0[1] = '\0';
 
-        _expr_str2[0] = 'x';
-        _expr_str2[1] = '\0';
+        _expr_str_1[0] = 'x';
+        _expr_str_1[1] = '\0';
+
+        _expr_str_2[0] = 'x';
+        _expr_str_2[1] = '\0';
+
+        _expr_str_3[0] = 'x';
+        _expr_str_3[1] = '\0';
     }
 
     
@@ -44,81 +58,144 @@ struct FunctionNode final : public PropertyNode
     {
         resetOutputsDataUpdate();
         
-        auto x = inputs_named.find("x");
-        auto y = inputs_named.find("y");
-        auto z = inputs_named.find("z");
+        if(vars_changed)
+        {
+            px.ClearVar();
+            py.ClearVar();
+            pz.ClearVar();
+            pw.ClearVar();
+            _vars.clear();
 
-        if(x != inputs_named.end())
-        {
-            var_x = (double)x->second->getValue<float>();
-        }
-        else
-        {
-            var_x = 0.0;
+            std::vector<std::string> strings;
+            std::istringstream f(_vars_str);
+            std::string s;
+            while (std::getline(f, s, ';'))
+            {
+                strings.push_back(s);
+            }
+
+            // For now disconnect the inputs if there are any
+            // Forcing the user to reconnect to the node again
+            for(auto v : _vars_name)
+            {
+                disconnectInputIfNotOfType<PropertyNode::EmptyType>(v);
+            }
+
+            // TODO: Create a new input set were the currently connected ones are mutated to allow for on the fly name change
+            setInputsOrdered(strings);
+
+            // Ignore fix variable "count"
+            _vars_name = std::vector<std::string>(strings.begin(), strings.end());
+            for(auto s : _vars_name)
+            {
+                L_TRACE("Found var = %s", s.c_str());
+            }
+
+            _vars.reserve(strings.size());
+            for(auto s : _vars_name)
+            {
+                _vars.push_back(0.0);
+                double* v = &*(_vars.end() - 1);
+                px.DefineVar(s, v);
+                py.DefineVar(s, v);
+                pz.DefineVar(s, v);
+                pw.DefineVar(s, v);
+            }
+            _vars_last = _vars;
         }
 
-        if(y != inputs_named.end())
+        for(auto s : _vars_name)
         {
-            var_y = (double)y->second->getValue<float>();
-        }
-        else
-        {
-            var_y = 0.0;
+            disconnectInputIfNotOfType<float>(s);
         }
 
-        if(z != inputs_named.end())
+        bool variables_changed = false;
+        for(int i = 0; i < _vars.size(); i++)
         {
-            var_z = (double)z->second->getValue<float>();
-        }
-        else
-        {
-            var_z = 0.0;
+            auto _var_it = inputs_named.find(_vars_name[i]);
+            if(_var_it != inputs_named.end())
+            {
+                _vars[i] = _var_it->second->getValue<float>();
+            }
+            else
+            {
+                _vars[i] = 0.0;
+            }
+
+            if(_vars[i] != _vars_last[i])
+            {
+                _vars_last[i] = _vars[i];
+                variables_changed = true;
+            }
         }
 
-        switch (outcurrentmodeid)
-        {
-        case 2:
+        bool funcChanged = false;
+        if(_expr_changed0)
         {
             try
             {
-                f3 = (float)pz.Eval();
+                px.SetExpr(std::string(_expr_str_0));
+                funcChanged = true;
+            }
+            catch(mu::Parser::exception_type &e)
+            {
+                L_ERROR("Function fx set failed: %s", e.GetMsg().c_str());
+            }
+        }
+        if(_expr_changed1)
+        {
+            try
+            {
+                py.SetExpr(std::string(_expr_str_1));
+                funcChanged = true;
+            }
+            catch(mu::Parser::exception_type &e)
+            {
+                L_ERROR("Function fy set failed: %s", e.GetMsg().c_str());
+            }
+        }
+        if(_expr_changed2)
+        {
+            try
+            {
+                pz.SetExpr(std::string(_expr_str_2));
+                funcChanged = true;
+            }
+            catch(mu::Parser::exception_type &e)
+            {
+                L_ERROR("Function fz set failed: %s", e.GetMsg().c_str());
+            }
+        }
+        if(_expr_changed3)
+        {
+            try
+            {
+                pw.SetExpr(std::string(_expr_str_3));
+                funcChanged = true;
+            }
+            catch(mu::Parser::exception_type &e)
+            {
+                L_ERROR("Function fw set failed: %s", e.GetMsg().c_str());
+            }
+        }
+
+        if(funcChanged || variables_changed || out_type_changed)
+        {
+            try
+            {
+                switch (currentmodeid)
+                {
+                case 0: outputs[0]->setValue((float)px.Eval()); break;
+                case 1: outputs[0]->setValue(Vector2((float)px.Eval(), (float)py.Eval())); break;
+                case 2: outputs[0]->setValue(Vector3((float)px.Eval(), (float)py.Eval(), (float)pz.Eval())); break;
+                case 3: outputs[0]->setValue(Vector4((float)px.Eval(), (float)py.Eval(), (float)pz.Eval(), (float)pw.Eval())); break;
+                default: break;
+                }
             }
             catch(mu::Parser::exception_type &e)
             {
                 L_ERROR("Function evaluation failed: %s", e.GetMsg().c_str());
             }
-            setNamedOutput("f3", f3);
-        }
-        [[fallthrought]]
-        case 1:
-        {
-            try
-            {
-                f2 = (float)py.Eval();
-            }
-            catch(mu::Parser::exception_type &e)
-            {
-                L_ERROR("Function evaluation failed: %s", e.GetMsg().c_str());
-            }
-            setNamedOutput("f2", f2);
-        }
-        [[fallthrought]]
-        case 0:
-        {
-            try
-            {
-                f1 = (float)px.Eval();
-            }
-            catch(mu::Parser::exception_type &e)
-            {
-                L_ERROR("Function evaluation failed: %s", e.GetMsg().c_str());
-            }
-            setNamedOutput("f1", f1);
-        }
-        break;
-
-        default:
-            break;
         }
     }
 
@@ -126,147 +203,57 @@ struct FunctionNode final : public PropertyNode
     {
         resetOutputsDataUpdate();
 
-        disconnectInputIfNotOfType<float>("x");
-        disconnectInputIfNotOfType<float>("y");
-        disconnectInputIfNotOfType<float>("z");
-
-        static const char* const in_mode_names[] = {
-            "(x)",
-            "(x,y)",
-            "(x,y,z)"
-        };
-
         static const char* const out_mode_names[] = {
-            "(f)",
-            "(f1,f2)",
-            "(f1,f2,f3)"
+            "scalar",
+            "vector2",
+            "vector3",
+            "vector4"
         };
 
-        ImGui::Combo("In Dims", &incurrentmodeid, in_mode_names, sizeof(in_mode_names) / sizeof(in_mode_names[0]));
-        ImGui::Combo("Out Dims", &outcurrentmodeid, out_mode_names, sizeof(out_mode_names) / sizeof(out_mode_names[0]));
+        ImGui::Combo("Out Type", &currentmodeid, out_mode_names, sizeof(out_mode_names) / sizeof(out_mode_names[0]));
         
-        if(ImGui::InputText((std::string("f1") + in_mode_names[incurrentmodeid]).c_str(), _expr_str0, 512))
+        if(currentmodeid != lastmodeid)
         {
-            px.SetExpr(std::string(_expr_str0));
+            lastmodeid = currentmodeid;
+            out_type_changed = true;
         }
+        else
+        {
+            out_type_changed = false;
+        }
+        
+        ImGui::Text("Semi-colon separated. [ex.: \"a;b;\"]");
+        vars_changed = ImGui::InputText("Variables", _vars_str, 128);
 
-        if(outcurrentmodeid > 0)
-        {
-            if(ImGui::InputText((std::string("f2") + in_mode_names[incurrentmodeid]).c_str(), _expr_str1, 512))
-            {
-                py.SetExpr(std::string(_expr_str1));
-            }
-        }
-        if(outcurrentmodeid > 1)
-        {
-            if(ImGui::InputText((std::string("f3") + in_mode_names[incurrentmodeid]).c_str(), _expr_str2, 512))
-            {
-                pz.SetExpr(std::string(_expr_str2));
-            }
-        }
-
-        ImGui::BeginDisabled();
-        ImGui::InputFloat("f1", &f1);
-        if(outcurrentmodeid > 0) ImGui::InputFloat("f2", &f2);
-        if(outcurrentmodeid > 1) ImGui::InputFloat("f3", &f3);
-        ImGui::EndDisabled();
-
-        if(incurrentmodeid != inlastmodeid)
-        {
-            // Function type changed
-            switch (incurrentmodeid)
-            {
-            case 0:
-                setInputsOrdered(
-                    {
-                        "x"
-                    }
-                );
-                break;
-            case 1:
-                setInputsOrdered(
-                    {
-                        "x",
-                        "y"
-                    }
-                );
-                break;
-            case 2:
-                setInputsOrdered(
-                    {
-                        "x",
-                        "y",
-                        "z"
-                    }
-                );
-                break;
-            default:
-                break;
-            }
-            inlastmodeid = incurrentmodeid;
-        }
-
-        if(outcurrentmodeid != outlastmodeid)
-        {
-            // Function type changed
-            switch (outcurrentmodeid)
-            {
-            case 0:
-                setOutputsOrdered(
-                    {
-                        "f1"
-                    }
-                );
-                setNamedOutput("f1", f1);
-                break;
-            case 1:
-                setOutputsOrdered(
-                    {
-                        "f1",
-                        "f2"
-                    }
-                );
-                setNamedOutput("f1", f1);
-                setNamedOutput("f2", f2);
-                break;
-            case 2:
-                setOutputsOrdered(
-                    {
-                        "f1",
-                        "f2",
-                        "f3"
-                    }
-                );
-                setNamedOutput("f1", f1);
-                setNamedOutput("f2", f2);
-                setNamedOutput("f3", f3);
-                break;
-            default:
-                break;
-            }
-            outlastmodeid = outcurrentmodeid;
-        }
+        _expr_changed0 = ImGui::InputText("fx", _expr_str_0, 512);
+        if(currentmodeid > 0) _expr_changed1 = ImGui::InputText("fy", _expr_str_1, 512);
+        if(currentmodeid > 1) _expr_changed2 = ImGui::InputText("fz", _expr_str_2, 512);
+        if(currentmodeid > 2) _expr_changed3 = ImGui::InputText("fw", _expr_str_3, 512);
     }
 
 private:
+    int currentmodeid = 0;
+    int lastmodeid = 0;
+
+    bool vars_changed;
+    bool _expr_changed0;
+    bool _expr_changed1;
+    bool _expr_changed2;
+    bool _expr_changed3;
+    bool out_type_changed;
+
     mu::Parser px;
     mu::Parser py;
     mu::Parser pz;
     mu::Parser pw;
 
-    int incurrentmodeid = 0;
-    int outcurrentmodeid = 0;
-    int inlastmodeid = 0;
-    int outlastmodeid = 0;
-    char _expr_str0[512];
-    char _expr_str1[512];
-    char _expr_str2[512];
+    char _expr_str_0[512];
+    char _expr_str_1[512];
+    char _expr_str_2[512];
+    char _expr_str_3[512];
+    char _vars_str[128];
 
-    double var_x = 0.0;
-    double var_y = 0.0;
-    double var_z = 0.0;
-
-    float f1 = 0.0f;
-    float f2 = 0.0f;
-    float f3 = 0.0f;
+    std::vector<double> _vars;
+    std::vector<double> _vars_last;
+    std::vector<std::string> _vars_name;
 };
