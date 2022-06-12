@@ -65,12 +65,14 @@ struct CameraNode final : public PropertyNode
     {
         disconnectInputIfNotOfType<Vector3>("position");
         auto pos_in = inputs_named.find("position");
+        bool posChanged = false;
         if(pos_in != inputs_named.end())
         {
             if(pos_in->second->dataChanged())
             {
                 Vector3 position = pos_in->second->getValue<Vector3>();
                 cameraPosition = position;
+                posChanged = true;
             }
         }
 
@@ -82,7 +84,7 @@ struct CameraNode final : public PropertyNode
             auto look_in = inputs_named.find("lookAt");
             if(look_in != inputs_named.end())
             {
-                if(look_in->second->dataChanged())
+                if(look_in->second->dataChanged() || posChanged)
                 {
                     Vector3 lookVec = look_in->second->getValue<Vector3>();
                     cameraForward = Vector3::Normalize(lookVec - cameraPosition);

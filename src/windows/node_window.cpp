@@ -347,9 +347,9 @@ void NodeWindow::render()
                 {
                     newNode = new AudioNode();
                 }
-                if (ImGui::MenuItem("Test Node"))
+                if (ImGui::MenuItem("Display Node"))
                 {
-                    newNode = new TestNode();
+                    newNode = new DisplayNode();
                 }
 
                 if(newNode)

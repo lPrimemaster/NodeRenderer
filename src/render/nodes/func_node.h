@@ -5,6 +5,7 @@
 
 struct FunctionNode final : public PropertyNode
 {
+    // TODO: Refactor for any number of variables, and output types, like list node
     inline FunctionNode() : PropertyNode(1, { "x" }, 1, { "f1" })
     {
         static int inc = 0;

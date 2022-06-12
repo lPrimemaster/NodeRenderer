@@ -9,6 +9,7 @@
 #include <vector>
 #include "../../../imgui/imgui.h"
 #include "../../log/logger.h"
+#include "../../math/vector.h"
 
 struct NodeRenderData
 {
@@ -32,6 +33,24 @@ struct PropertyNode;
 
 struct PropertyGenericData
 {
+
+    enum class ValidType
+    {
+        FLOAT,
+        INT,
+        UINT,
+        VECTOR2,
+        VECTOR3,
+        VECTOR4,
+
+        LIST_FLOAT,
+        LIST_INT,
+        LIST_UINT,
+        LIST_VECTOR2,
+        LIST_VECTOR3,
+        LIST_VECTOR4
+    };
+
     template<typename T>
     PropertyGenericData(T value, PropertyNode* data_holder) : type(typeid(T)), _data_holder_instance(data_holder)
     {
@@ -145,6 +164,7 @@ struct PropertyGenericData
             is_fixed_array = false;
             data = new T(value);
             type = std::type_index(typeid(T));
+            checkAssignTypeEnum();
             _data_changed = true;
         }
     }
@@ -185,6 +205,41 @@ struct PropertyGenericData
         }
     }
 
+    struct TypeDataBuffer
+    {
+        ValidType vtype;
+        void* data;
+    };
+
+    inline TypeDataBuffer getValueDynamic()
+    {
+        TypeDataBuffer tdb;
+        tdb.vtype = vtype;
+        tdb.data = data;
+        return tdb;
+    }
+
+    inline void setValueDynamic(const TypeDataBuffer& b)
+    {
+        switch (b.vtype)
+        {
+        case ValidType::FLOAT:   setValue<float>(*(float*)b.data); break;
+        case ValidType::INT:     setValue<int>(*(int*)b.data); break;
+        case ValidType::UINT:    setValue<unsigned int>(*(unsigned int*)b.data); break;
+        case ValidType::VECTOR2: setValue<Vector2>(*(Vector2*)b.data); break;
+        case ValidType::VECTOR3: setValue<Vector3>(*(Vector3*)b.data); break;
+        case ValidType::VECTOR4: setValue<Vector4>(*(Vector4*)b.data); break;
+
+        case ValidType::LIST_FLOAT:   setValue<std::vector<float>>(*(std::vector<float>*)b.data); break;
+        case ValidType::LIST_INT:     setValue<std::vector<int>>(*(std::vector<int>*)b.data); break;
+        case ValidType::LIST_UINT:    setValue<std::vector<unsigned int>>(*(std::vector<unsigned int>*)b.data); break;
+        case ValidType::LIST_VECTOR2: setValue<std::vector<Vector2>>(*(std::vector<Vector2>*)b.data); break;
+        case ValidType::LIST_VECTOR3: setValue<std::vector<Vector3>>(*(std::vector<Vector3>*)b.data); break;
+        case ValidType::LIST_VECTOR4: setValue<std::vector<Vector4>>(*(std::vector<Vector4>*)b.data); break;
+        default: L_ERROR("setValueDynamic(): Received a non valid type."); break;
+        }
+    }
+
     inline bool dataChanged() const
     {
         return _data_changed;
@@ -200,12 +255,30 @@ struct PropertyGenericData
         _data_changed = true;
     }
 
+    ValidType vtype;
     std::type_index type;
     void* data = nullptr;
     size_t size = 0ULL;
     bool is_fixed_array = false;
     bool _data_changed = false;
     PropertyNode* _data_holder_instance = nullptr;
+
+private:
+    inline void checkAssignTypeEnum()
+    {
+             if(isOfType<float>())        vtype = ValidType::FLOAT;
+        else if(isOfType<int>())          vtype = ValidType::INT;
+        else if(isOfType<unsigned int>()) vtype = ValidType::UINT;
+        else if(isOfType<Vector2>())      vtype = ValidType::VECTOR2;
+        else if(isOfType<Vector3>())      vtype = ValidType::VECTOR3;
+        else if(isOfType<Vector4>())      vtype = ValidType::VECTOR4;
+        else if(isOfType<std::vector<float>>())        vtype = ValidType::LIST_FLOAT;
+        else if(isOfType<std::vector<int>>())          vtype = ValidType::LIST_INT;
+        else if(isOfType<std::vector<unsigned int>>()) vtype = ValidType::LIST_UINT;
+        else if(isOfType<std::vector<Vector2>>())      vtype = ValidType::LIST_VECTOR2;
+        else if(isOfType<std::vector<Vector3>>())      vtype = ValidType::LIST_VECTOR3;
+        else if(isOfType<std::vector<Vector4>>())      vtype = ValidType::LIST_VECTOR4;
+    }
 };
 
 // TODO: Node and in/out types color

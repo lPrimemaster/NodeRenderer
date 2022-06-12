@@ -2,6 +2,7 @@
 #include "node.h"
 #include "../../math/vector.h"
 #include "../../math/comb.inl"
+#include "../../math/spline.h"
 #include <numeric>
 
 struct PathNode final : public PropertyNode
@@ -20,7 +21,7 @@ struct PathNode final : public PropertyNode
         ALONG_Y,
         ALONG_Z,
         ALONG_V,
-        FROM_LIST
+        FROM_LIST_CLOSED
     };
 
     inline virtual void render() override
@@ -30,7 +31,7 @@ struct PathNode final : public PropertyNode
             "Along Y",
             "Along Z",
             "Along Vector",
-            "Points from list"
+            "Points from list (closed)"
         };
 
         if(ImGui::Combo("Type", &currenttypeid, type_names, sizeof(type_names) / sizeof(type_names[0])))
@@ -88,7 +89,7 @@ struct PathNode final : public PropertyNode
                     }
                 );
                 break;
-            case Type::FROM_LIST:
+            case Type::FROM_LIST_CLOSED:
                 forward = Vector3(0, 0, 0);
                 static_forward = false;
                 along_forward = false;
@@ -147,7 +148,7 @@ struct PathNode final : public PropertyNode
 
             calculated_pos = start_pos + forward * t;
         }
-        else // Bezier clamped segments t -> [0, 1]
+        else // closed cubic spline
         {
             disconnectInputIfNotOfType<std::vector<Vector3>>("points");
             auto points_in = inputs_named.find("points");
@@ -157,17 +158,45 @@ struct PathNode final : public PropertyNode
                 {
                     auto points = points_in->second->getValue<std::vector<Vector3>>();
                     points_copy = points;
-                    L_TRACE("points:");
-                    for(int i = 0; i < points_copy.size(); i++) L_TRACE("(%.1f, %.1f, %.1f)", points_copy[i].x, points_copy[i].y, points_copy[i].z);
+
+                    // Parametrize the positions
+                    std::vector<double> t;
+                    std::vector<double> x;
+                    std::vector<double> y;
+                    std::vector<double> z;
+                    t.resize(points_copy.size(), 0.0);
+                    x.reserve(points_copy.size());
+                    y.reserve(points_copy.size());
+                    z.reserve(points_copy.size());
+
+                    for(auto v : points_copy)
+                    {
+                        x.push_back(v.x);
+                        y.push_back(v.y);
+                        z.push_back(v.z);
+                    }
+
+                    for(int i = 1; i < t.size(); i++)
+                    {
+                        double xd = x[i] - x[i-1];
+                        double yd = y[i] - y[i-1];
+                        double zd = z[i] - z[i-1];
+                        t[i] = t[i-1] + sqrt(xd * xd + yd * yd + zd * zd);
+                    }
+
+                    int_splineX = tk::spline(t, x);
+                    int_splineY = tk::spline(t, y);
+                    int_splineZ = tk::spline(t, z);
+
                     curve_inited = true;
                 }
 
-                // What segment are we in ?
-                const int segments = points_copy.size();
-                int seg = (int)(segments * t); // TODO : Assert t is between 0 and 1
-                
-
-                calculated_pos = bezierAt(t);
+                if(curve_inited)
+                {
+                    calculated_pos.x = (float)int_splineX((double)t);
+                    calculated_pos.y = (float)int_splineY((double)t);
+                    calculated_pos.z = (float)int_splineZ((double)t);
+                }
             }
         }
         data->setValue(calculated_pos);
@@ -186,11 +215,14 @@ private:
     bool curve_inited = false;
 
     std::vector<Vector3> points_copy;
+    tk::spline int_splineX;
+    tk::spline int_splineY;
+    tk::spline int_splineZ;
 
     inline Vector3 bezierAt(float t)
     {
         Vector3 position;
-        const int n = points_copy.size();
+        const int n = (int)points_copy.size();
         for(int i = 0; i < n; i++)
         {
             position += bernsteinBasis(n, i, t) * points_copy[i];
