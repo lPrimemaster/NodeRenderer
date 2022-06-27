@@ -10,11 +10,38 @@
 #include "../../../imgui/imgui.h"
 #include "../../log/logger.h"
 #include "../../math/vector.h"
+#include "../../util/serialization.inl"
 
-struct NodeRenderData
+struct NodeRenderData : public Serializable
 {
     ImVec2 pos;
     ImVec2 size;
+
+    virtual ByteBuffer serialize() const override 
+    {
+        ByteBuffer out;
+
+        out.add(pos.x);
+        out.add(pos.y);
+
+        out.add(size.x);
+        out.add(size.y);
+
+        return out;
+    }
+
+    virtual void deserialize(ByteBuffer& buffer) override 
+    {
+        float x, y, w, h;
+        buffer.get(&x);
+        buffer.get(&y);
+        buffer.get(&w);
+        buffer.get(&h);
+
+        pos = ImVec2(x, y);
+        size = ImVec2(w, h);
+    }
+
 };
 
 struct IOIdxData
@@ -54,6 +81,7 @@ struct PropertyGenericData
     template<typename T>
     PropertyGenericData(T value, PropertyNode* data_holder) : type(typeid(T)), _data_holder_instance(data_holder)
     {
+        size = sizeof(T);
         data = new T(value);
         _data_changed = true;
     }
@@ -61,7 +89,7 @@ struct PropertyGenericData
     template<typename T, size_t N>
     PropertyGenericData(const T (&arr)[N], PropertyNode* data_holder) : type(typeid(T*)), _data_holder_instance(data_holder)
     {
-        size = N;
+        size = N * sizeof(T);
         data = new T[N];
         memcpy(data, arr, N * sizeof(T));
         is_fixed_array = true;
@@ -152,18 +180,22 @@ struct PropertyGenericData
         else
         {
             L_DEBUG("PropertyGenericData changed base datatype.");
-            if(!is_fixed_array)
+            if(data != nullptr)
             {
-                delete data;
-            }
-            else
-            {
-                delete[] data;
+                if(!is_fixed_array)
+                {
+                    delete data;
+                }
+                else
+                {
+                    delete[] data;
+                }
             }
 
             is_fixed_array = false;
             data = new T(value);
             type = std::type_index(typeid(T));
+            size = sizeof(T);
             checkAssignTypeEnum();
             _data_changed = true;
         }
@@ -176,7 +208,7 @@ struct PropertyGenericData
         {
             if(is_fixed_array)
             {
-                size = N;
+                size = N * sizeof(T);
                 memcpy(data, arr, N * sizeof(T));
                 _data_changed = true;
             }
@@ -188,15 +220,19 @@ struct PropertyGenericData
         else
         {
             L_DEBUG("PropertyGenericData changed base datatype.");
-            if(!is_fixed_array)
+            if(data != nullptr)
             {
-                delete data;
+                if(!is_fixed_array)
+                {
+                    delete data;
+                }
+                else
+                {
+                    delete[] data;
+                }
             }
-            else
-            {
-                delete[] data;
-            }
-            size = N;
+
+            size = N * sizeof(T);
             data = new T[N];
             memcpy(data, arr, N * sizeof(T));
             is_fixed_array = true;
@@ -284,15 +320,43 @@ private:
 // TODO: Node and in/out types color
 struct PropertyNode
 {
+    enum class Priority
+    {
+        NORMAL = 0,
+        FEEDBACK = 1
+    };
+
+    enum class Type
+    {
+        VALUE,
+        COLOR,
+        MATH,
+        FUNCTION,
+        TIME,
+        WORLDPOS,
+        RENDER,
+        LIST,
+        LISTACCESS,
+        LISTJOIN,
+        MESH,
+        PATH,
+        CAMERA,
+        AUDIO,
+        DISPLAY,
+        FEEDBACK,
+        TEST
+    };
+
     struct EmptyType {  };
 
     PropertyNode
     (
-        int inputs_count = 0, 
-        std::vector<std::string> inputs_name = std::vector<std::string>(), 
-        int outputs_count = 1, 
+        Type type,
+        int inputs_count = 0,
+        std::vector<std::string> inputs_name = std::vector<std::string>(),
+        int outputs_count = 1,
         std::vector<std::string> outputs_name = std::vector<std::string>()
-    )
+    ) : type(type)
     {
         if(inputs_count > 0)
         {
@@ -334,6 +398,10 @@ struct PropertyNode
     // Identification
     int id;
     std::string name;
+    Type type;
+
+    // Node update priority
+    Priority priority = Priority::NORMAL;
     
     // Inputs
     int _input_count = 0;
@@ -354,6 +422,9 @@ struct PropertyNode
     // This is the "main" output
     std::vector<PropertyGenericData*> outputs;
     std::map<std::string, PropertyGenericData*> outputs_named;
+
+    // Display
+    NodeRenderData _render_data;
 
     template<typename T>
     inline bool setNamedOutput(const std::string& name, T data)
@@ -388,9 +459,6 @@ struct PropertyNode
             outputs[i]->resetDataUpdate();
         }
     }
-
-    // Display
-    NodeRenderData _render_data;
 
     template<typename... Args>
     inline bool disconnectInputIfNotOfType(const std::string& inputName)
@@ -517,5 +585,130 @@ struct PropertyNode
 
     inline virtual void render() = 0;
     inline virtual void update() {  }
+
+    inline virtual ByteBuffer serialize() const
+    {
+        // Serialize all of the parent values for later
+        ByteBuffer out;
+
+        // int id;
+        out.add(id);
+
+        // std::string name;
+        out.add(name);
+
+        // Priority priority = Priority::NORMAL;
+        out.add(priority);
+
+        // int _input_count = 0;
+        out.add(_input_count);
+
+        // std::vector<std::string> _input_labels;
+        out.add(_input_labels);
+
+        // std::vector<std::string> _output_labels;
+        out.add(_output_labels);
+        
+        // float _input_max_pad_px = 0.0f;
+        out.add(_input_max_pad_px);
+
+        // float _output_max_pad_px = 0.0f;
+        out.add(_output_max_pad_px);
+
+        // std::map<IOIdxData, PropertyGenericData*> inputs;
+        // There is enough info to reconstruct this after deserialization off all nodes
+
+        // std::map<std::string, PropertyGenericData*> inputs_named;
+        // There is enough info to reconstruct this after deserialization off all nodes
+
+        // int _output_count = 0;
+        out.add(_output_count);
+
+        // std::vector<IOIdxData> output_dependencies;
+        out.add(output_dependencies);
+
+        // Save the output data values
+        // std::vector<PropertyGenericData*> outputs;
+        for(auto o : outputs)
+        {
+            out.add(o->size);
+            out.add(o->is_fixed_array);
+            out.add(o->vtype);
+
+            out.addRawData((unsigned char*)o->data, o->size);
+        }
+
+        // std::map<std::string, PropertyGenericData*> outputs_named;
+        // There is enough info to reconstruct this on deserialization
+        
+        // NodeRenderData _render_data;
+        out.add(_render_data);
+        
+        return out;
+    }
+
+    inline virtual void deserialize(ByteBuffer& buffer)
+    {
+        // int id;
+        buffer.get(&id);
+
+        // std::string name;
+        buffer.get(&name);
+
+        // Priority priority = Priority::NORMAL;
+        buffer.get(&priority);
+
+        // int _input_count = 0;
+        buffer.get(&_input_count);
+
+        // std::vector<std::string> _input_labels;
+        buffer.get(&_input_labels);
+
+        // std::vector<std::string> _output_labels;
+        buffer.get(&_output_labels);
+        
+        // float _input_max_pad_px = 0.0f;
+        buffer.get(&_input_max_pad_px);
+
+        // float _output_max_pad_px = 0.0f;
+        buffer.get(&_output_max_pad_px);
+
+        // TODO: Remap inputs from IOIdxData (?)
+        // std::map<IOIdxData, PropertyGenericData*> inputs;
+
+        // TODO: Remap inputs from IOIdxData (?)
+        // std::map<std::string, PropertyGenericData*> inputs_named;
+
+        // int _output_count = 0;
+        buffer.get(&_output_count);
+
+        // std::vector<IOIdxData> output_dependencies;
+        buffer.get(&output_dependencies);
+
+        // Save the output data values
+        // std::vector<PropertyGenericData*> outputs;
+        // Outputs should already have been initialized from the derived class' constructor
+        unsigned char cpybuffer[10240];
+        for(auto o : outputs)
+        {
+            buffer.get(&o->size);
+            buffer.get(&o->is_fixed_array);
+            buffer.get(&o->vtype);
+
+            PropertyGenericData::TypeDataBuffer dvalue;
+
+            buffer.getRawData(cpybuffer, o->size);
+            dvalue.data = (void*)cpybuffer;
+            dvalue.vtype = o->vtype;
+
+            o->setValueDynamic(dvalue);
+        }
+
+        // std::map<std::string, PropertyGenericData*> outputs_named;
+        // This is already handled in the derived constructor when it calls setOutputsOrdered()
+        
+        // NodeRenderData _render_data;
+        buffer.get(&_render_data);
+    }
 };
 

@@ -7,7 +7,7 @@
 
 struct ListJoinNode final : public PropertyNode
 {
-    inline ListJoinNode() : PropertyNode(2, { "list A", "list B" }, 2, { "list", "size" })
+    inline ListJoinNode() : PropertyNode(Type::LISTJOIN, 2, { "list A", "list B" }, 2, { "list", "size" })
     {
         static int inc = 0;
         name = "List Join Node #" + std::to_string(inc++);
@@ -22,9 +22,7 @@ struct ListJoinNode final : public PropertyNode
     inline virtual void render() override
     {
         resetOutputsDataUpdate();
-
-        // TODO: Create a template indirection for multiple list types
-        // Making code maintenance easier in the future
+        
         disconnectInputIfNotOfType<
             std::vector<float>, 
             std::vector<int>, 

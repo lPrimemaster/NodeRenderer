@@ -105,6 +105,10 @@ public:
         delete node;
     }
 
+    const std::string serializeWindowState();
+
+    void deserializeWindowState(const std::string& state_string);
+
 private:
     std::vector<PropertyNode*> nodes;
 

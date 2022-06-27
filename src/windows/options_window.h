@@ -21,7 +21,10 @@ public:
         window_flags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBackground;
     }
 
-    ~OptionsWindow() {  }
+    ~OptionsWindow() 
+    { 
+        if(b64buffer) delete[] b64buffer; 
+    }
 
     inline void setCollapsedPosY(float y)
     {
@@ -36,4 +39,7 @@ public:
 private:
     NodeWindow* nodeWindow;
     float collapsed_pos_y = 0.0f;
+
+    std::string data64;
+    char* b64buffer = nullptr;
 };

@@ -32,7 +32,7 @@ struct RenderNodeData
 
 struct RenderNode final : public PropertyNode
 {
-    inline RenderNode() : PropertyNode(5, { "instanceCount", "worldPosition", "worldRotation", "mesh", "colors" }, 1, {})
+    inline RenderNode() : PropertyNode(Type::RENDER, 5, { "instanceCount", "worldPosition", "worldRotation", "mesh", "colors" }, 1, {})
     {
         static int inc = 0;
 
@@ -227,7 +227,7 @@ struct RenderNode final : public PropertyNode
                     int span_z = (int)_renderData._motifInstances[2];
 
 
-                    // TODO: This can be async if it starts to seem slow
+                    // NOTE: This can be async if it starts to seem slow
                     for(int i = 0; i < _renderData._instanceCount; i++)
                     {
                         int o = i * _renderData._motif_span;

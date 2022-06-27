@@ -95,6 +95,7 @@ static void _mouse_btn_callback(GLFWwindow* window, int button, int action, int 
 
 static void _framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
+    // BUG : This does not work when the window is minimized
     glViewport(0, 0, width, height);
 
     screen_size[0] = (float)width;

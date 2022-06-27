@@ -3,7 +3,7 @@
 
 struct TimeNode final : public PropertyNode
 {
-    inline TimeNode() : PropertyNode(0, {}, 1, { "t" })
+    inline TimeNode() : PropertyNode(Type::TIME, 0, {}, 1, { "t" })
     {
         static int inc = 0;
         name = "Time Node #" + std::to_string(inc++);

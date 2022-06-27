@@ -10,7 +10,7 @@
 
 struct TestNode final : public PropertyNode
 {
-    inline TestNode() : PropertyNode(2, { "in 1", "in 2" }, 2, { "out 1", "out 2" })
+    inline TestNode() : PropertyNode(Type::TEST, 2, { "in 1", "in 2" }, 2, { "out 1", "out 2" })
     {
         static int inc = 0;
         name = "Test Node #" + std::to_string(inc++);

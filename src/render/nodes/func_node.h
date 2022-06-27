@@ -5,8 +5,7 @@
 
 struct FunctionNode final : public PropertyNode
 {
-    // TODO: Refactor for any number of variables, and output types, like list node
-    inline FunctionNode() : PropertyNode(1, { "x" }, 1, { "value" })
+    inline FunctionNode() : PropertyNode(Type::FUNCTION, 1, { "x" }, 1, { "value" })
     {
         static int inc = 0;
         name = "Function Node #" + std::to_string(inc++);

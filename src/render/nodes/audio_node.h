@@ -44,7 +44,7 @@ struct AudioNode final : public PropertyNode
         char data[64];
     };
 
-    inline AudioNode() : PropertyNode(0, {}, 2, { "power", "envelope" })
+    inline AudioNode() : PropertyNode(Type::AUDIO, 0, {}, 2, { "power", "envelope" })
     {
         static int inc = 0;
         name = "Audio Node #" + std::to_string(inc++);

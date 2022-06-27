@@ -56,6 +56,9 @@ add_executable(cbg64
     src/python/loader.h
     src/python/loader.cpp
 
+    src/util/base64.h
+    src/util/base64.cpp
+
     src/main.cpp
 )
 

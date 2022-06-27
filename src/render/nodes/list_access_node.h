@@ -6,7 +6,7 @@
 
 struct ListAccessNode final : public PropertyNode
 {
-    inline ListAccessNode() : PropertyNode(2, { "index", "list" }, 1, { "value" })
+    inline ListAccessNode() : PropertyNode(Type::LISTACCESS, 2, { "index", "list" }, 1, { "value" })
     {
         static int inc = 0;
         name = "List Access Node #" + std::to_string(inc++);
@@ -14,7 +14,7 @@ struct ListAccessNode final : public PropertyNode
     
     ~ListAccessNode()
     {
-
+        
     }
 
     enum class DisplayType
@@ -141,7 +141,6 @@ struct ListAccessNode final : public PropertyNode
                     idx = (int)list.size() - 1;
                 }
 
-                data->setValue(list[idx]);
                 dtype = DisplayType::FLOAT;
 
                 if(val_connected && !disconnectInputIfNotOfType<float>("value"))
@@ -154,6 +153,7 @@ struct ListAccessNode final : public PropertyNode
                         list[idx] = valueValue;
                     }
                 }
+                data->setValue(list[idx]);
             }
             else if(list_it->second->isOfType<std::vector<int>>())
             {
@@ -163,7 +163,6 @@ struct ListAccessNode final : public PropertyNode
                     idx = (int)list.size() - 1;
                 }
 
-                data->setValue(list[idx]);
                 dtype = DisplayType::INT;
 
                 if(val_connected && !disconnectInputIfNotOfType<int>("value"))
@@ -176,6 +175,7 @@ struct ListAccessNode final : public PropertyNode
                         list[idx] = valueValue;
                     }
                 }
+                data->setValue(list[idx]);
             }
             else if(list_it->second->isOfType<std::vector<unsigned int>>())
             {
@@ -185,7 +185,6 @@ struct ListAccessNode final : public PropertyNode
                     idx = (int)list.size() - 1;
                 }
 
-                data->setValue(list[idx]);
                 dtype = DisplayType::UNSIGNED_INT;
                 
 
@@ -198,6 +197,7 @@ struct ListAccessNode final : public PropertyNode
                     {
                         list[idx] = valueValue;
                     }
+                data->setValue(list[idx]);
                 }
             }
             else if(list_it->second->isOfType<std::vector<Vector2>>())
@@ -208,7 +208,6 @@ struct ListAccessNode final : public PropertyNode
                     idx = (int)list.size() - 1;
                 }
 
-                data->setValue(list[idx]);
                 dtype = DisplayType::VECTOR2;
 
                 if(val_connected && !disconnectInputIfNotOfType<Vector2>("value"))
@@ -221,6 +220,7 @@ struct ListAccessNode final : public PropertyNode
                         list[idx] = valueValue;
                     }
                 }
+                data->setValue(list[idx]);
             }
             else if(list_it->second->isOfType<std::vector<Vector3>>())
             {
@@ -230,7 +230,6 @@ struct ListAccessNode final : public PropertyNode
                     idx = (int)list.size() - 1;
                 }
 
-                data->setValue(list[idx]);
                 dtype = DisplayType::VECTOR3;
 
                 if(val_connected && !disconnectInputIfNotOfType<Vector3>("value"))
@@ -243,6 +242,7 @@ struct ListAccessNode final : public PropertyNode
                         list[idx] = valueValue;
                     }
                 }
+                data->setValue(list[idx]);
             }
             else if(list_it->second->isOfType<std::vector<Vector4>>())
             {
@@ -252,7 +252,6 @@ struct ListAccessNode final : public PropertyNode
                     idx = (int)list.size() - 1;
                 }
 
-                data->setValue(list[idx]);
                 dtype = DisplayType::VECTOR4;
                 
                 if(val_connected && !disconnectInputIfNotOfType<Vector4>("value"))
@@ -265,6 +264,7 @@ struct ListAccessNode final : public PropertyNode
                         list[idx] = valueValue;
                     }
                 }
+                data->setValue(list[idx]);
             }
         }
     }

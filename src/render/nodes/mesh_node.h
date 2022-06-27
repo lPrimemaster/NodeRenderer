@@ -14,7 +14,7 @@ struct MeshNodeData
 
 struct MeshNode final : public PropertyNode
 {
-    inline MeshNode() : PropertyNode(0, {}, 1, { "mesh" })
+    inline MeshNode() : PropertyNode(Type::MESH, 0, {}, 1, { "mesh" })
     {
         static int inc = 0;
         name = "Mesh Node #" + std::to_string(inc++);

@@ -7,7 +7,9 @@
 
 struct CameraNode final : public PropertyNode
 {
-    inline CameraNode(Renderer::Camera* camera) : PropertyNode(2, { "position", "lookAt" }), cameraPosition(camera->getPosition()), camera(camera)
+    using NodeType = PropertyNode::Type;
+
+    inline CameraNode(Renderer::Camera* camera) : PropertyNode(NodeType::CAMERA, 2, { "position", "lookAt" }), cameraPosition(camera->getPosition()), camera(camera)
     {
         static int inc = 0;
         name = "Camera Node #" + std::to_string(inc++);

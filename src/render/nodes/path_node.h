@@ -7,7 +7,9 @@
 
 struct PathNode final : public PropertyNode
 {
-    inline PathNode() : PropertyNode(1, { "t" }, 1, { "position" })
+    using NodeType = PropertyNode::Type;
+
+    inline PathNode() : PropertyNode(NodeType::PATH, 1, { "t" }, 1, { "position" })
     {
         static int inc = 0;
         name = "Path Node #" + std::to_string(inc++);

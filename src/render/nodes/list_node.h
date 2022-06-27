@@ -24,7 +24,9 @@ struct ListNode final : public PropertyNode
         D3
     } dim;
 
-    inline ListNode() : PropertyNode(1, { "sizex" }, 1, { "list" })
+    using NodeType = PropertyNode::Type;
+
+    inline ListNode() : PropertyNode(NodeType::LIST, 1, { "sizex" }, 1, { "list" })
     {
         static int inc = 0;
 
