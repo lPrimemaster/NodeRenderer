@@ -195,6 +195,7 @@ void NodeWindow::render()
                             IOIdxData idxd;
                             idxd.other_idx = link_output_slot;
                             idxd.self_idx = slot_idx;
+                            idxd.self_id = node_idx;
                             node->inputs.emplace(idxd, nodes[link_from_id]->outputs[link_output_slot]);
                             node->inputs_named.emplace(node->_input_labels[slot_idx], nodes[link_from_id]->outputs[link_output_slot]);
                             nodes[link_from_id]->output_dependencies.push_back(idxd);
@@ -516,9 +517,6 @@ void NodeWindow::deserializeWindowState(const std::string& state_string)
         node->deserialize(buffer);
     }
 
-    // TODO: Link the nodes
-
-
     // Push the nodes to the window
     for(auto node : local_nodes)
     {
@@ -526,6 +524,21 @@ void NodeWindow::deserializeWindowState(const std::string& state_string)
         {
             case PropertyNode::Priority::NORMAL:   nodes.push_back(node);             break;
             case PropertyNode::Priority::FEEDBACK: nodes.insert(nodes.begin(), node); break;
+        }
+    }
+
+    // Link the nodes
+    // FIXME: Fix all this shit
+    for(auto node : local_nodes)
+    {
+        for(IOIdxData idxd : node->output_dependencies)
+        {
+            unsigned char link_output_slot = idxd.other_idx;
+            unsigned char slot_idx = idxd.self_idx;
+            int id = idxd.self_id;
+            auto other = local_nodes[id];
+            other->inputs.emplace(idxd, node->outputs[link_output_slot]);
+            other->inputs_named.emplace(other->_input_labels[slot_idx], node->outputs[link_output_slot]);
         }
     }
 }

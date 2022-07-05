@@ -269,6 +269,25 @@ struct ListAccessNode final : public PropertyNode
         }
     }
 
+    inline virtual ByteBuffer serialize() const override
+    {
+        ByteBuffer buffer = PropertyNode::serialize();
+
+        buffer.add(idx);
+        buffer.add(mod);
+
+        return buffer;
+    }
+
+    inline virtual void deserialize(ByteBuffer& buffer) override
+    {
+        PropertyNode::deserialize(buffer);
+        
+        buffer.get(&idx);
+        buffer.get(&mod);
+
+    }
+
 private:
     int idx = 0;
     bool mod = false;

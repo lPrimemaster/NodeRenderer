@@ -259,6 +259,23 @@ struct AudioNode final : public PropertyNode
         }
     }
 
+    // TODO
+    inline virtual ByteBuffer serialize() const override
+    {
+        ByteBuffer buffer = PropertyNode::serialize();
+
+        buffer.add(currentmodeid);
+
+        return buffer;
+    }
+
+    inline virtual void deserialize(ByteBuffer& buffer) override
+    {
+        PropertyNode::deserialize(buffer);
+
+        buffer.get(&currentmodeid);
+    }
+
 private:
     std::string to_load;
     std::future<AudioData> f_fdata;

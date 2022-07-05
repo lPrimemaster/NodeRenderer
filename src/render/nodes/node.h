@@ -48,6 +48,7 @@ struct IOIdxData
 {
     unsigned char self_idx;
     unsigned char other_idx;
+    int self_id;
 
     bool operator<(const IOIdxData &o) const
     {
@@ -70,7 +71,7 @@ struct PropertyGenericData
         VECTOR3,
         VECTOR4,
 
-        LIST_FLOAT,
+        LIST_FLOAT = 100,
         LIST_INT,
         LIST_UINT,
         LIST_VECTOR2,
@@ -84,6 +85,7 @@ struct PropertyGenericData
         size = sizeof(T);
         data = new T(value);
         _data_changed = true;
+        checkAssignTypeEnum();
     }
 
     template<typename T, size_t N>
@@ -241,17 +243,84 @@ struct PropertyGenericData
         }
     }
 
+    inline void* getListData()
+    {
+        if(is_list)
+        {
+            switch (vtype)
+            {
+            case ValidType::LIST_FLOAT:   return (void*)((std::vector<float>*)data)->data();
+            case ValidType::LIST_INT:     return (void*)((std::vector<int>*)data)->data();
+            case ValidType::LIST_UINT:    return (void*)((std::vector<unsigned int>*)data)->data();
+            case ValidType::LIST_VECTOR2: return (void*)((std::vector<Vector2>*)data)->data();
+            case ValidType::LIST_VECTOR3: return (void*)((std::vector<Vector3>*)data)->data();
+            case ValidType::LIST_VECTOR4: return (void*)((std::vector<Vector4>*)data)->data();
+            default: L_ERROR("setValueDynamic(): Received a non valid type."); return nullptr;
+            }
+        }
+        else
+        {
+            L_ERROR("This PropertyGenericData does not store a list. Ignoring getListData().");
+            return nullptr;
+        }
+    }
+
     struct TypeDataBuffer
     {
         ValidType vtype;
         void* data;
     };
 
+    inline void fromListData(const TypeDataBuffer& b)
+    {
+        switch (b.vtype)
+        {
+        case ValidType::LIST_FLOAT:
+        {
+            float* ptr = (float*)b.data;
+            std::vector<float> vec(ptr, ptr + size / sizeof(float));
+            setValue(vec);
+        } break;
+        case ValidType::LIST_INT:
+        {
+            int* ptr = (int*)b.data;
+            std::vector<int> vec(ptr, ptr + size / sizeof(int));
+            setValue(vec);
+        } break;
+        case ValidType::LIST_UINT:
+        {
+            unsigned int* ptr = (unsigned int*)b.data;
+            std::vector<unsigned int> vec(ptr, ptr + size / sizeof(unsigned int));
+            setValue(vec);
+        } break;
+        case ValidType::LIST_VECTOR2:
+        {
+            Vector2* ptr = (Vector2*)b.data;
+            std::vector<Vector2> vec(ptr, ptr + size / sizeof(Vector2));
+            setValue(vec);
+        } break;
+        case ValidType::LIST_VECTOR3:
+        {
+            Vector3* ptr = (Vector3*)b.data;
+            std::vector<Vector3> vec(ptr, ptr + size / sizeof(Vector3));
+            setValue(vec);
+        } break;
+        case ValidType::LIST_VECTOR4:
+        {
+            Vector4* ptr = (Vector4*)b.data;
+            std::vector<Vector4> vec(ptr, ptr + size / sizeof(Vector4));
+            setValue(vec);
+        } break;
+        default: L_ERROR("fromListData(): Received a non valid type."); break;
+        }
+    }
+
     inline TypeDataBuffer getValueDynamic()
     {
         TypeDataBuffer tdb;
         tdb.vtype = vtype;
         tdb.data = data;
+
         return tdb;
     }
 
@@ -296,10 +365,29 @@ struct PropertyGenericData
     void* data = nullptr;
     size_t size = 0ULL;
     bool is_fixed_array = false;
+    bool is_list = false;
     bool _data_changed = false;
     PropertyNode* _data_holder_instance = nullptr;
 
 private:
+    // template<typename V>
+    // inline std::vector<V> createVectorFromData(const TypeDataBuffer& b)
+    // {
+
+    // }
+
+    // template<typename V>
+    // inline TypeDataBuffer createDataFromVector(const std::vector<V>& vec)
+    // {
+
+    // }
+
+    template<typename T>
+    inline void setSizeForVector()
+    {
+        size = sizeof(T) * ((std::vector<T>*)data)->size();
+    }
+
     inline void checkAssignTypeEnum()
     {
              if(isOfType<float>())        vtype = ValidType::FLOAT;
@@ -308,12 +396,14 @@ private:
         else if(isOfType<Vector2>())      vtype = ValidType::VECTOR2;
         else if(isOfType<Vector3>())      vtype = ValidType::VECTOR3;
         else if(isOfType<Vector4>())      vtype = ValidType::VECTOR4;
-        else if(isOfType<std::vector<float>>())        vtype = ValidType::LIST_FLOAT;
-        else if(isOfType<std::vector<int>>())          vtype = ValidType::LIST_INT;
-        else if(isOfType<std::vector<unsigned int>>()) vtype = ValidType::LIST_UINT;
-        else if(isOfType<std::vector<Vector2>>())      vtype = ValidType::LIST_VECTOR2;
-        else if(isOfType<std::vector<Vector3>>())      vtype = ValidType::LIST_VECTOR3;
-        else if(isOfType<std::vector<Vector4>>())      vtype = ValidType::LIST_VECTOR4;
+        else if(isOfType<std::vector<float>>())        { vtype = ValidType::LIST_FLOAT;   setSizeForVector<float>(); }
+        else if(isOfType<std::vector<int>>())          { vtype = ValidType::LIST_INT;     setSizeForVector<int>(); }
+        else if(isOfType<std::vector<unsigned int>>()) { vtype = ValidType::LIST_UINT;    setSizeForVector<unsigned int>(); }
+        else if(isOfType<std::vector<Vector2>>())      { vtype = ValidType::LIST_VECTOR2; setSizeForVector<Vector2>(); }
+        else if(isOfType<std::vector<Vector3>>())      { vtype = ValidType::LIST_VECTOR3; setSizeForVector<Vector3>(); }
+        else if(isOfType<std::vector<Vector4>>())      { vtype = ValidType::LIST_VECTOR4; setSizeForVector<Vector4>(); }
+
+        is_list = (static_cast<int>(vtype) >= 100);
     }
 };
 
@@ -606,8 +696,9 @@ struct PropertyNode
         // std::vector<std::string> _input_labels;
         out.add(_input_labels);
 
+        // NOTE: This is fixed for now
         // std::vector<std::string> _output_labels;
-        out.add(_output_labels);
+        // out.add(_output_labels);
         
         // float _input_max_pad_px = 0.0f;
         out.add(_input_max_pad_px);
@@ -621,8 +712,9 @@ struct PropertyNode
         // std::map<std::string, PropertyGenericData*> inputs_named;
         // There is enough info to reconstruct this after deserialization off all nodes
 
+        // NOTE: This is fixed for now
         // int _output_count = 0;
-        out.add(_output_count);
+        // out.add(_output_count);
 
         // std::vector<IOIdxData> output_dependencies;
         out.add(output_dependencies);
@@ -633,9 +725,17 @@ struct PropertyNode
         {
             out.add(o->size);
             out.add(o->is_fixed_array);
+            out.add(o->is_list);
             out.add(o->vtype);
 
-            out.addRawData((unsigned char*)o->data, o->size);
+            if(!o->is_list)
+            {
+                out.addRawData((unsigned char*)o->data, o->size);
+            }
+            else
+            {
+                out.addRawData((unsigned char*)o->getListData(), o->size);
+            }
         }
 
         // std::map<std::string, PropertyGenericData*> outputs_named;
@@ -665,7 +765,7 @@ struct PropertyNode
         buffer.get(&_input_labels);
 
         // std::vector<std::string> _output_labels;
-        buffer.get(&_output_labels);
+        // buffer.get(&_output_labels);
         
         // float _input_max_pad_px = 0.0f;
         buffer.get(&_input_max_pad_px);
@@ -673,14 +773,11 @@ struct PropertyNode
         // float _output_max_pad_px = 0.0f;
         buffer.get(&_output_max_pad_px);
 
-        // TODO: Remap inputs from IOIdxData (?)
         // std::map<IOIdxData, PropertyGenericData*> inputs;
-
-        // TODO: Remap inputs from IOIdxData (?)
         // std::map<std::string, PropertyGenericData*> inputs_named;
 
         // int _output_count = 0;
-        buffer.get(&_output_count);
+        // buffer.get(&_output_count);
 
         // std::vector<IOIdxData> output_dependencies;
         buffer.get(&output_dependencies);
@@ -693,15 +790,22 @@ struct PropertyNode
         {
             buffer.get(&o->size);
             buffer.get(&o->is_fixed_array);
+            buffer.get(&o->is_list);
             buffer.get(&o->vtype);
 
             PropertyGenericData::TypeDataBuffer dvalue;
-
             buffer.getRawData(cpybuffer, o->size);
             dvalue.data = (void*)cpybuffer;
             dvalue.vtype = o->vtype;
 
-            o->setValueDynamic(dvalue);
+            if(!o->is_list)
+            {
+                o->setValueDynamic(dvalue);
+            }
+            else
+            {
+                o->fromListData(dvalue);
+            }
         }
 
         // std::map<std::string, PropertyGenericData*> outputs_named;

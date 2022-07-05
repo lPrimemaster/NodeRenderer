@@ -95,7 +95,6 @@ static void _mouse_btn_callback(GLFWwindow* window, int button, int action, int 
 
 static void _framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
-    // BUG : This does not work when the window is minimized
     glViewport(0, 0, width, height);
 
     screen_size[0] = (float)width;
@@ -424,7 +423,7 @@ Renderer::Camera::Camera(float fov) : fov(fov)
 
 void Renderer::Camera::update(float frame_mouse_scroll, float frame_mouse_x, float frame_mouse_y, DirectionFlag dir, float dt)
 {
-    if(viewport_changed)
+    if(viewport_changed && screen_size[0] > 0.1)
     {
         projectionMatrix = glm::perspective(fov, screen_size[0] / screen_size[1], 0.1f, 100.0f);
     }

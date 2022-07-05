@@ -40,9 +40,6 @@ struct DisplayNode final : public PropertyNode
             }
             ImGui::EndDisabled();
         }
-
-
-        
     }
 
     virtual void update() override

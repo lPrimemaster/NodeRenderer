@@ -84,7 +84,6 @@ struct ListJoinNode final : public PropertyNode
     }
 
 private:
-
     template<typename ListType>
     inline bool joinSimilarListTypesIfOfType(PropertyGenericData* fixed, std::map<std::string, PropertyGenericData*>::iterator it)
     {
@@ -126,6 +125,4 @@ private:
     }
 
     unsigned int linput_size = 0;
-    int currenttypeid = 0;
-    int lasttypeid = 0;
 };

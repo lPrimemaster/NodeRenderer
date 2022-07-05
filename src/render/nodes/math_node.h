@@ -93,6 +93,7 @@ struct MathNode final : public PropertyNode
                 else
                 {
                     L_ERROR("MathNode: Inputs must have the same type.");
+                    disconnectInputIfNotOfType<EmptyType>("B");
                 }
             }
             else
@@ -100,6 +101,22 @@ struct MathNode final : public PropertyNode
                 assingAllTypes<int, unsigned int, float, Vector2, Vector3, Vector4>(first_data, nullptr);
             }
         }
+    }
+
+    inline virtual ByteBuffer serialize() const override
+    {
+        ByteBuffer buffer = PropertyNode::serialize();
+
+        buffer.add(currentmodeid);
+
+        return buffer;
+    }
+
+    inline virtual void deserialize(ByteBuffer& buffer) override
+    {
+        PropertyNode::deserialize(buffer);
+
+        buffer.get(&currentmodeid);
     }
 
 private:
