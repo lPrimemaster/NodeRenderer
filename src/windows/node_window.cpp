@@ -491,7 +491,12 @@ void NodeWindow::deserializeWindowState(const std::string& state_string)
             case PropertyNode::Type::FUNCTION: newNode = new FunctionNode(); break;
             case PropertyNode::Type::TIME: newNode = new TimeNode(); break;
             case PropertyNode::Type::WORLDPOS: newNode = new WorldPosNode(activeDL->camera); break;
-            case PropertyNode::Type::RENDER: newNode = new RenderNode(); break;
+            case PropertyNode::Type::RENDER: // Render node needs to have these details
+            { 
+                newNode = new RenderNode();
+                render_output_node = newNode;
+                render_output_node_changed = true;
+            } break;
             case PropertyNode::Type::LIST: newNode = new ListNode(); break;
             case PropertyNode::Type::LISTACCESS: newNode = new ListAccessNode(); break;
             case PropertyNode::Type::LISTJOIN: newNode = new ListJoinNode(); break;

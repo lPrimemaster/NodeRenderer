@@ -14,7 +14,6 @@ struct Vector2
         };
         float data[2];
     };
-
 };
 
 struct Vector3

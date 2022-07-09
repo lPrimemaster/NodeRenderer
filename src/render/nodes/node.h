@@ -773,6 +773,7 @@ struct PropertyNode
         // float _output_max_pad_px = 0.0f;
         buffer.get(&_output_max_pad_px);
 
+        // Remapped from IOIdxData -> output_dependencies
         // std::map<IOIdxData, PropertyGenericData*> inputs;
         // std::map<std::string, PropertyGenericData*> inputs_named;
 

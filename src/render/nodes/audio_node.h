@@ -258,22 +258,17 @@ struct AudioNode final : public PropertyNode
             ImGui::EndPopup();
         }
     }
-
-    // TODO
+    
     inline virtual ByteBuffer serialize() const override
     {
+        L_WARNING("Audio Node serialization does not export the audio.");
         ByteBuffer buffer = PropertyNode::serialize();
-
-        buffer.add(currentmodeid);
-
         return buffer;
     }
 
     inline virtual void deserialize(ByteBuffer& buffer) override
     {
         PropertyNode::deserialize(buffer);
-
-        buffer.get(&currentmodeid);
     }
 
 private:
