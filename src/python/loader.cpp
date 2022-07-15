@@ -5,6 +5,8 @@ PythonLoader::PyEnvExt PythonLoader::StartPythonScriptEnv(const std::string& scr
 
     PyEnvExt ret;
     ret.gstate = PyGILState_Ensure();
+
+    // NOTE: Script name may not be wchar
     PyObject* pName = PyUnicode_DecodeFSDefault(script_name.c_str());
     if(!pName)
     {
@@ -15,7 +17,7 @@ PythonLoader::PyEnvExt PythonLoader::StartPythonScriptEnv(const std::string& scr
     std::filesystem::path scripts_folder(std::filesystem::current_path() / "scripts");
 
     PyObject* sysPath = PySys_GetObject((char*)"path");
-    PyObject* programName = PyUnicode_FromString(scripts_folder.string().c_str());
+    PyObject* programName = PyUnicode_FromWideChar(scripts_folder.wstring().c_str(), -1);
     PyList_Append(sysPath, programName);
     Py_DECREF(programName);
     PyObject* pModule = PyImport_Import(pName);

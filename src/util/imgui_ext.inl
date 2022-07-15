@@ -1,5 +1,6 @@
 #pragma once
 #include "../imgui/imgui.h"
+#include "../imgui/imgui_internal.h" // For ImTextStrToUtf8
 #include <filesystem>
 
 namespace ImGuiExt
@@ -45,8 +46,11 @@ namespace ImGuiExt
             
             char edit_path[512];
 
-            memcpy(edit_path, curr_path.string().c_str(), curr_path.string().size() + 1);
-            
+            const ImWchar* tstart = (const ImWchar*)curr_path.wstring().c_str();
+            const size_t wsize = curr_path.wstring().size();
+            ImTextStrToUtf8(edit_path, 512, tstart, tstart + wsize);
+            // memcpy(edit_path, curr_path.string().c_str(), curr_path.string().size() + 1);
+
             ImGui::PushItemWidth(500 - 4 * ImGui::GetFontSize() - 8);
             if(ImGui::InputText("##path_name", edit_path, 512))
             {
@@ -92,6 +96,7 @@ namespace ImGuiExt
                     for(auto ext : exts) isvalidext |= dir_entry.path().extension().string() == ext;
                     if(isdir || isvalidext)
                     {
+                        // TODO: Encode this as UTF-8 as well
                         if(ImGui::Selectable(((--dir_entry.path().end())->string() + ifdir).c_str(), &selected, ImGuiSelectableFlags_AllowDoubleClick))
                         {
                             curr_selected = std::filesystem::absolute(dir_entry.path());
