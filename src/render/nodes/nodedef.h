@@ -15,3 +15,4 @@
 #include "audio_node.h"
 #include "test_node.h"
 #include "display_node.h"
+#include "feedback_node.h"

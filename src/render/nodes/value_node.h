@@ -3,9 +3,10 @@
 
 struct ValueNode final : public PropertyNode
 {
+    using NodeType = PropertyNode::Type;
     using Type = PropertyGenericData::ValidType;
 
-    inline explicit ValueNode(float val = 0.0f) : PropertyNode(0, {}, 1, { "value" })
+    inline explicit ValueNode(float val = 0.0f) : PropertyNode(NodeType::VALUE, 0, {}, 1, { "value" })
     {
         static int inc = 0;
         name = "Value Node #" + std::to_string(inc++);
@@ -103,6 +104,23 @@ struct ValueNode final : public PropertyNode
         default:
             break;
         }
+    }
+
+    inline virtual ByteBuffer serialize() const override
+    {
+        ByteBuffer buffer = PropertyNode::serialize();
+
+        buffer.add(currenttypeid);
+
+        return buffer;
+    }
+
+    inline virtual void deserialize(ByteBuffer& buffer) override
+    {
+        PropertyNode::deserialize(buffer);
+
+        buffer.get(&currenttypeid);
+        lasttypeid = currenttypeid;
     }
 
 private:

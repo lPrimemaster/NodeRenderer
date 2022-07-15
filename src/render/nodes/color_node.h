@@ -4,7 +4,7 @@
 
 struct ColorNode final : public PropertyNode
 {
-    inline ColorNode() : PropertyNode(0, {}, 1, { "value" })
+    inline ColorNode() : PropertyNode(Type::COLOR, 0, {}, 1, { "value" })
     {
         static int inc = 0;
         name = "Color Node #" + std::to_string(inc++);

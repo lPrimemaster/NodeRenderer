@@ -3,7 +3,7 @@
 
 struct DisplayNode final : public PropertyNode
 {
-    inline DisplayNode() : PropertyNode(1, { "in" }, 1, { "out" })
+    inline DisplayNode() : PropertyNode(Type::DISPLAY, 1, { "in" }, 1, { "out" })
     {
         static int inc = 0;
         name = "Display Node #" + std::to_string(inc++);
@@ -35,22 +35,24 @@ struct DisplayNode final : public PropertyNode
             case PropertyGenericData::ValidType::LIST_VECTOR4:
                 L_ERROR("Use a list view node instead!");
                 disconnectInputIfNotOfType<EmptyType>("in");
+                first_connect = true;
                 break;
             }
             ImGui::EndDisabled();
         }
-
-
-        
     }
 
     virtual void update() override
     {
         outputs[0]->resetDataUpdate();
         auto in = inputs_named.find("in");
-        if(in != inputs_named.end() && in->second->dataChanged())
+        if(in != inputs_named.end() && (in->second->dataChanged() || first_connect))
         {
+            first_connect = false;
             outputs[0]->setValueDynamic(in->second->getValueDynamic());
         }
     }
+
+private:
+    bool first_connect;
 };

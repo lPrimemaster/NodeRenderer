@@ -12,6 +12,8 @@
 
 #include "python/loader.h" // For init and deinit
 
+#include "util/serialization.inl"
+
 static constexpr int DEF_SCREEN_PX_W = 1280;
 static constexpr int DEF_SCREEN_PX_H =  720;
 

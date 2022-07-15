@@ -24,7 +24,9 @@ struct ListNode final : public PropertyNode
         D3
     } dim;
 
-    inline ListNode() : PropertyNode(1, { "sizex" }, 1, { "list" })
+    using NodeType = PropertyNode::Type;
+
+    inline ListNode() : PropertyNode(NodeType::LIST, 1, { "sizex" }, 1, { "list" })
     {
         static int inc = 0;
 
@@ -342,10 +344,11 @@ struct ListNode final : public PropertyNode
 
                 // For now disconnect the inputs if there are any
                 // Forcing the user to reconnect to the node again
-                for(auto v : _vars_name)
-                {
-                    disconnectInputIfNotOfType<PropertyNode::EmptyType>(v);
-                }
+                if(!from_serialization)
+                    for(auto v : _vars_name)
+                    {
+                        disconnectInputIfNotOfType<PropertyNode::EmptyType>(v);
+                    }
 
                 // TODO: Create a new input set were the currently connected ones are mutated to allow for on the fly name change
                 setInputsOrdered(strings);
@@ -616,6 +619,105 @@ struct ListNode final : public PropertyNode
         }
     }
 
+    inline virtual ByteBuffer serialize() const override
+    {
+        ByteBuffer buffer = PropertyNode::serialize();
+
+        buffer.add(currenttypeid);
+        buffer.add(currentdimid);
+
+        buffer.add(std::string(_extra_vars));
+
+        buffer.add(std::string(_expr_str_0));
+        buffer.add(std::string(_expr_str_1));
+        buffer.add(std::string(_expr_str_2));
+        buffer.add(std::string(_expr_str_3));
+
+        return buffer;
+    }
+
+    inline virtual void deserialize(ByteBuffer& buffer) override
+    {
+        PropertyNode::deserialize(buffer);
+        listsize = 0;
+        buffer.get(&currenttypeid);
+        lasttypeid = currenttypeid;
+        type = static_cast<Type>(currenttypeid);
+
+        buffer.get(&currentdimid);
+        lastdimid = currentdimid;
+        dim = static_cast<Dim>(currentdimid);
+
+        std::string extra_vars_loc;
+        std::string loc_expr_0;
+        std::string loc_expr_1;
+        std::string loc_expr_2;
+        std::string loc_expr_3;
+
+        buffer.get(&extra_vars_loc);
+        buffer.get(&loc_expr_0);
+        buffer.get(&loc_expr_1);
+        buffer.get(&loc_expr_2);
+        buffer.get(&loc_expr_3);
+
+        std::vector<std::string> strings;
+        dim = static_cast<Dim>(currentdimid);
+        int it_inc = 1 + static_cast<int>(dim);
+
+        switch (dim)
+        {
+        case Dim::D1: strings = { "sizex"                   }; break;
+        case Dim::D2: strings = { "sizex", "sizey"          }; break;
+        case Dim::D3: strings = { "sizex", "sizey", "sizez" }; break;
+        default: break;
+        }
+
+        std::istringstream f(extra_vars_loc);
+        std::string s;
+        while (std::getline(f, s, ';'))
+        {
+            strings.push_back(s);
+        }
+
+        // TODO: Create a new input set were the currently connected ones are mutated to allow for on the fly name change
+        setInputsOrdered(strings);
+
+        // Ignore fix variable "count"
+        _vars_name = std::vector<std::string>(strings.begin() + it_inc, strings.end());
+        for(auto s : _vars_name)
+        {
+            L_TRACE("Found additional var = %s", s.c_str());
+        }
+
+        _vars.clear();
+        _vars.reserve(strings.size() - 1);
+        for(auto s : _vars_name)
+        {
+            _vars.push_back(0.0);
+            double* v = &*(_vars.end() - 1);
+            px.DefineVar(s, v);
+            py.DefineVar(s, v);
+            pz.DefineVar(s, v);
+            pw.DefineVar(s, v);
+        }
+        _vars_last = _vars;
+
+        from_serialization = true;
+
+        strcpy(_expr_str_0, loc_expr_0.c_str());
+        strcpy(_expr_str_1, loc_expr_1.c_str());
+        strcpy(_expr_str_2, loc_expr_2.c_str());
+        strcpy(_expr_str_3, loc_expr_3.c_str());
+        strcpy(_extra_vars, extra_vars_loc.c_str());
+
+        _expr_changed0 = true;
+        _expr_changed1 = true;
+        _expr_changed2 = true;
+        _expr_changed3 = true;
+        extra_vars_changed = true;
+        dim_changed = true;
+    }
+
 private:
     unsigned int listsize = 0;
     int currenttypeid = 0;
@@ -631,6 +733,7 @@ private:
     bool _expr_changed1;
     bool _expr_changed2;
     bool _expr_changed3;
+    bool from_serialization = false;
 
     char _expr_str_0[128];
     char _expr_str_1[128];

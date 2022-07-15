@@ -7,7 +7,9 @@
 
 struct CameraNode final : public PropertyNode
 {
-    inline CameraNode(Renderer::Camera* camera) : PropertyNode(2, { "position", "lookAt" }), cameraPosition(camera->getPosition()), camera(camera)
+    using NodeType = PropertyNode::Type;
+
+    inline CameraNode(Renderer::Camera* camera) : PropertyNode(NodeType::CAMERA, 2, { "position", "lookAt" }), cameraPosition(camera->getPosition()), camera(camera)
     {
         static int inc = 0;
         name = "Camera Node #" + std::to_string(inc++);
@@ -115,6 +117,54 @@ struct CameraNode final : public PropertyNode
         {
             this->camera->setPositionAndForwardVectorsAutomatic(cameraPosition, cameraForward);
         }
+    }
+
+    inline virtual ByteBuffer serialize() const override
+    {
+        ByteBuffer buffer = PropertyNode::serialize();
+
+        buffer.add(currenttypeid);
+
+        buffer.add(enabled);
+
+        return buffer;
+    }
+
+    inline virtual void deserialize(ByteBuffer& buffer) override
+    {
+        PropertyNode::deserialize(buffer);
+
+        buffer.get(&currenttypeid);
+
+        type = static_cast<Type>(currenttypeid);
+
+        switch (type)
+        {
+        case Type::ORBIT:
+            disconnectInputIfNotOfType<PropertyNode::EmptyType>("forward");
+            setInputsOrdered(
+                {
+                    "position",
+                    "lookAt"
+                }
+            );
+            break;
+        case Type::FREE:
+            disconnectInputIfNotOfType<PropertyNode::EmptyType>("lookAt");
+            setInputsOrdered(
+                {
+                    "position",
+                    "forward"
+                }
+            );
+            break;
+
+        default:
+            break;
+        }
+
+        buffer.get(&enabled);
+
     }
 
 private:

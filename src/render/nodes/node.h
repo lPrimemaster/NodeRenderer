@@ -10,17 +10,45 @@
 #include "../../../imgui/imgui.h"
 #include "../../log/logger.h"
 #include "../../math/vector.h"
+#include "../../util/serialization.inl"
 
-struct NodeRenderData
+struct NodeRenderData : public Serializable
 {
     ImVec2 pos;
     ImVec2 size;
+
+    virtual ByteBuffer serialize() const override 
+    {
+        ByteBuffer out;
+
+        out.add(pos.x);
+        out.add(pos.y);
+
+        out.add(size.x);
+        out.add(size.y);
+
+        return out;
+    }
+
+    virtual void deserialize(ByteBuffer& buffer) override 
+    {
+        float x, y, w, h;
+        buffer.get(&x);
+        buffer.get(&y);
+        buffer.get(&w);
+        buffer.get(&h);
+
+        pos = ImVec2(x, y);
+        size = ImVec2(w, h);
+    }
+
 };
 
 struct IOIdxData
 {
     unsigned char self_idx;
     unsigned char other_idx;
+    int self_id;
 
     bool operator<(const IOIdxData &o) const
     {
@@ -43,7 +71,7 @@ struct PropertyGenericData
         VECTOR3,
         VECTOR4,
 
-        LIST_FLOAT,
+        LIST_FLOAT = 100,
         LIST_INT,
         LIST_UINT,
         LIST_VECTOR2,
@@ -54,14 +82,16 @@ struct PropertyGenericData
     template<typename T>
     PropertyGenericData(T value, PropertyNode* data_holder) : type(typeid(T)), _data_holder_instance(data_holder)
     {
+        size = sizeof(T);
         data = new T(value);
         _data_changed = true;
+        checkAssignTypeEnum();
     }
 
     template<typename T, size_t N>
     PropertyGenericData(const T (&arr)[N], PropertyNode* data_holder) : type(typeid(T*)), _data_holder_instance(data_holder)
     {
-        size = N;
+        size = N * sizeof(T);
         data = new T[N];
         memcpy(data, arr, N * sizeof(T));
         is_fixed_array = true;
@@ -152,18 +182,22 @@ struct PropertyGenericData
         else
         {
             L_DEBUG("PropertyGenericData changed base datatype.");
-            if(!is_fixed_array)
+            if(data != nullptr)
             {
-                delete data;
-            }
-            else
-            {
-                delete[] data;
+                if(!is_fixed_array)
+                {
+                    delete data;
+                }
+                else
+                {
+                    delete[] data;
+                }
             }
 
             is_fixed_array = false;
             data = new T(value);
             type = std::type_index(typeid(T));
+            size = sizeof(T);
             checkAssignTypeEnum();
             _data_changed = true;
         }
@@ -176,7 +210,7 @@ struct PropertyGenericData
         {
             if(is_fixed_array)
             {
-                size = N;
+                size = N * sizeof(T);
                 memcpy(data, arr, N * sizeof(T));
                 _data_changed = true;
             }
@@ -188,20 +222,46 @@ struct PropertyGenericData
         else
         {
             L_DEBUG("PropertyGenericData changed base datatype.");
-            if(!is_fixed_array)
+            if(data != nullptr)
             {
-                delete data;
+                if(!is_fixed_array)
+                {
+                    delete data;
+                }
+                else
+                {
+                    delete[] data;
+                }
             }
-            else
-            {
-                delete[] data;
-            }
-            size = N;
+
+            size = N * sizeof(T);
             data = new T[N];
             memcpy(data, arr, N * sizeof(T));
             is_fixed_array = true;
             type = std::type_index(typeid(T*));
             _data_changed = true;
+        }
+    }
+
+    inline void* getListData()
+    {
+        if(is_list)
+        {
+            switch (vtype)
+            {
+            case ValidType::LIST_FLOAT:   return (void*)((std::vector<float>*)data)->data();
+            case ValidType::LIST_INT:     return (void*)((std::vector<int>*)data)->data();
+            case ValidType::LIST_UINT:    return (void*)((std::vector<unsigned int>*)data)->data();
+            case ValidType::LIST_VECTOR2: return (void*)((std::vector<Vector2>*)data)->data();
+            case ValidType::LIST_VECTOR3: return (void*)((std::vector<Vector3>*)data)->data();
+            case ValidType::LIST_VECTOR4: return (void*)((std::vector<Vector4>*)data)->data();
+            default: L_ERROR("setValueDynamic(): Received a non valid type."); return nullptr;
+            }
+        }
+        else
+        {
+            L_ERROR("This PropertyGenericData does not store a list. Ignoring getListData().");
+            return nullptr;
         }
     }
 
@@ -211,11 +271,56 @@ struct PropertyGenericData
         void* data;
     };
 
+    inline void fromListData(const TypeDataBuffer& b)
+    {
+        switch (b.vtype)
+        {
+        case ValidType::LIST_FLOAT:
+        {
+            float* ptr = (float*)b.data;
+            std::vector<float> vec(ptr, ptr + size / sizeof(float));
+            setValue(vec);
+        } break;
+        case ValidType::LIST_INT:
+        {
+            int* ptr = (int*)b.data;
+            std::vector<int> vec(ptr, ptr + size / sizeof(int));
+            setValue(vec);
+        } break;
+        case ValidType::LIST_UINT:
+        {
+            unsigned int* ptr = (unsigned int*)b.data;
+            std::vector<unsigned int> vec(ptr, ptr + size / sizeof(unsigned int));
+            setValue(vec);
+        } break;
+        case ValidType::LIST_VECTOR2:
+        {
+            Vector2* ptr = (Vector2*)b.data;
+            std::vector<Vector2> vec(ptr, ptr + size / sizeof(Vector2));
+            setValue(vec);
+        } break;
+        case ValidType::LIST_VECTOR3:
+        {
+            Vector3* ptr = (Vector3*)b.data;
+            std::vector<Vector3> vec(ptr, ptr + size / sizeof(Vector3));
+            setValue(vec);
+        } break;
+        case ValidType::LIST_VECTOR4:
+        {
+            Vector4* ptr = (Vector4*)b.data;
+            std::vector<Vector4> vec(ptr, ptr + size / sizeof(Vector4));
+            setValue(vec);
+        } break;
+        default: L_ERROR("fromListData(): Received a non valid type."); break;
+        }
+    }
+
     inline TypeDataBuffer getValueDynamic()
     {
         TypeDataBuffer tdb;
         tdb.vtype = vtype;
         tdb.data = data;
+
         return tdb;
     }
 
@@ -260,10 +365,29 @@ struct PropertyGenericData
     void* data = nullptr;
     size_t size = 0ULL;
     bool is_fixed_array = false;
+    bool is_list = false;
     bool _data_changed = false;
     PropertyNode* _data_holder_instance = nullptr;
 
 private:
+    // template<typename V>
+    // inline std::vector<V> createVectorFromData(const TypeDataBuffer& b)
+    // {
+
+    // }
+
+    // template<typename V>
+    // inline TypeDataBuffer createDataFromVector(const std::vector<V>& vec)
+    // {
+
+    // }
+
+    template<typename T>
+    inline void setSizeForVector()
+    {
+        size = sizeof(T) * ((std::vector<T>*)data)->size();
+    }
+
     inline void checkAssignTypeEnum()
     {
              if(isOfType<float>())        vtype = ValidType::FLOAT;
@@ -272,27 +396,57 @@ private:
         else if(isOfType<Vector2>())      vtype = ValidType::VECTOR2;
         else if(isOfType<Vector3>())      vtype = ValidType::VECTOR3;
         else if(isOfType<Vector4>())      vtype = ValidType::VECTOR4;
-        else if(isOfType<std::vector<float>>())        vtype = ValidType::LIST_FLOAT;
-        else if(isOfType<std::vector<int>>())          vtype = ValidType::LIST_INT;
-        else if(isOfType<std::vector<unsigned int>>()) vtype = ValidType::LIST_UINT;
-        else if(isOfType<std::vector<Vector2>>())      vtype = ValidType::LIST_VECTOR2;
-        else if(isOfType<std::vector<Vector3>>())      vtype = ValidType::LIST_VECTOR3;
-        else if(isOfType<std::vector<Vector4>>())      vtype = ValidType::LIST_VECTOR4;
+        else if(isOfType<std::vector<float>>())        { vtype = ValidType::LIST_FLOAT;   setSizeForVector<float>(); }
+        else if(isOfType<std::vector<int>>())          { vtype = ValidType::LIST_INT;     setSizeForVector<int>(); }
+        else if(isOfType<std::vector<unsigned int>>()) { vtype = ValidType::LIST_UINT;    setSizeForVector<unsigned int>(); }
+        else if(isOfType<std::vector<Vector2>>())      { vtype = ValidType::LIST_VECTOR2; setSizeForVector<Vector2>(); }
+        else if(isOfType<std::vector<Vector3>>())      { vtype = ValidType::LIST_VECTOR3; setSizeForVector<Vector3>(); }
+        else if(isOfType<std::vector<Vector4>>())      { vtype = ValidType::LIST_VECTOR4; setSizeForVector<Vector4>(); }
+
+        is_list = (static_cast<int>(vtype) >= 100);
     }
 };
 
 // TODO: Node and in/out types color
 struct PropertyNode
 {
+    enum class Priority
+    {
+        NORMAL = 0,
+        FEEDBACK = 1
+    };
+
+    enum class Type
+    {
+        VALUE,
+        COLOR,
+        MATH,
+        FUNCTION,
+        TIME,
+        WORLDPOS,
+        RENDER,
+        LIST,
+        LISTACCESS,
+        LISTJOIN,
+        MESH,
+        PATH,
+        CAMERA,
+        AUDIO,
+        DISPLAY,
+        FEEDBACK,
+        TEST
+    };
+
     struct EmptyType {  };
 
     PropertyNode
     (
-        int inputs_count = 0, 
-        std::vector<std::string> inputs_name = std::vector<std::string>(), 
-        int outputs_count = 1, 
+        Type type,
+        int inputs_count = 0,
+        std::vector<std::string> inputs_name = std::vector<std::string>(),
+        int outputs_count = 1,
         std::vector<std::string> outputs_name = std::vector<std::string>()
-    )
+    ) : type(type)
     {
         if(inputs_count > 0)
         {
@@ -334,6 +488,10 @@ struct PropertyNode
     // Identification
     int id;
     std::string name;
+    Type type;
+
+    // Node update priority
+    Priority priority = Priority::NORMAL;
     
     // Inputs
     int _input_count = 0;
@@ -354,6 +512,9 @@ struct PropertyNode
     // This is the "main" output
     std::vector<PropertyGenericData*> outputs;
     std::map<std::string, PropertyGenericData*> outputs_named;
+
+    // Display
+    NodeRenderData _render_data;
 
     template<typename T>
     inline bool setNamedOutput(const std::string& name, T data)
@@ -388,9 +549,6 @@ struct PropertyNode
             outputs[i]->resetDataUpdate();
         }
     }
-
-    // Display
-    NodeRenderData _render_data;
 
     template<typename... Args>
     inline bool disconnectInputIfNotOfType(const std::string& inputName)
@@ -517,5 +675,145 @@ struct PropertyNode
 
     inline virtual void render() = 0;
     inline virtual void update() {  }
+
+    inline virtual ByteBuffer serialize() const
+    {
+        // Serialize all of the parent values for later
+        ByteBuffer out;
+
+        // int id;
+        out.add(id);
+
+        // std::string name;
+        out.add(name);
+
+        // Priority priority = Priority::NORMAL;
+        out.add(priority);
+
+        // int _input_count = 0;
+        out.add(_input_count);
+
+        // std::vector<std::string> _input_labels;
+        out.add(_input_labels);
+
+        // NOTE: This is fixed for now
+        // std::vector<std::string> _output_labels;
+        // out.add(_output_labels);
+        
+        // float _input_max_pad_px = 0.0f;
+        out.add(_input_max_pad_px);
+
+        // float _output_max_pad_px = 0.0f;
+        out.add(_output_max_pad_px);
+
+        // std::map<IOIdxData, PropertyGenericData*> inputs;
+        // There is enough info to reconstruct this after deserialization off all nodes
+
+        // std::map<std::string, PropertyGenericData*> inputs_named;
+        // There is enough info to reconstruct this after deserialization off all nodes
+
+        // NOTE: This is fixed for now
+        // int _output_count = 0;
+        // out.add(_output_count);
+
+        // std::vector<IOIdxData> output_dependencies;
+        out.add(output_dependencies);
+
+        // Save the output data values
+        // std::vector<PropertyGenericData*> outputs;
+        for(auto o : outputs)
+        {
+            out.add(o->size);
+            out.add(o->is_fixed_array);
+            out.add(o->is_list);
+            out.add(o->vtype);
+
+            if(!o->is_list)
+            {
+                out.addRawData((unsigned char*)o->data, o->size);
+            }
+            else
+            {
+                out.addRawData((unsigned char*)o->getListData(), o->size);
+            }
+        }
+
+        // std::map<std::string, PropertyGenericData*> outputs_named;
+        // There is enough info to reconstruct this on deserialization
+        
+        // NodeRenderData _render_data;
+        out.add(_render_data);
+        
+        return out;
+    }
+
+    inline virtual void deserialize(ByteBuffer& buffer)
+    {
+        // int id;
+        buffer.get(&id);
+
+        // std::string name;
+        buffer.get(&name);
+
+        // Priority priority = Priority::NORMAL;
+        buffer.get(&priority);
+
+        // int _input_count = 0;
+        buffer.get(&_input_count);
+
+        // std::vector<std::string> _input_labels;
+        buffer.get(&_input_labels);
+
+        // std::vector<std::string> _output_labels;
+        // buffer.get(&_output_labels);
+        
+        // float _input_max_pad_px = 0.0f;
+        buffer.get(&_input_max_pad_px);
+
+        // float _output_max_pad_px = 0.0f;
+        buffer.get(&_output_max_pad_px);
+
+        // Remapped from IOIdxData -> output_dependencies
+        // std::map<IOIdxData, PropertyGenericData*> inputs;
+        // std::map<std::string, PropertyGenericData*> inputs_named;
+
+        // int _output_count = 0;
+        // buffer.get(&_output_count);
+
+        // std::vector<IOIdxData> output_dependencies;
+        buffer.get(&output_dependencies);
+
+        // Save the output data values
+        // std::vector<PropertyGenericData*> outputs;
+        // Outputs should already have been initialized from the derived class' constructor
+        unsigned char cpybuffer[10240];
+        for(auto o : outputs)
+        {
+            buffer.get(&o->size);
+            buffer.get(&o->is_fixed_array);
+            buffer.get(&o->is_list);
+            buffer.get(&o->vtype);
+
+            PropertyGenericData::TypeDataBuffer dvalue;
+            buffer.getRawData(cpybuffer, o->size);
+            dvalue.data = (void*)cpybuffer;
+            dvalue.vtype = o->vtype;
+
+            if(!o->is_list)
+            {
+                o->setValueDynamic(dvalue);
+            }
+            else
+            {
+                o->fromListData(dvalue);
+            }
+        }
+
+        // std::map<std::string, PropertyGenericData*> outputs_named;
+        // This is already handled in the derived constructor when it calls setOutputsOrdered()
+        
+        // NodeRenderData _render_data;
+        buffer.get(&_render_data);
+    }
 };
 

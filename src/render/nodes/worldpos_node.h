@@ -5,7 +5,7 @@
 
 struct WorldPosNode final : public PropertyNode
 {
-    inline WorldPosNode(Renderer::Camera* camera) : PropertyNode(0, {}, 1, {}), camera(camera)
+    inline WorldPosNode(Renderer::Camera* camera) : PropertyNode(Type::WORLDPOS, 0, {}, 1, {}), camera(camera)
     {
         static int inc = 0;
         name = "WorldPos Node #" + std::to_string(inc++);

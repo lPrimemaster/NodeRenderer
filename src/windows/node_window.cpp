@@ -2,6 +2,7 @@
 #include "../log/logger.h"
 #include "../render/nodes/nodedef.h"
 #include "../render/renderer.h"
+#include "../util/base64.h"
 #include <chrono>
 
 static inline ImVec2 operator+(const ImVec2& lhs, const ImVec2& rhs) { return ImVec2(lhs.x + rhs.x, lhs.y + rhs.y); }
@@ -194,6 +195,7 @@ void NodeWindow::render()
                             IOIdxData idxd;
                             idxd.other_idx = link_output_slot;
                             idxd.self_idx = slot_idx;
+                            idxd.self_id = node_idx;
                             node->inputs.emplace(idxd, nodes[link_from_id]->outputs[link_output_slot]);
                             node->inputs_named.emplace(node->_input_labels[slot_idx], nodes[link_from_id]->outputs[link_output_slot]);
                             nodes[link_from_id]->output_dependencies.push_back(idxd);
@@ -351,13 +353,23 @@ void NodeWindow::render()
                 {
                     newNode = new DisplayNode();
                 }
+                if (ImGui::MenuItem("Feedback Node"))
+                {
+                    newNode = new FeedbackNode();
+                }
 
                 if(newNode)
                 {
                     newNode->id = last_node_id;
                     newNode->_render_data.pos = scene_pos;
                     last_node_id += (newNode->_input_count + newNode->_output_count + 1);
-                    nodes.push_back(newNode);
+
+                    switch(newNode->priority)
+                    {
+                        case PropertyNode::Priority::NORMAL:   nodes.push_back(newNode);             break;
+                        case PropertyNode::Priority::FEEDBACK: nodes.insert(nodes.begin(), newNode); break;
+                    }
+
                 }
 
                 ImGui::EndMenu();
@@ -422,4 +434,116 @@ void NodeWindow::render()
     ImGui::PopStyleColor();
     ImGui::PopStyleVar();
     ImGui::EndGroup();
+}
+
+const std::string NodeWindow::serializeWindowState()
+{
+    ByteBuffer buffer;
+
+    // Number of nodes
+    buffer.add<size_t>(nodes.size());
+
+    // The last node id
+    buffer.add(last_node_id);
+
+    // Serialize types for reconstruction
+    for(auto n : nodes)
+    {
+        buffer.add(n->type);
+    }
+
+    // Serialize the node data
+    for(auto n : nodes)
+    {
+        buffer.add(n->serialize());
+    }
+
+    return base64_encode(buffer.front(), (unsigned int)buffer.size());
+}
+
+void NodeWindow::deserializeWindowState(const std::string& state_string)
+{
+    std::vector<unsigned char> data = base64_decode(state_string);
+    ByteBuffer buffer;
+    buffer.addRawData(data.data(), data.size());
+
+    // Get the number of nodes
+    size_t n_count = 0;
+    buffer.get(&n_count);
+
+    // Get the last node id
+    buffer.get(&last_node_id);
+
+    std::vector<PropertyNode*> local_nodes;
+
+    // Get all of the node types
+    for(size_t i = 0; i < n_count; i++)
+    {
+        PropertyNode::Type t;
+        buffer.get(&t);
+
+        PropertyNode* newNode = nullptr;
+        switch (t)
+        {
+            case PropertyNode::Type::VALUE: newNode = new ValueNode(); break;
+            case PropertyNode::Type::COLOR: newNode = new ColorNode(); break;
+            case PropertyNode::Type::MATH: newNode = new MathNode(); break;
+            case PropertyNode::Type::FUNCTION: newNode = new FunctionNode(); break;
+            case PropertyNode::Type::TIME: newNode = new TimeNode(); break;
+            case PropertyNode::Type::WORLDPOS: newNode = new WorldPosNode(activeDL->camera); break;
+            case PropertyNode::Type::RENDER: // Render node needs to have these details
+            { 
+                newNode = new RenderNode();
+                render_output_node = newNode;
+                render_output_node_changed = true;
+            } break;
+            case PropertyNode::Type::LIST: newNode = new ListNode(); break;
+            case PropertyNode::Type::LISTACCESS: newNode = new ListAccessNode(); break;
+            case PropertyNode::Type::LISTJOIN: newNode = new ListJoinNode(); break;
+            case PropertyNode::Type::MESH: newNode = new MeshNode(); break;
+            case PropertyNode::Type::PATH: newNode = new PathNode(); break;
+            case PropertyNode::Type::CAMERA: newNode = new CameraNode(activeDL->camera); break;
+            case PropertyNode::Type::AUDIO: newNode = new AudioNode(); break;
+            case PropertyNode::Type::DISPLAY: newNode = new DisplayNode(); break;
+            case PropertyNode::Type::FEEDBACK: newNode = new FeedbackNode(); break;
+            case PropertyNode::Type::TEST: newNode = new TestNode(); break;
+            default: L_ERROR("Node Window deserialization encountered an invalid node type."); break;
+        }
+
+        if(newNode)
+        {
+            local_nodes.push_back(newNode);
+        }
+    }
+
+    // Deserialize the node itself
+    for(auto node : local_nodes)
+    {
+        node->deserialize(buffer);
+    }
+
+    // Push the nodes to the window
+    for(auto node : local_nodes)
+    {
+        switch(node->priority)
+        {
+            case PropertyNode::Priority::NORMAL:   nodes.push_back(node);             break;
+            case PropertyNode::Priority::FEEDBACK: nodes.insert(nodes.begin(), node); break;
+        }
+    }
+
+    // Link the nodes
+    // FIXME: Fix all this shit
+    for(auto node : local_nodes)
+    {
+        for(IOIdxData idxd : node->output_dependencies)
+        {
+            unsigned char link_output_slot = idxd.other_idx;
+            unsigned char slot_idx = idxd.self_idx;
+            int id = idxd.self_id;
+            auto other = local_nodes[id];
+            other->inputs.emplace(idxd, node->outputs[link_output_slot]);
+            other->inputs_named.emplace(other->_input_labels[slot_idx], node->outputs[link_output_slot]);
+        }
+    }
 }

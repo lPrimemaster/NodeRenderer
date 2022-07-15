@@ -423,7 +423,7 @@ Renderer::Camera::Camera(float fov) : fov(fov)
 
 void Renderer::Camera::update(float frame_mouse_scroll, float frame_mouse_x, float frame_mouse_y, DirectionFlag dir, float dt)
 {
-    if(viewport_changed)
+    if(viewport_changed && screen_size[0] > 0.1)
     {
         projectionMatrix = glm::perspective(fov, screen_size[0] / screen_size[1], 0.1f, 100.0f);
     }

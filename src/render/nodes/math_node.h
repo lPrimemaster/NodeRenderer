@@ -12,7 +12,7 @@ struct MathNode final : public PropertyNode
         DIV
     } mode;
 
-    inline MathNode(Mode m = Mode::ADD) : PropertyNode(2, { "A", "B" }, 1, { "result" })
+    inline MathNode(Mode m = Mode::ADD) : PropertyNode(Type::MATH, 2, { "A", "B" }, 1, { "result" })
     {
         static int inc = 0;
         name = "Math Node #" + std::to_string(inc++);
@@ -24,7 +24,6 @@ struct MathNode final : public PropertyNode
     inline virtual void render() override
     {
         auto data = outputs[0];
-        data->resetDataUpdate();
 
         static const char* const mode_names[] = {
             "A+B",
@@ -36,36 +35,8 @@ struct MathNode final : public PropertyNode
         ImGui::Combo("Mode", &currentmodeid, mode_names, sizeof(mode_names) / sizeof(mode_names[0]));
         mode = static_cast<Mode>(currentmodeid);
 
-        disconnectInputIfNotOfType<int, unsigned int, float, Vector2, Vector3, Vector4>("A");
-        disconnectInputIfNotOfType<int, unsigned int, float, Vector2, Vector3, Vector4>("B");
-
         if(!inputs.empty())
         {   
-            PropertyGenericData* first_data = inputs.begin()->second;
-            PropertyGenericData* second_data = nullptr;
-            auto it = ++inputs.begin();
-            if(it != inputs.end())
-            {
-                // There is a second node connected available
-                second_data = it->second;
-            }
-
-            if(second_data)
-            {
-                if(second_data->type == first_data->type)
-                {
-                    assingAllTypes<int, unsigned int, float, Vector2, Vector3, Vector4>(first_data, second_data);
-                }
-                else
-                {
-                    L_ERROR("MathNode: Inputs must have the same type.");
-                }
-            }
-            else
-            {
-                assingAllTypes<int, unsigned int, float, Vector2, Vector3, Vector4>(first_data, nullptr);
-            }
-
             ImGui::BeginDisabled();
             if(data->isOfType<int>())
             {
@@ -93,6 +64,59 @@ struct MathNode final : public PropertyNode
             }
             ImGui::EndDisabled();
         }
+    }
+
+    inline virtual void update() override 
+    {
+        outputs[0]->resetDataUpdate();
+
+        disconnectInputIfNotOfType<int, unsigned int, float, Vector2, Vector3, Vector4>("A");
+        disconnectInputIfNotOfType<int, unsigned int, float, Vector2, Vector3, Vector4>("B");
+
+        if(!inputs.empty())
+        {
+            PropertyGenericData* first_data = inputs.begin()->second;
+            PropertyGenericData* second_data = nullptr;
+            auto it = ++inputs.begin();
+            if(it != inputs.end())
+            {
+                // There is a second node connected available
+                second_data = it->second;
+            }
+
+            if(second_data)
+            {
+                if(second_data->type == first_data->type)
+                {
+                    assingAllTypes<int, unsigned int, float, Vector2, Vector3, Vector4>(first_data, second_data);
+                }
+                else
+                {
+                    L_ERROR("MathNode: Inputs must have the same type.");
+                    disconnectInputIfNotOfType<EmptyType>("B");
+                }
+            }
+            else
+            {
+                assingAllTypes<int, unsigned int, float, Vector2, Vector3, Vector4>(first_data, nullptr);
+            }
+        }
+    }
+
+    inline virtual ByteBuffer serialize() const override
+    {
+        ByteBuffer buffer = PropertyNode::serialize();
+
+        buffer.add(currentmodeid);
+
+        return buffer;
+    }
+
+    inline virtual void deserialize(ByteBuffer& buffer) override
+    {
+        PropertyNode::deserialize(buffer);
+
+        buffer.get(&currentmodeid);
     }
 
 private:

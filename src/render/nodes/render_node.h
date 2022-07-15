@@ -32,7 +32,7 @@ struct RenderNodeData
 
 struct RenderNode final : public PropertyNode
 {
-    inline RenderNode() : PropertyNode(5, { "instanceCount", "worldPosition", "worldRotation", "mesh", "colors" }, 1, {})
+    inline RenderNode() : PropertyNode(Type::RENDER, 5, { "instanceCount", "worldPosition", "worldRotation", "mesh", "colors" }, 1, {})
     {
         static int inc = 0;
 
@@ -227,7 +227,7 @@ struct RenderNode final : public PropertyNode
                     int span_z = (int)_renderData._motifInstances[2];
 
 
-                    // TODO: This can be async if it starts to seem slow
+                    // NOTE: This can be async if it starts to seem slow
                     for(int i = 0; i < _renderData._instanceCount; i++)
                     {
                         int o = i * _renderData._motif_span;
@@ -323,6 +323,7 @@ struct RenderNode final : public PropertyNode
             L_DEBUG("New Total Instance Count: %u", _renderData._motif_span * _renderData._instanceCount);
             _renderData._motifChanged = true;
             outputs[0]->setValue(_renderData);
+            _renderData._fogChanged = false;
         }
         else if(_renderData._motifChanged)
         {
@@ -603,6 +604,46 @@ struct RenderNode final : public PropertyNode
                 }
             }
         }
+    }
+
+    inline virtual ByteBuffer serialize() const override
+    {
+        ByteBuffer buffer = PropertyNode::serialize();
+
+        buffer.add(_renderData._fogMax);
+        buffer.add(_renderData._fogMin);
+        buffer.add(_renderData._fogColor.x);
+        buffer.add(_renderData._fogColor.y);
+        buffer.add(_renderData._fogColor.z);
+
+        buffer.add(_renderData._repeatBlocks);
+        buffer.add(_renderData._motifSize.x);
+        buffer.add(_renderData._motifSize.y);
+        buffer.add(_renderData._motifSize.z);
+
+        return buffer;
+    }
+
+    inline virtual void deserialize(ByteBuffer& buffer) override
+    {
+        PropertyNode::deserialize(buffer);
+
+        buffer.get(&_renderData._fogMax);
+        buffer.get(&_renderData._fogMin);
+        buffer.get(&_renderData._fogColor.x);
+        buffer.get(&_renderData._fogColor.y);
+        buffer.get(&_renderData._fogColor.z);
+
+        buffer.get(&_renderData._repeatBlocks);
+        buffer.get(&_renderData._motifSize.x);
+        buffer.get(&_renderData._motifSize.y);
+        buffer.get(&_renderData._motifSize.z);
+
+        _renderData._fogChanged = true;
+
+        // Resetup this node
+        _render_data_changed = true;
+        outputs[0]->setValue(_renderData);
     }
 
 private:
