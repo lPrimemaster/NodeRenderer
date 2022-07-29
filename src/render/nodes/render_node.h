@@ -1,6 +1,7 @@
 #pragma once
 #include "node.h"
 #include "mesh_node.h"
+#include "mesh_interp_node.h"
 #include "../../math/vector.h"
 #include "../../../glm/glm/glm.hpp"
 #include "../../../glm/glm/gtx/transform.hpp"
@@ -11,6 +12,8 @@ struct RenderNodeData
     // Instance and mesh rendering data
     unsigned int   _instanceCount = 0;
     MeshNodeData** _meshPtr = nullptr;
+    unsigned int   _meshCount = 0;
+    float          _meshParam = 0.0f;
     glm::mat4**    _worldPositionPtr = nullptr;
     glm::mat4**    _worldRotationPtr = nullptr;
     Vector4**      _instanceColorsPtr = nullptr;
@@ -342,7 +345,7 @@ struct RenderNode final : public PropertyNode
         disconnectInputIfNotOfType<unsigned int>("instanceCount");
         disconnectInputIfNotOfType<std::vector<Vector3>>("worldPosition");
         disconnectInputIfNotOfType<std::vector<Vector3>>("worldRotation");
-        disconnectInputIfNotOfType<MeshNodeData>("mesh");
+        disconnectInputIfNotOfType<MeshNodeData, MeshInterpListData>("mesh");
         disconnectInputIfNotOfType<std::vector<Vector4>>("colors");
 
         // Instance Count Handling
@@ -595,12 +598,38 @@ struct RenderNode final : public PropertyNode
             {
                 // We have a new mesh for displaying
                 // Handle it
-                auto newMeshPtr = meshLocal->second->getValuePtr<MeshNodeData>();
-                if(newMeshPtr->data_size > 0)
+
+                if(meshLocal->second->isOfType<MeshNodeData>())
                 {
-                    _render_data_changed = true;
-                    *(_renderData._meshPtr) = newMeshPtr;
-                    outputs[0]->setValue(_renderData);
+                    auto newMeshPtr = meshLocal->second->getValuePtr<MeshNodeData>();
+                    if(newMeshPtr->data_size > 0)
+                    {
+                        _render_data_changed = true;
+                        *(_renderData._meshPtr) = newMeshPtr;
+                        _renderData._meshCount = 1;
+                        _renderData._meshParam = 0.0f;
+                        outputs[0]->setValue(_renderData);
+                    }
+                }
+                else
+                {
+                    auto newMeshListPtr = meshLocal->second->getValuePtr<MeshInterpListData>();
+                    if(newMeshListPtr->meshes.size() > 0)
+                    {
+                        if(newMeshListPtr->changeParamOnly)
+                        {
+                            _renderData._meshParam = newMeshListPtr->t;
+                            outputs[0]->setValue(_renderData);
+                        }
+                        else
+                        {
+                            _render_data_changed = true;
+                            *(_renderData._meshPtr) = newMeshListPtr->meshes.data();
+                            _renderData._meshCount = newMeshListPtr->meshes.size();
+                            _renderData._meshParam = newMeshListPtr->t;
+                            outputs[0]->setValue(_renderData);
+                        }
+                    }
                 }
             }
         }

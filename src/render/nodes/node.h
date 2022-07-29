@@ -434,7 +434,8 @@ struct PropertyNode
         AUDIO,
         DISPLAY,
         FEEDBACK,
-        TEST
+        TEST,
+        MESHINTERP
     };
 
     struct EmptyType {  };
@@ -583,6 +584,43 @@ struct PropertyNode
         return false;
     }
 
+    template<typename... Args>
+    inline bool disconnectAllInputsIfNotOfType()
+    {
+        bool disconnected = false;
+        if(!inputs_named.empty())
+        {
+            for(auto it = inputs_named.begin(); it != inputs_named.end(); it++)
+            {
+                auto input = *it;
+                PropertyNode* other = input.second->_data_holder_instance;
+                PropertyGenericData* other_data = input.second;
+                if(!other_data->isOfType<Args...>())
+                {
+                    // Clear the input dependencies of the node links
+                    for(IOIdxData out_dep : other->output_dependencies)
+                    {
+                        auto fit = inputs.find(out_dep);
+                        if(fit != inputs.end())
+                        {
+                            inputs.erase(fit);
+                            inputs_named.erase(input.first);
+                        }
+                    }
+
+                    L_WARNING("This node requires an input with types:");
+                    for(auto tid : { std::type_index(typeid(Args))... })
+                    {
+                        L_WARNING("%s", tid.name());
+                    }
+                    L_WARNING("Supplied type:\n%s", other_data->type.name());
+                    disconnected = true;
+                }
+            }
+        }
+        return disconnected;
+    }
+
     inline void setInputsOrdered(std::vector<std::string> in)
     {
         _input_count = (int)in.size();
@@ -675,6 +713,7 @@ struct PropertyNode
 
     inline virtual void render() = 0;
     inline virtual void update() {  }
+    inline virtual void onConnection(const std::string& inputName) {  }
 
     inline virtual ByteBuffer serialize() const
     {

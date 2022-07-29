@@ -85,26 +85,29 @@ namespace Utils
     public:
         using BvhHandler = bvh::Bvh<float>;
         using Ray        = bvh::Ray<float>;
+        using ISecResult = typename bvh::ClosestPrimitiveIntersector<BvhHandler, bvh::Triangle<float>>::Result;
         
-        BvhTree(const float* vertices, size_t count, size_t stride, size_t offset);
+        BvhTree(const float* vertices, size_t count, size_t stride, size_t offset, float sx = 1.0f, float sy = 1.0f, float sz = 1.0f);
         ~BvhTree();
 
-        inline bool isect(const Ray& r)
+        inline std::optional<ISecResult> isect(const Ray& r) const
         {
             if (auto hit = traverser->traverse(r, *primitive_intersector))
             {
+#if 1
                 auto triangle_index = hit->primitive_index;
                 auto intersection = hit->intersection;
-                L_TRACE("Hit primitive -> %d", triangle_index);
-                L_TRACE("Hit distance  -> %f", intersection.t);
-                L_TRACE("Hit u         -> %f", intersection.u);
-                L_TRACE("Hit v         -> %f", intersection.v);
-                return true;
+                // L_TRACE("Hit primitive -> %d", triangle_index);
+                // L_TRACE("Hit distance  -> %f", intersection.t);
+                // L_TRACE("Hit u         -> %f", intersection.u);
+                // L_TRACE("Hit v         -> %f", intersection.v);
+#endif
+                return hit;
             }
-            return false;
+            return std::nullopt;
         }
 
-        inline bool isect(const Vector3& o, const Vector3& d, const float min_dist = 0.0f, const float max_dist = 100.0f)
+        inline std::optional<ISecResult> isect(const Vector3& o, const Vector3& d, const float min_dist = 0.0f, const float max_dist = 100.0f) const
         {
             return isect(Ray(bvh::Vector3<float>(o.x, o.y, o.z), bvh::Vector3<float>(d.x, d.y, d.z), min_dist, max_dist));
         }

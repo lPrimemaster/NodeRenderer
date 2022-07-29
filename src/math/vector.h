@@ -35,6 +35,11 @@ struct Vector3
         return Vector3(v.x / sqr2, v.y / sqr2, v.z / sqr2);
     }
 
+    static float DistanceSqr(const Vector3& a, const Vector3& b)
+    {
+        return (b.x - a.x) * (b.x - a.x) + (b.y - a.y) * (b.y - a.y) + (b.z - a.z) * (b.z - a.z);
+    }
+
     union
     {
         struct

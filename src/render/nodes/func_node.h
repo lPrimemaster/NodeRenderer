@@ -200,8 +200,6 @@ struct FunctionNode final : public PropertyNode
 
     inline virtual void render() override
     {
-        resetOutputsDataUpdate();
-
         static const char* const out_mode_names[] = {
             "scalar",
             "vector2",

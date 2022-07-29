@@ -164,6 +164,10 @@ static int LoadShaderFromFile(GLuint shadertype, std::string file, GLuint* progr
 
     glGetProgramInfoLog(*program, logLength, NULL, buffer);
 
+    int nrAttributes = -1;
+    glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &nrAttributes);
+    L_DEBUG("# supported vtx attributes: %d", nrAttributes);
+
     if(!result)
     {
         L_ERROR("Program linking failed.");
@@ -244,8 +248,8 @@ Renderer::DrawInstance::DrawInstance()
 {
     glGenVertexArrays(1, &_vao);
     glBindVertexArray(_vao);
-    glGenBuffers(1, &_vbo);
-    glBindBuffer(GL_ARRAY_BUFFER, _vbo);
+    glGenBuffers(MAX_MESH_MERGE, _vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, _vbo[0]);
 
     static const float vtx_nrm[] = {
         -0.5f, -0.5f, -0.5f,  0.0f, 0.0f, -1.0f,
@@ -291,11 +295,22 @@ Renderer::DrawInstance::DrawInstance()
         -0.5f,  0.5f, -0.5f,  0.0f,  1.0f, 0.0f
     };
 
+
+    // Mesh A
+    glBindBuffer(GL_ARRAY_BUFFER, _vbo[0]);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vtx_nrm), vtx_nrm, GL_STATIC_DRAW);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+    glVertexAttribPointer(15, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(15);
+
+    // Mesh B
+    glBindBuffer(GL_ARRAY_BUFFER, _vbo[1]);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vtx_nrm), vtx_nrm, GL_STATIC_DRAW);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(1);
+    glVertexAttribPointer(16, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(16);
 
     _idxcount = 36;
     _instanceCount = 1;
@@ -399,7 +414,7 @@ void Renderer::DrawInstance::updateMotifInstanceForVertexArray()
 Renderer::DrawInstance::~DrawInstance()
 {
     glDeleteVertexArrays(1, &_vao);
-    glDeleteBuffers(1, &_vbo);
+    glDeleteBuffers(MAX_MESH_MERGE, _vbo);
     glDeleteBuffers(1, &_ipb);
     glDeleteBuffers(1, &_icb);
     glDeleteBuffers(1, &_irb);
@@ -800,15 +815,34 @@ void Renderer::DrawList::render(GLFWwindow* window, NodeWindow* nodeWindow, Anal
         {
             instances[0]->_instanceCount = nodeData._instanceCount;
 
-
             MeshNodeData* mesh = *(nodeData._meshPtr);
             if(mesh != nullptr)
             {
-                glBindBuffer(GL_ARRAY_BUFFER, instances[0]->_vbo);
-                glBufferData(GL_ARRAY_BUFFER, mesh->data_size * sizeof(float), mesh->vertex_data, GL_STATIC_DRAW);
-                instances[0]->_idxcount = (GLsizei)mesh->data_size / 6;
+                // Assuming all the meshes have the same attrs size at this point
+                size_t totalSize = mesh[0].data_size * sizeof(float);
+                instances[0]->_idxcount = (GLsizei)mesh[0].data_size / 6;
+
+                assert(nodeData._meshCount <= MAX_MESH_MERGE);
+
+                for(unsigned int i = 0; i < nodeData._meshCount; i++)
+                {
+                    glBindBuffer(GL_ARRAY_BUFFER, instances[0]->_vbo[i]);
+                    glBufferData(GL_ARRAY_BUFFER, totalSize, mesh[i].vertex_data, GL_STATIC_DRAW);
+                }
+
+                glUseProgram(_program_sobfilter);
+                glUniform1ui(glGetUniformLocation(_program_sobfilter, "meshCount"), nodeData._meshCount);
+                glUseProgram(_program_nrmpass);
+                glUniform1ui(glGetUniformLocation(_program_nrmpass, "meshCount"), nodeData._meshCount);
             }
         }
+
+        glUseProgram(_program_sobfilter);
+        glUniform1f(_uniforms.all_meshParam, nodeData._meshParam);
+        glUseProgram(_program_nrmpass);
+        glUniform1f(_uniforms.all_meshParam, nodeData._meshParam);
+        // glUseProgram(_program_fogpart);
+        // glUniform1f(_uniforms.all_meshParam, nodeData._meshParam);
 
         if(outNode->outputs[0]->dataChanged())
         {

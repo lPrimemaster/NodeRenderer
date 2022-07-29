@@ -11,6 +11,8 @@
 
 namespace Renderer
 {
+    constexpr unsigned int MAX_MESH_MERGE = 2;
+
     struct DrawInstance
     {
         DrawInstance();
@@ -19,8 +21,8 @@ namespace Renderer
         void updateMotifInstanceForVertexArray();
 
         GLuint  _vao;
-        GLuint  _vbo;
-        GLuint  _ebo;
+        GLuint  _vbo[MAX_MESH_MERGE];
+        GLuint  _ebo; // Unused
         GLsizei _idxcount;
 
         GLuint      _ipb;
@@ -150,6 +152,8 @@ namespace Renderer
             GLuint fog_viewMatrix;
             GLuint fog_time;
             GLuint fog_motifSize;
+
+            const GLuint all_meshParam = 99; // Special uniform value parameter
 
             GLuint sobel_time;
         } _uniforms;

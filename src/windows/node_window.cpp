@@ -199,6 +199,8 @@ void NodeWindow::render()
                             node->inputs.emplace(idxd, nodes[link_from_id]->outputs[link_output_slot]);
                             node->inputs_named.emplace(node->_input_labels[slot_idx], nodes[link_from_id]->outputs[link_output_slot]);
                             nodes[link_from_id]->output_dependencies.push_back(idxd);
+
+                            node->onConnection(node->_input_labels[slot_idx]);
                         }
                     }
                 }
@@ -357,6 +359,10 @@ void NodeWindow::render()
                 {
                     newNode = new FeedbackNode();
                 }
+                if (ImGui::MenuItem("Mesh Interpolator Node"))
+                {
+                    newNode = new MeshInterpolatorNode();
+                }
 
                 if(newNode)
                 {
@@ -507,6 +513,7 @@ void NodeWindow::deserializeWindowState(const std::string& state_string)
             case PropertyNode::Type::DISPLAY: newNode = new DisplayNode(); break;
             case PropertyNode::Type::FEEDBACK: newNode = new FeedbackNode(); break;
             case PropertyNode::Type::TEST: newNode = new TestNode(); break;
+            case PropertyNode::Type::MESHINTERP: newNode = new MeshInterpolatorNode(); break;
             default: L_ERROR("Node Window deserialization encountered an invalid node type."); break;
         }
 

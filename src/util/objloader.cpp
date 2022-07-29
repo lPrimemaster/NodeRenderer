@@ -69,3 +69,87 @@ std::vector<float> Utils::LoadFloatVertexDataFromFile(const std::string& filenam
     }
     return data;
 }
+
+void Utils::DumpObjFileToDiskFromData(const std::string& filename, const float* data, size_t count, bool hasNormals)
+{
+    FILE* f = fopen(("objdumps/" + filename).c_str(), "w");
+
+    if(f != nullptr)
+    {
+        fprintf(f, "o dump\n");
+        for(size_t i = 0; i < count; i += (hasNormals ? 6 : 3))
+        {
+            fprintf(f, "v %f %f %f\n", data[i], data[i+1], data[i+2]);
+        }
+
+        if(hasNormals)
+        {
+            for(size_t i = 3; i < count; i += 6)
+            {
+                fprintf(f, "vn %f %f %f\n", data[i], data[i+1], data[i+2]);
+            }
+
+            for(size_t i = 0; i < count / 3; i++)
+            {
+                fprintf(f, "f %zu//%zu %zu//%zu %zu//%zu\n", 3*i+1, 3*i+1, 3*i+2, 3*i+2, 3*i+3, 3*i+3);
+            }
+        }
+        else
+        {
+            for(size_t i = 0; i < count / 3; i++)
+            {
+                fprintf(f, "f %zu %zu %zu\n", 3*i+1, 3*i+2, 3*i+3);
+            }  
+        }
+
+        fclose(f);
+    }
+}
+
+void Utils::DumpObjFileToDiskFromData(const std::string& filename, const std::vector<Vector3>& data)
+{
+    const size_t stride = 3;
+    float* tmp_data = new float[data.size() * stride];
+
+    for(size_t i = 0; i < data.size(); i++)
+    {
+        tmp_data[stride * i    ] = data[i].x;
+        tmp_data[stride * i + 1] = data[i].y;
+        tmp_data[stride * i + 2] = data[i].z;
+    }
+
+    DumpObjFileToDiskFromData(filename, tmp_data, data.size() * 3, false);
+
+    delete[] tmp_data;
+}
+
+void Utils::DumpPointsToDiskFromData(const std::string& filename, const std::vector<Vector3>& data)
+{
+    FILE* f = fopen(("objdumps/" + filename).c_str(), "w");
+
+    if(f != nullptr)
+    {
+        for(auto& v : data)
+        {
+            fprintf(f, "%f, %f, %f,\n", v.x, v.y, v.z);
+        }
+        fclose(f);
+    }
+}
+
+void Utils::DumpPointsToDiskFromData(const std::string& filename, const float* data, size_t count, bool hasNormals)
+{
+    FILE* f = fopen(("objdumps/" + filename).c_str(), "w");
+
+    if(f != nullptr)
+    {
+        for(size_t i = 0; i < count; i += (hasNormals ? 6 : 3))
+        {
+            float x = data[i];
+            float y = data[i+1];
+            float z = data[i+2];
+            fprintf(f, "%f, %f, %f,\n", x, y, z);
+        }
+        fclose(f);
+    }
+}
