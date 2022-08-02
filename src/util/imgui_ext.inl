@@ -5,20 +5,23 @@
 
 namespace ImGuiExt
 {
-    inline bool FileBrowser(std::string* out_path, std::vector<std::string> exts, const std::string& button_name = "Select File")
+    inline bool FileBrowser(std::string* out_path, std::vector<std::string> exts, const std::string& button_name = "Select File", const std::string& dialog_name = "Load", bool createFile = false, const std::string& default_filename = "filename")
     {
+        static std::filesystem::path curr_path = std::filesystem::current_path();
+        static std::filesystem::path curr_selected = curr_path;
+        static char curr_drive = 'C';
+        static bool validLoadPath = false;
+        static bool filename_may_change = true;
+        bool toLoad = false;
+        bool openOWModal = false;
+        std::filesystem::path path_out;
+
         if(ImGui::Button(button_name.c_str()))
         {
             ImGui::OpenPopup("File Browser");
         }
         if(ImGui::BeginPopup("File Browser"))
         {
-            static std::filesystem::path curr_path = std::filesystem::current_path();
-            static std::filesystem::path curr_selected = curr_path;
-            static char curr_drive = 'C';
-            static bool validLoadPath = false;
-            bool toLoad = false;
-
             char drive_str[] = { curr_drive, ':', '\\', '\0' };
             ImGui::PushItemWidth(4 * ImGui::GetFontSize());
             if(ImGui::BeginCombo("##drive_select", drive_str))
@@ -64,7 +67,7 @@ namespace ImGuiExt
                 }
             }
             ImGui::PopItemWidth();
-
+            
             if(ImGui::BeginChild("#browser", ImVec2(500, 150), true))
             {
                 bool selected = false;
@@ -114,14 +117,22 @@ namespace ImGuiExt
                             {
                                 if(out_path != nullptr)
                                 {
-                                    validLoadPath = true;
-                                    toLoad = true;
-                                    *out_path = std::filesystem::absolute(dir_entry.path()).string();
-                                    ImGui::CloseCurrentPopup();
+                                    if(createFile)
+                                    {
+                                        path_out = std::filesystem::absolute(dir_entry.path());
+                                        openOWModal = true;
+                                    }
+                                    else
+                                    {
+                                        validLoadPath = true;
+                                        toLoad = true;
+                                        *out_path = std::filesystem::absolute(dir_entry.path()).string();
+                                        ImGui::CloseCurrentPopup();
+                                    }
                                 }
                                 else
                                 {
-                                    L_ERROR("filebrowser: returned a path for loading but parameter \'out_path\' in nullptr.");
+                                    L_ERROR("filebrowser: returned a path for loading/saving but parameter \'out_path\' in nullptr.");
                                 }
                             }
                         }
@@ -133,32 +144,99 @@ namespace ImGuiExt
                             }
                             else
                             {
-                                L_ERROR("filebrowser: returned a path for loading but parameter \'out_path\' in nullptr.");
+                                L_ERROR("filebrowser: returned a path for loading/saving but parameter \'out_path\' in nullptr.");
                             }
                         }
                     }
                 }
                 ImGui::EndChild();
             }
+            
+            static char filename_full[512];
+            if(createFile)
+            {
+                if(filename_may_change)
+                {
+                    filename_may_change = false;
+                    strcpy(filename_full, default_filename.c_str());
+                }
 
-            if(ImGui::Button("Load") && validLoadPath)
+                ImGui::InputText("##filename", filename_full, 512);
+                ImGui::SameLine();
+            }
+            
+            if(ImGui::Button(dialog_name.c_str()))
             {
                 if(out_path != nullptr)
                 {
-                    toLoad = true;
-                    *out_path = std::filesystem::absolute(curr_selected).string();
-                    ImGui::CloseCurrentPopup();
+                    if(createFile)
+                    {
+                        path_out = std::filesystem::absolute(curr_path) / filename_full;
+
+                        if(!path_out.has_extension() || std::find(exts.begin(), exts.end(), path_out.extension().string()) == exts.end())
+                        {
+                            path_out += *exts.begin();
+                        }
+
+                        // TODO: Check if the the file already exists and prompt for overwrite
+                        if(std::filesystem::exists(path_out))
+                        {
+                            openOWModal = true;
+                        }
+                        else
+                        {
+                            filename_may_change = true;
+                            toLoad = true;
+                            *out_path = path_out.string();
+                            ImGui::CloseCurrentPopup();
+                        }
+                    }
+                    else if(validLoadPath)
+                    {
+                        toLoad = true;
+                        auto path_out = std::filesystem::absolute(curr_selected);
+                        *out_path = path_out.string();
+                        ImGui::CloseCurrentPopup();
+                    }
                 }
                 else
                 {
-                    L_ERROR("filebrowser: returned a path for loading but parameter \'out_path\' in nullptr.");
+                    L_ERROR("filebrowser: returned a path for loading/saving but parameter \'out_path\' in nullptr.");
                 }
             }
+
+            if(openOWModal)
+            {
+                ImGui::OpenPopup("Overwrite File");
+            }
+
+            // This needs to be here because of ImGui stack state manager (one could use a control variable instead)
+            if(ImGui::BeginPopupModal("Overwrite File", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize))
+            {
+                ImGui::Text("The file already exists.");
+                ImGui::Text("Do you want to overwrite it?");
+
+                if(ImGui::Button("Overwrite"))
+                {
+                    filename_may_change = true;
+                    toLoad = true;
+                    *out_path = path_out.string();
+                    ImGui::CloseCurrentPopup();
+                }
+                ImGui::SameLine();
+                if(ImGui::Button("Cancel"))
+                {
+                    toLoad = false;
+                    ImGui::CloseCurrentPopup();
+                }
+                ImGui::EndPopup();
+            }
             ImGui::EndPopup();
-            
-            return toLoad;
         }
-        return false;
+
+        if(toLoad) L_DEBUG("Path sent (possible): %s", out_path->c_str());
+
+        return toLoad;
     }
 
     // Parameter speed is frames per type of char

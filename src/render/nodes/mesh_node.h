@@ -55,8 +55,9 @@ struct MeshNode final : public PropertyNode
         
         bool closepopup = false;
         static const std::vector<std::string> ext = { ".obj" };
-        if(ImGuiExt::FileBrowser(&to_load, ext))
+        if(ImGuiExt::FileBrowser(&to_load, ext) || loaded_savefile)
         {
+            loaded_savefile = false;
             // Thread the file loading
             if(!loading)
             {
@@ -113,6 +114,24 @@ struct MeshNode final : public PropertyNode
         }
     }
 
+    inline virtual ByteBuffer serialize() const override
+    {
+        ByteBuffer buffer = PropertyNode::serialize();
+
+        // Save the load path (it must be present in the loaded scene as well)
+        buffer.add(to_load);
+
+        return buffer;
+    }
+    
+    inline virtual void deserialize(ByteBuffer& buffer) override
+    {
+        PropertyNode::deserialize(buffer);
+
+        buffer.get(&to_load);
+        loaded_savefile = true;
+    }
+
 private:
     std::string to_load;
     MeshNodeData vertices_data;
@@ -121,6 +140,7 @@ private:
     bool valid_model = false;
     bool loading = false;
     bool popupOpened = false;
+    bool loaded_savefile = false;
 
     // NOTE: We are inside a gl context, so this should be fine
     GLuint _preview_vao;

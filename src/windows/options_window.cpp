@@ -1,5 +1,6 @@
 #include "options_window.h"
 #include "node_window.h"
+#include "../util/imgui_ext.inl"
 
 #include <Windows.h>
 #include <GLFW/glfw3.h>
@@ -38,11 +39,11 @@ void OptionsWindow::render()
 
         ImGui::OpenPopup("Save Data");
     }
-
+    ImGui::SameLine();
     if(ImGui::Button("Load Scene"))
     {
         if(b64buffer) delete[] b64buffer;
-        b64buffer = new char[102400];
+        b64buffer = new char[102400]; // ? Sussy ?
         b64buffer[0] = '\0';
         ImGui::OpenPopup("Load Data");
     }
@@ -61,6 +62,24 @@ void OptionsWindow::render()
             ImGui::SetClipboardText(data64.c_str());
             ImGui::CloseCurrentPopup();
         }
+        ImGui::SameLine();
+        std::string where;
+        static const std::vector<std::string> ext = { ".b64" };
+        if(ImGuiExt::FileBrowser(&where, ext, "Save As...", "Save", true, "save.b64"))
+        {
+            FILE* f = fopen(where.c_str(), "wb");
+            if(f != nullptr)
+            {
+                fwrite(data64.c_str(), sizeof(char), data64.size(), f);
+                fclose(f);
+            }
+            else
+            {
+                L_ERROR("OptionsWindow: Could not create save file.");
+            }
+
+            ImGui::CloseCurrentPopup();
+        }
         ImGui::EndPopup();
     }
 
@@ -68,14 +87,40 @@ void OptionsWindow::render()
     {
         ImGui::InputTextMultiline("base64", b64buffer, 102400, ImVec2(0, 0));
 
-        if(ImGui::Button("Done"))
+        if(ImGui::Button("Load"))
         {
             nodeWindow->deserializeWindowState(b64buffer);
             ImGui::CloseCurrentPopup();
         }
+        ImGui::SameLine();
+        std::string where;
+        static const std::vector<std::string> ext = { ".b64" };
+        if(ImGuiExt::FileBrowser(&where, ext, "Load File...", "Load"))
+        {
+            FILE* f = fopen(where.c_str(), "rb");
+            if(f != nullptr)
+            {
+                fseek(f, 0, SEEK_END);
+                long fsize = ftell(f);
+                fseek(f, 0, SEEK_SET);
+                fread(b64buffer, fsize, 1, f);
+                fclose(f);
+                nodeWindow->deserializeWindowState(b64buffer);
+            }
+            else
+            {
+                L_ERROR("OptionsWindow: Could not load save file.");
+            }
+
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SameLine();
+        if(ImGui::Button("Cancel"))
+        {
+            ImGui::CloseCurrentPopup();
+        }
         ImGui::EndPopup();
     }
-
 }
 
 void OptionsWindow::update()

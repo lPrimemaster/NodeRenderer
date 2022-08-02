@@ -374,6 +374,7 @@ void NodeWindow::render()
                     {
                         case PropertyNode::Priority::NORMAL:   nodes.push_back(newNode);             break;
                         case PropertyNode::Priority::FEEDBACK: nodes.insert(nodes.begin(), newNode); break;
+                        case PropertyNode::Priority::RENDER:   nodes.push_back(newNode);             break;
                     }
 
                 }
@@ -482,6 +483,9 @@ void NodeWindow::deserializeWindowState(const std::string& state_string)
 
     std::vector<PropertyNode*> local_nodes;
 
+    // Delete all the old nodes if we have any
+    deleteAllNodes();
+
     // Get all of the node types
     for(size_t i = 0; i < n_count; i++)
     {
@@ -530,13 +534,21 @@ void NodeWindow::deserializeWindowState(const std::string& state_string)
     }
 
     // Push the nodes to the window
+    PropertyNode* renderNode = nullptr;
     for(auto node : local_nodes)
     {
         switch(node->priority)
         {
             case PropertyNode::Priority::NORMAL:   nodes.push_back(node);             break;
             case PropertyNode::Priority::FEEDBACK: nodes.insert(nodes.begin(), node); break;
+            case PropertyNode::Priority::RENDER:   renderNode = node;                 break;
         }
+    }
+
+    // Push last for it to update in the end
+    if(renderNode != nullptr)
+    {
+        nodes.push_back(renderNode);
     }
 
     // Link the nodes

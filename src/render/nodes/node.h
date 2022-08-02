@@ -413,7 +413,8 @@ struct PropertyNode
     enum class Priority
     {
         NORMAL = 0,
-        FEEDBACK = 1
+        FEEDBACK = 1,
+        RENDER = 2 // This is for deserialization only (for the first update)
     };
 
     enum class Type

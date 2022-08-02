@@ -18,7 +18,7 @@ public:
     {
         open = true; 
         setWindowCollapsed(false);
-        window_flags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBackground;
+        window_flags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings /* | ImGuiWindowFlags_NoBackground */;
     }
 
     ~AnalyticsWindow() {  }

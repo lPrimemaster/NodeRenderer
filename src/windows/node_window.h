@@ -26,6 +26,15 @@ public:
         }
     }
 
+    inline void deleteAllNodes()
+    {
+        for(auto n : nodes)
+        {
+            delete n;
+        }
+        nodes.clear();
+    }
+
     static const long long GetApptimeMs();
 
     inline PropertyNode* getRenderOutputNode()

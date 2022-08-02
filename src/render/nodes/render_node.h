@@ -60,6 +60,7 @@ struct RenderNode final : public PropertyNode
         L_TRACE("_motifPositionPtr : 0x%X", _renderData._motifPositionPtr);
 
         name = "Render Node #" + std::to_string(inc++);
+        priority = PropertyNode::Priority::RENDER;
 
         outputs[0]->setValue(_renderData);
     }
