@@ -14,7 +14,7 @@ struct RenderNodeData
     MeshNodeData** _meshPtr = nullptr;
     unsigned int   _meshCount = 0;
     float          _meshParam = 0.0f;
-    glm::mat4**    _worldPositionPtr = nullptr;
+    Vector4**      _worldPositionPtr = nullptr;
     glm::mat4**    _worldRotationPtr = nullptr;
     Vector4**      _instanceColorsPtr = nullptr;
     glm::mat4**    _motifPositionPtr = nullptr;
@@ -39,7 +39,7 @@ struct RenderNode final : public PropertyNode
     {
         static int inc = 0;
 
-        _renderData._worldPositionPtr = (glm::mat4**)malloc(sizeof(glm::mat4*));
+        _renderData._worldPositionPtr = (Vector4**)malloc(sizeof(Vector4*));
         *(_renderData._worldPositionPtr) = nullptr;
         L_TRACE("_worldPositionPtr : 0x%X", _renderData._worldPositionPtr);
 
@@ -357,28 +357,27 @@ struct RenderNode final : public PropertyNode
             {
                 _renderData._instanceCount = _instanceCountLast;
 
-                glm::mat4* worldPosLocal = *(_renderData._worldPositionPtr);
+                Vector4* worldPosLocal = *(_renderData._worldPositionPtr);
                 if(worldPosLocal != nullptr)
                 {
                     delete[] worldPosLocal;
                 }
-                worldPosLocal = new glm::mat4[_instanceCountLast];
+                worldPosLocal = new Vector4[_instanceCountLast];
 
                 auto worldPositionLocal = inputs_named.find("worldPosition");
                 if(worldPositionLocal != inputs_named.end())
                 {
                     auto worldPositions = worldPositionLocal->second->getValue<std::vector<Vector3>>();
-                    worldPosLocal[0] = glm::translate(
-                                                glm::vec3(
-                                                    worldPositions[0].x, 
-                                                    worldPositions[0].y,
-                                                    worldPositions[0].z
-                                                )
-                                            );
+                    worldPosLocal[0] = Vector4(
+                        worldPositions[0].x, 
+                        worldPositions[0].y,
+                        worldPositions[0].z,
+                        0.0f
+                    );
                 }
                 else
                 {
-                    worldPosLocal[0] = glm::mat4(1.0f);
+                    worldPosLocal[0] = Vector4(0.0f, 0.0f, 0.0f, 0.0f);
                 }
 
                 Vector4* instanceColorLocal = *(_renderData._instanceColorsPtr);
@@ -463,17 +462,16 @@ struct RenderNode final : public PropertyNode
                 if(worldPositionLocal->second->dataChanged())
                 {
                     auto worldPositions = worldPositionLocal->second->getValue<std::vector<Vector3>>();
-                    glm::mat4* worldPosLocal = *(_renderData._worldPositionPtr);
+                    Vector4* worldPosLocal = *(_renderData._worldPositionPtr);
 
                     for(unsigned int i = 0; i < _renderData._instanceCount; i++)
                     {
-                        worldPosLocal[i] = glm::translate(
-                                                            glm::vec3(
-                                                                worldPositions[i].x, 
-                                                                worldPositions[i].y,
-                                                                worldPositions[i].z
-                                                            )
-                                                        );
+                        worldPosLocal[i] = Vector4(
+                            worldPositions[i].x, 
+                            worldPositions[i].y,
+                            worldPositions[i].z,
+                            0.0f
+                        );
                     }
 
                     *(_renderData._worldPositionPtr) = worldPosLocal;
@@ -506,12 +504,12 @@ struct RenderNode final : public PropertyNode
             {
                 _renderData._instanceCount = instanceCount;
                 
-                glm::mat4* worldPosLocal = *(_renderData._worldPositionPtr);
+                Vector4* worldPosLocal = *(_renderData._worldPositionPtr);
                 if(worldPosLocal != nullptr)
                 {
                     delete[] worldPosLocal;
                 }
-                worldPosLocal = new glm::mat4[instanceCount];
+                worldPosLocal = new Vector4[instanceCount];
 
                 if(worldPositionOkay)
                 {
@@ -519,20 +517,19 @@ struct RenderNode final : public PropertyNode
 
                     for(unsigned int i = 0; i < _renderData._instanceCount; i++)
                     {
-                        worldPosLocal[i] = glm::translate(
-                                                            glm::vec3(
-                                                                worldPositions[i].x, 
-                                                                worldPositions[i].y,
-                                                                worldPositions[i].z
-                                                            )
-                                                        );
+                        worldPosLocal[i] = Vector4(
+                            worldPositions[i].x, 
+                            worldPositions[i].y,
+                            worldPositions[i].z,
+                            0.0f
+                        );
                     }
                 }
                 else
                 {
                     for(unsigned int i = 0; i < _renderData._instanceCount; i++)
                     {
-                        worldPosLocal[i] = glm::mat4(1.0f);
+                        worldPosLocal[i] = Vector4(0.0f, 0.0f, 0.0f, 0.0f);
                     }
                 }
 

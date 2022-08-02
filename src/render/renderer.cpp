@@ -301,16 +301,16 @@ Renderer::DrawInstance::DrawInstance()
     glBufferData(GL_ARRAY_BUFFER, sizeof(vtx_nrm), vtx_nrm, GL_STATIC_DRAW);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(15, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
-    glEnableVertexAttribArray(15);
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(2);
 
     // Mesh B
     glBindBuffer(GL_ARRAY_BUFFER, _vbo[1]);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vtx_nrm), vtx_nrm, GL_STATIC_DRAW);
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(16, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
-    glEnableVertexAttribArray(16);
+    glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(3);
 
     _idxcount = 36;
     _instanceCount = 1;
@@ -318,69 +318,57 @@ Renderer::DrawInstance::DrawInstance()
     glGenBuffers(1, &_ipb);
     glBindBuffer(GL_ARRAY_BUFFER, _ipb);
     _intancePositionMatrixPtr = nullptr;
-    glBufferData(GL_ARRAY_BUFFER, _instanceCount * sizeof(glm::mat4), nullptr, GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, _instanceCount * sizeof(Vector4), nullptr, GL_DYNAMIC_DRAW);
 
-    glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(glm::vec4), (void*)0);
-    glEnableVertexAttribArray(2);
-    glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(glm::vec4), (void*)(1 * sizeof(glm::vec4)));
-    glEnableVertexAttribArray(3);
-    glVertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(glm::vec4), (void*)(2 * sizeof(glm::vec4)));
+    glVertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, sizeof(Vector4), (void*)0);
     glEnableVertexAttribArray(4);
-    glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(glm::vec4), (void*)(3 * sizeof(glm::vec4)));
-    glEnableVertexAttribArray(5);
-
-    glVertexAttribDivisor(2, 1);
-    glVertexAttribDivisor(3, 1);
     glVertexAttribDivisor(4, 1);
-    glVertexAttribDivisor(5, 1);
 
     glGenBuffers(1, &_icb);
     glBindBuffer(GL_ARRAY_BUFFER, _icb);
     _instanceColorsPtr = nullptr;
     glBufferData(GL_ARRAY_BUFFER, _instanceCount * sizeof(Vector4), nullptr, GL_DYNAMIC_DRAW);
 
-    glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, sizeof(Vector4), (void*)0);
-    glEnableVertexAttribArray(6);
-
-    glVertexAttribDivisor(6, 1);
+    glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, sizeof(Vector4), (void*)0);
+    glEnableVertexAttribArray(5);
+    glVertexAttribDivisor(5, 1);
 
     glGenBuffers(1, &_irb);
     glBindBuffer(GL_ARRAY_BUFFER, _irb);
     _intanceRotationMatrixPtr = nullptr;
     glBufferData(GL_ARRAY_BUFFER, _instanceCount * sizeof(glm::mat4), nullptr, GL_DYNAMIC_DRAW);
 
-    glVertexAttribPointer(7, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(glm::vec4), (void*)0);
+    glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(glm::vec4), (void*)0);
+    glEnableVertexAttribArray(6);
+    glVertexAttribPointer(7, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(glm::vec4), (void*)(1 * sizeof(glm::vec4)));
     glEnableVertexAttribArray(7);
-    glVertexAttribPointer(8, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(glm::vec4), (void*)(1 * sizeof(glm::vec4)));
+    glVertexAttribPointer(8, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(glm::vec4), (void*)(2 * sizeof(glm::vec4)));
     glEnableVertexAttribArray(8);
-    glVertexAttribPointer(9, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(glm::vec4), (void*)(2 * sizeof(glm::vec4)));
+    glVertexAttribPointer(9, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(glm::vec4), (void*)(3 * sizeof(glm::vec4)));
     glEnableVertexAttribArray(9);
-    glVertexAttribPointer(10, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(glm::vec4), (void*)(3 * sizeof(glm::vec4)));
-    glEnableVertexAttribArray(10);
 
+    glVertexAttribDivisor(6, 1);
     glVertexAttribDivisor(7, 1);
     glVertexAttribDivisor(8, 1);
     glVertexAttribDivisor(9, 1);
-    glVertexAttribDivisor(10, 1);
 
     glGenBuffers(1, &_mpb);
     glBindBuffer(GL_ARRAY_BUFFER, _mpb);
     _motifPositionMatrixPtr = nullptr;
     glBufferData(GL_ARRAY_BUFFER, _motif_span * _instanceCount * sizeof(glm::mat4), nullptr, GL_DYNAMIC_DRAW);
 
-    glVertexAttribPointer(11, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(glm::vec4), (void*)0);
+    glVertexAttribPointer(10, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(glm::vec4), (void*)0);
+    glVertexAttribPointer(11, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(glm::vec4), (void*)(1 * sizeof(glm::vec4)));
+    glVertexAttribPointer(12, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(glm::vec4), (void*)(2 * sizeof(glm::vec4)));
+    glVertexAttribPointer(13, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(glm::vec4), (void*)(3 * sizeof(glm::vec4)));
+    glEnableVertexAttribArray(10);
     glEnableVertexAttribArray(11);
-    glVertexAttribPointer(12, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(glm::vec4), (void*)(1 * sizeof(glm::vec4)));
     glEnableVertexAttribArray(12);
-    glVertexAttribPointer(13, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(glm::vec4), (void*)(2 * sizeof(glm::vec4)));
     glEnableVertexAttribArray(13);
-    glVertexAttribPointer(14, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(glm::vec4), (void*)(3 * sizeof(glm::vec4)));
-    glEnableVertexAttribArray(14);
-
+    glVertexAttribDivisor(10, 1);
     glVertexAttribDivisor(11, 1);
     glVertexAttribDivisor(12, 1);
     glVertexAttribDivisor(13, 1);
-    glVertexAttribDivisor(14, 1);
 
     glBindVertexArray(0);
 }
@@ -390,25 +378,22 @@ void Renderer::DrawInstance::updateMotifInstanceForVertexArray()
     glBindVertexArray(_vao);
 
     // position
-    glVertexAttribDivisor(2, _motif_span);
-    glVertexAttribDivisor(3, _motif_span);
     glVertexAttribDivisor(4, _motif_span);
-    glVertexAttribDivisor(5, _motif_span);
 
     // color
-    glVertexAttribDivisor(6, _motif_span);
+    glVertexAttribDivisor(5, _motif_span);
 
     // rotation
+    glVertexAttribDivisor(6, _motif_span);
     glVertexAttribDivisor(7, _motif_span);
     glVertexAttribDivisor(8, _motif_span);
     glVertexAttribDivisor(9, _motif_span);
-    glVertexAttribDivisor(10, _motif_span);
 
     // motif
+    glVertexAttribDivisor(10, 1);
     glVertexAttribDivisor(11, 1);
     glVertexAttribDivisor(12, 1);
     glVertexAttribDivisor(13, 1);
-    glVertexAttribDivisor(14, 1);
 }
 
 Renderer::DrawInstance::~DrawInstance()
@@ -882,10 +867,10 @@ void Renderer::DrawList::render(GLFWwindow* window, NodeWindow* nodeWindow, Anal
                 glBufferData(GL_ARRAY_BUFFER, sizeof(glm::mat4), &identity, GL_DYNAMIC_DRAW);
                 instances[0]->updateMotifInstanceForVertexArray();
                 glBindVertexArray(instances[0]->_vao);
+                glVertexAttribDivisor(10, instances[0]->_instanceCount);
                 glVertexAttribDivisor(11, instances[0]->_instanceCount);
                 glVertexAttribDivisor(12, instances[0]->_instanceCount);
                 glVertexAttribDivisor(13, instances[0]->_instanceCount);
-                glVertexAttribDivisor(14, instances[0]->_instanceCount);
                 mcm_motif_size = infinityVec3;
 
                 // FIXME : Take care of this please
@@ -893,11 +878,11 @@ void Renderer::DrawList::render(GLFWwindow* window, NodeWindow* nodeWindow, Anal
             }
         }
 
-        glm::mat4* pos = *(nodeData._worldPositionPtr);
+        Vector4* pos = *(nodeData._worldPositionPtr);
         if(pos != nullptr)
         {
             glBindBuffer(GL_ARRAY_BUFFER, instances[0]->_ipb);
-            glBufferData(GL_ARRAY_BUFFER, instances[0]->_instanceCount * sizeof(glm::mat4), pos, GL_DYNAMIC_DRAW);
+            glBufferData(GL_ARRAY_BUFFER, instances[0]->_instanceCount * sizeof(Vector4), pos, GL_DYNAMIC_DRAW);
         }
 
         glm::mat4* rot = *(nodeData._worldRotationPtr);

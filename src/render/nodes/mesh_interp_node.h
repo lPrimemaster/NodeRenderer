@@ -130,9 +130,9 @@ struct MeshInterpolatorNode final : public PropertyNode
                 {
                     mesh_list.t = in.second->getValue<float>();
 
-                    // Clamp t -> [0, numMeshes]
+                    // Clamp t -> [0, 1]
                     if(mesh_list.t < 0.0f) mesh_list.t = 0.0f;
-                    else if(mesh_list.t > (float)(inputs_named.size() - 1)) mesh_list.t = (float)(inputs_named.size() - 1);
+                    else if(mesh_list.t > 1.0f) mesh_list.t = 1.0f;
                     mesh_list.changeParamOnly = true;
                     data->setValue(mesh_list);
                 }
@@ -164,7 +164,8 @@ struct MeshInterpolatorNode final : public PropertyNode
     {
         ByteBuffer buffer = PropertyNode::serialize();
 
-        // TODO
+        // Just save the current mode
+        buffer.add(current_mode);
 
         return buffer;
     }
@@ -173,9 +174,8 @@ struct MeshInterpolatorNode final : public PropertyNode
     {
         PropertyNode::deserialize(buffer);
 
-        // TODO
-
-        outputs[0]->setValue(mesh_list);
+        // Just load the current mode
+        buffer.get(&current_mode);
     }
 
 private:

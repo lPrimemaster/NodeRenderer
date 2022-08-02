@@ -1,15 +1,16 @@
 #version 450
 const uint maxMeshMerge = 2;
 
-layout (location =  2) in mat4 instancePosMatrix;
-layout (location =  6) in vec4 instanceColor;
-layout (location =  7) in mat4 instanceRotMatrix;
-layout (location = 11) in mat4 motifPosMatrix;
-
 layout (location =  0) in vec3 posA;
 layout (location =  1) in vec3 posB;
-layout (location = 15) in vec3 nrmA;
-layout (location = 16) in vec3 nrmB;
+layout (location =  2) in vec3 nrmA;
+layout (location =  3) in vec3 nrmB;
+
+layout (location =  4) in vec4 instancePos;
+layout (location =  5) in vec4 instanceColor;
+layout (location =  6) in mat4 instanceRotMatrix;
+layout (location = 10) in mat4 motifPosMatrix;
+
 
 uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;
@@ -32,10 +33,10 @@ void main()
         pos *= (1.0 - meshParam);
         pos += posB * meshParam;
 
-        // nrm *= (1.0 - meshParam);
-        // nrm += nrmB * meshParam;
+        nrm *= (1.0 - meshParam);
+        nrm += nrmB * meshParam;
     }
 
     normal = nrm;
-    gl_Position = projectionMatrix * viewMatrix * motifPosMatrix * instancePosMatrix * instanceRotMatrix * vec4(pos, 1.0);
+    gl_Position = projectionMatrix * viewMatrix * motifPosMatrix * (instancePos + (instanceRotMatrix * vec4(pos, 1.0)));
 }

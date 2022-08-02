@@ -26,16 +26,16 @@ namespace Renderer
         GLsizei _idxcount;
 
         GLuint      _ipb;
-        glm::mat4** _intancePositionMatrixPtr;
+        Vector4**   _intancePositionMatrixPtr;
 
         GLuint      _irb;
         glm::mat4** _intanceRotationMatrixPtr;
 
-        GLuint    _icb;
-        Vector4** _instanceColorsPtr;
+        GLuint      _icb;
+        Vector4**   _instanceColorsPtr;
 
         GLuint      _mpb;
-        glm::mat4** _motifPositionMatrixPtr;
+        Vector4**   _motifPositionMatrixPtr;
 
         unsigned int _instanceCount;
         unsigned int _motif_span;
