@@ -26,6 +26,9 @@ public:
         }
     }
 
+    // BUG: [*][ERROR]: setValueDynamic(): Received a non valid type.
+    //      [*][WARNING]: This node requires an input with types: [...]
+    // On Load from file
     inline void deleteAllNodes()
     {
         for(auto n : nodes)

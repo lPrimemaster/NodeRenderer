@@ -14,7 +14,7 @@ namespace ImGuiExt
         static bool filename_may_change = true;
         bool toLoad = false;
         bool openOWModal = false;
-        std::filesystem::path path_out;
+        static std::filesystem::path path_out;
 
         if(ImGui::Button(button_name.c_str()))
         {
@@ -120,6 +120,7 @@ namespace ImGuiExt
                                     if(createFile)
                                     {
                                         path_out = std::filesystem::absolute(dir_entry.path());
+                                        L_TRACE("CB: %s", path_out.string().c_str());
                                         openOWModal = true;
                                     }
                                     else
@@ -182,6 +183,7 @@ namespace ImGuiExt
                         if(std::filesystem::exists(path_out))
                         {
                             openOWModal = true;
+                            L_TRACE("SA: %s", path_out.string().c_str());
                         }
                         else
                         {
@@ -221,6 +223,7 @@ namespace ImGuiExt
                     filename_may_change = true;
                     toLoad = true;
                     *out_path = path_out.string();
+                    ImGui::CloseCurrentPopup();
                     ImGui::CloseCurrentPopup();
                 }
                 ImGui::SameLine();

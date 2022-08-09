@@ -138,15 +138,23 @@ struct RenderNode final : public PropertyNode
         ImGui::PushStyleColor(ImGuiCol_Header, frame_color);
         bheaders.fog = ImGui::CollapsingHeader("Fog");
         ImGui::PopStyleColor();
+
+        _motif_changed_internal = false;
         if(bheaders.fog)
         {
             ImDrawList* draw_list = ImGui::GetWindowDrawList();
             ImVec2 border_start = ImGui::GetItemRectMin();
             ImGui::BeginChild("#fog_details");
 
-            _renderData._fogChanged  = ImGui::InputFloat("Fog Maximum", &_renderData._fogMax, 1.0f, 0.0f, "%.1f");
-            _renderData._fogChanged |= ImGui::InputFloat("Fog Minimum", &_renderData._fogMin, 1.0f, 0.0f, "%.1f");
-            _renderData._fogChanged |= ImGui::ColorPicker3("Fog Color", _renderData._fogColor.data);
+            bool fogmax = ImGui::InputFloat("Fog Maximum", &_renderData._fogMax, 1.0f, 0.0f, "%.1f");
+            bool fogmin = ImGui::InputFloat("Fog Minimum", &_renderData._fogMin, 1.0f, 0.0f, "%.1f");
+            bool fogcol = ImGui::ColorPicker3("Fog Color", _renderData._fogColor.data);
+            _renderData._fogChanged = fogmax || fogmin || fogcol;
+
+            if((fogmax || fogmin) && _renderData._repeatBlocks)
+            {
+                _motif_changed_internal = true;
+            }
 
             if(_renderData._fogChanged)
             {
@@ -171,7 +179,6 @@ struct RenderNode final : public PropertyNode
         ImGui::PushStyleColor(ImGuiCol_Header, frame_color);
         bheaders.pos = ImGui::CollapsingHeader("Position");
         ImGui::PopStyleColor();
-        _motif_changed_internal = false;
         if(bheaders.pos)
         {
             ImDrawList* draw_list = ImGui::GetWindowDrawList();
@@ -208,57 +215,9 @@ struct RenderNode final : public PropertyNode
 
             if(_renderData._repeatBlocks)
             {
-                if(ImGui::InputFloat3("Motif Size", _renderData._motifSize.data, "%.1f") || _motif_changed_internal || _renderData._fogChanged)
+                if(ImGui::InputFloat3("Motif Size", _renderData._motifSize.data, "%.1f"))
                 {
                     _motif_changed_internal = true;
-                    _renderData._motifInstances[0] = (unsigned int)std::ceil(_renderData._fogMax / _renderData._motifSize.x);
-                    _renderData._motifInstances[1] = (unsigned int)std::ceil(_renderData._fogMax / _renderData._motifSize.y);
-                    _renderData._motifInstances[2] = (unsigned int)std::ceil(_renderData._fogMax / _renderData._motifSize.z);
-
-                    _renderData._motif_span = (_renderData._motifInstances[0] + 1) *
-                                              (_renderData._motifInstances[1] + 1) *
-                                              (_renderData._motifInstances[2] + 1) * 8;
-
-                    glm::mat4* motifPosLocal = *(_renderData._motifPositionPtr);
-                    if(motifPosLocal != nullptr)
-                    {
-                        delete[] motifPosLocal;
-                    }
-                    motifPosLocal = new glm::mat4[_renderData._motif_span * _renderData._instanceCount];
-
-                    int span_x = (int)_renderData._motifInstances[0];
-                    int span_y = (int)_renderData._motifInstances[1];
-                    int span_z = (int)_renderData._motifInstances[2];
-
-
-                    // NOTE: This can be async if it starts to seem slow
-                    for(int i = 0; i < _renderData._instanceCount; i++)
-                    {
-                        int o = i * _renderData._motif_span;
-                        for(int z = -span_z; z < span_z + 1; z++)
-                        {
-                            for(int y = -span_y; y < span_y + 1; y++)
-                            {
-                                for(int x = -span_x; x < span_x + 1; x++)
-                                {
-                                    int idx = (x + span_x) + (y + span_y) * 2 * span_x + (z + span_z) * 4 * span_x * span_y;
-                                    motifPosLocal[o + idx] = glm::translate(
-                                        glm::vec3(
-                                            _renderData._motifSize.x * x,
-                                            _renderData._motifSize.y * y,
-                                            _renderData._motifSize.z * z
-                                        )
-                                    );
-                                }
-                            }
-                        }
-                    }
-
-                    *(_renderData._motifPositionPtr) = motifPosLocal;
-                    L_DEBUG("New Motif Instances: (%u, %u, %u)", _renderData._motifInstances[0], _renderData._motifInstances[1], _renderData._motifInstances[2]);
-                    L_DEBUG("Motif Instance Attr size: %d kb", _renderData._motif_span * _renderData._instanceCount * sizeof(glm::mat4) / 1024);
-                    L_DEBUG("New Total Instance Count: %u", _renderData._motif_span * _renderData._instanceCount);
-                    _renderData._motifChanged = true;
                 }
                 else
                 {
@@ -277,8 +236,9 @@ struct RenderNode final : public PropertyNode
         }
 
         // Recalculate instances
-        if(_motif_changed_internal || _renderData._fogChanged)
+        if(_motif_changed_internal || _first_load)
         {
+            _first_load = false;
             _renderData._motifInstances[0] = (unsigned int)std::ceil(_renderData._fogMax / _renderData._motifSize.x);
             _renderData._motifInstances[1] = (unsigned int)std::ceil(_renderData._fogMax / _renderData._motifSize.y);
             _renderData._motifInstances[2] = (unsigned int)std::ceil(_renderData._fogMax / _renderData._motifSize.z);
@@ -670,6 +630,7 @@ struct RenderNode final : public PropertyNode
 
         // Resetup this node
         _render_data_changed = true;
+        _first_load = true;
         outputs[0]->setValue(_renderData);
     }
 
@@ -703,4 +664,5 @@ private:
     bool _render_data_changed = false;
     bool _fog_changed_last_frame = false;
     bool _motif_changed_internal = false;
+    bool _first_load = false;
 };

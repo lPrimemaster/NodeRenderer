@@ -373,7 +373,8 @@ void NodeWindow::render()
                     switch(newNode->priority)
                     {
                         case PropertyNode::Priority::NORMAL:   nodes.push_back(newNode);             break;
-                        case PropertyNode::Priority::FEEDBACK: nodes.insert(nodes.begin(), newNode); break;
+                        // case PropertyNode::Priority::FEEDBACK: nodes.insert(nodes.begin(), newNode); break;
+                        case PropertyNode::Priority::FEEDBACK: nodes.push_back(newNode);             break;
                         case PropertyNode::Priority::RENDER:   nodes.push_back(newNode);             break;
                     }
 
@@ -530,29 +531,24 @@ void NodeWindow::deserializeWindowState(const std::string& state_string)
     // Deserialize the node itself
     for(auto node : local_nodes)
     {
+        // This should update the node itself, preventing empty type connections
         node->deserialize(buffer);
     }
 
     // Push the nodes to the window
-    PropertyNode* renderNode = nullptr;
     for(auto node : local_nodes)
     {
         switch(node->priority)
         {
-            case PropertyNode::Priority::NORMAL:   nodes.push_back(node);             break;
-            case PropertyNode::Priority::FEEDBACK: nodes.insert(nodes.begin(), node); break;
-            case PropertyNode::Priority::RENDER:   renderNode = node;                 break;
+            case PropertyNode::Priority::NORMAL:   [[fallthrough]];
+            case PropertyNode::Priority::RENDER:   nodes.push_back(node);             break;
+            // case PropertyNode::Priority::FEEDBACK: nodes.insert(nodes.begin(), node); break;
+            case PropertyNode::Priority::FEEDBACK: nodes.push_back(node);             break;
         }
     }
 
-    // Push last for it to update in the end
-    if(renderNode != nullptr)
-    {
-        nodes.push_back(renderNode);
-    }
-
     // Link the nodes
-    // FIXME: Fix all this shit
+    // BUG: Fix all this!!!!!
     for(auto node : local_nodes)
     {
         for(IOIdxData idxd : node->output_dependencies)
@@ -560,9 +556,12 @@ void NodeWindow::deserializeWindowState(const std::string& state_string)
             unsigned char link_output_slot = idxd.other_idx;
             unsigned char slot_idx = idxd.self_idx;
             int id = idxd.self_id;
-            auto other = local_nodes[id];
+            auto other = nodes[id];
             other->inputs.emplace(idxd, node->outputs[link_output_slot]);
             other->inputs_named.emplace(other->_input_labels[slot_idx], node->outputs[link_output_slot]);
         }
     }
+
+    // Start the save file with the node window open
+    setWindowCollapsed(false);
 }

@@ -286,6 +286,26 @@ struct ListAccessNode final : public PropertyNode
         buffer.get(&idx);
         buffer.get(&mod);
 
+        if(mod)
+        {
+            setInputsOrdered(
+                {
+                    "index",
+                    "list",
+                    "value"
+                }
+            );
+        }
+        else
+        {
+            setInputsOrdered(
+                {
+                    "index",
+                    "list"
+                }
+            );
+        }
+
     }
 
 private:

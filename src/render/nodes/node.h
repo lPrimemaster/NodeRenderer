@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <map>
+#include <unordered_map>
 #include <type_traits>
 #include <typeinfo>
 #include <typeindex>
@@ -50,11 +51,21 @@ struct IOIdxData
     unsigned char other_idx;
     int self_id;
 
-    bool operator<(const IOIdxData &o) const
+    bool operator==(const IOIdxData& o) const
     {
-        return (int)(self_idx + (int)(other_idx << 8)) < (int)(o.self_idx + (int)(o.other_idx << 8));
+        return self_idx == o.self_idx && other_idx == o.other_idx && self_id == o.self_id; // ?
+    }
+
+};
+
+struct IOIdxDataHashFn
+{
+    size_t operator()(const IOIdxData& d) const
+    {
+        return std::hash<unsigned char>()(d.self_idx) ^ std::hash<unsigned char>()(d.other_idx) ^ std::hash<int>()(d.self_id);
     }
 };
+
 
 struct PropertyNode;
 
@@ -255,7 +266,7 @@ struct PropertyGenericData
             case ValidType::LIST_VECTOR2: return (void*)((std::vector<Vector2>*)data)->data();
             case ValidType::LIST_VECTOR3: return (void*)((std::vector<Vector3>*)data)->data();
             case ValidType::LIST_VECTOR4: return (void*)((std::vector<Vector4>*)data)->data();
-            default: L_ERROR("setValueDynamic(): Received a non valid type."); return nullptr;
+            default: L_ERROR("getListData(): Received a non valid type."); return nullptr;
             }
         }
         else
@@ -504,7 +515,7 @@ struct PropertyNode
     float _output_max_pad_px = 0.0f;
     inline static constexpr float _text_pad_pad_px = 20.0f;
 
-    std::map<IOIdxData, PropertyGenericData*> inputs;
+    std::unordered_map<IOIdxData, PropertyGenericData*, IOIdxDataHashFn> inputs;
     std::map<std::string, PropertyGenericData*> inputs_named;
     
     // Outputs
