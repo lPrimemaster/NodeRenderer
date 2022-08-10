@@ -184,13 +184,16 @@ void NodeWindow::render()
                         }
                         else
                         {
-                            L_DEBUG("Make a link (%d) :-:=:-: From (%s:%d) to (%s:%d)",
-                                drawing_line,
+                            L_DEBUG("========== New Node Link ==========");
+                            L_DEBUG("From \"%s\" (%d)",
                                 nodes[link_from_id]->name.c_str(),
-                                link_from_id,
-                                node->name.c_str(),
-                                node_idx
+                                link_output_slot
                             );
+                            L_DEBUG("To \"%s\" (%d)",
+                                node->name.c_str(),
+                                slot_idx
+                            );
+                            L_DEBUG("===================================");
 
                             IOIdxData idxd;
                             idxd.other_idx = link_output_slot;
@@ -444,6 +447,8 @@ void NodeWindow::render()
     ImGui::EndGroup();
 }
 
+// On Save to file
+// BUG: [*][ERROR]: getListData(): Received a non valid type.
 const std::string NodeWindow::serializeWindowState()
 {
     ByteBuffer buffer;
@@ -469,6 +474,8 @@ const std::string NodeWindow::serializeWindowState()
     return base64_encode(buffer.front(), (unsigned int)buffer.size());
 }
 
+// On Load from file
+// BUG: [*][ERROR]: setValueDynamic(): Received a non valid type. (nothing seems to break though)
 void NodeWindow::deserializeWindowState(const std::string& state_string)
 {
     std::vector<unsigned char> data = base64_decode(state_string);
@@ -556,12 +563,47 @@ void NodeWindow::deserializeWindowState(const std::string& state_string)
             unsigned char link_output_slot = idxd.other_idx;
             unsigned char slot_idx = idxd.self_idx;
             int id = idxd.self_id;
+
+            if(id >= nodes.size())
+            {
+                L_ERROR("Attempted connecting node \"%s\" to an invalid node id %d(out of %d).", node->name.c_str(), id, nodes.size());
+                L_WARNING("Ignoring node linking for this instance...");
+                L_ERROR("This error is either a bug, or the savefile is corrupted.");
+                continue;
+            }
+
+            if(link_output_slot >= node->outputs.size())
+            {
+                L_ERROR("Attempted connecting node \"%s\" with an invalid output slot %d(out of %d).", 
+                    node->name.c_str(),
+                    link_output_slot,
+                    node->outputs.size()
+                );
+                L_WARNING("Ignoring node linking for this instance...");
+                L_ERROR("This error is either a bug, or the savefile is corrupted.");
+                continue;
+            }
+
             auto other = nodes[id];
+
+            if(slot_idx >= other->_input_labels.size())
+            {
+                L_ERROR("Attempted connecting node \"%s\" to node \"%s\" with an invalid input slot %d(out of %d).", 
+                    node->name.c_str(),
+                    other->name.c_str(),
+                    slot_idx,
+                    other->_input_labels.size()
+                );
+                L_WARNING("Ignoring node linking for this instance...");
+                L_ERROR("This error is either a bug, or the savefile is corrupted.");
+                continue;
+            }
+
             other->inputs.emplace(idxd, node->outputs[link_output_slot]);
             other->inputs_named.emplace(other->_input_labels[slot_idx], node->outputs[link_output_slot]);
         }
     }
 
-    // Start the save file with the node window open
+    // Start the save file scene with the node window open
     setWindowCollapsed(false);
 }

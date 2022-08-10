@@ -584,7 +584,7 @@ struct PropertyNode
                     }
                 }
 
-                L_WARNING("This node requires an input with types:");
+                L_WARNING("Node \"%s\" requires an input with types:", name.c_str());
                 for(auto tid : { std::type_index(typeid(Args))... })
                 {
                     L_WARNING("%s", tid.name());
