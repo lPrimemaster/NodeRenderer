@@ -12,6 +12,7 @@
 #include "../../log/logger.h"
 #include "../../math/vector.h"
 #include "../../util/serialization.inl"
+#include "../node_outputs.h"
 
 struct NodeRenderData : public Serializable
 {
@@ -81,6 +82,10 @@ struct PropertyGenericData
         VECTOR2,
         VECTOR3,
         VECTOR4,
+
+        RENDER_DATA,
+        MESH_NODE_DATA,
+        MESH_INTERP_LIST_DATA,
 
         LIST_FLOAT = 100,
         LIST_INT,
@@ -184,6 +189,11 @@ struct PropertyGenericData
             {
                 (*(T*)data) = value;
                 _data_changed = true;
+
+                if constexpr(is_std_vector<T>::value)
+                {
+                    setSizeForVector<T::value_type>();
+                }
             }
             else
             {
@@ -339,6 +349,7 @@ struct PropertyGenericData
     {
         switch (b.vtype)
         {
+        // Simple values for node outputs
         case ValidType::FLOAT:   setValue<float>(*(float*)b.data); break;
         case ValidType::INT:     setValue<int>(*(int*)b.data); break;
         case ValidType::UINT:    setValue<unsigned int>(*(unsigned int*)b.data); break;
@@ -346,12 +357,19 @@ struct PropertyGenericData
         case ValidType::VECTOR3: setValue<Vector3>(*(Vector3*)b.data); break;
         case ValidType::VECTOR4: setValue<Vector4>(*(Vector4*)b.data); break;
 
+        // List values for node outputs
         case ValidType::LIST_FLOAT:   setValue<std::vector<float>>(*(std::vector<float>*)b.data); break;
         case ValidType::LIST_INT:     setValue<std::vector<int>>(*(std::vector<int>*)b.data); break;
         case ValidType::LIST_UINT:    setValue<std::vector<unsigned int>>(*(std::vector<unsigned int>*)b.data); break;
         case ValidType::LIST_VECTOR2: setValue<std::vector<Vector2>>(*(std::vector<Vector2>*)b.data); break;
         case ValidType::LIST_VECTOR3: setValue<std::vector<Vector3>>(*(std::vector<Vector3>*)b.data); break;
         case ValidType::LIST_VECTOR4: setValue<std::vector<Vector4>>(*(std::vector<Vector4>*)b.data); break;
+
+        // Custom values for node outputs
+        case ValidType::RENDER_DATA:           setValue<RenderNodeData>(*(RenderNodeData*)b.data); break;
+        case ValidType::MESH_NODE_DATA:        setValue<MeshNodeData>(MeshNodeData()); break; // Mesh node data is just loaded from disk
+        case ValidType::MESH_INTERP_LIST_DATA: setValue<MeshInterpListData>(*(MeshInterpListData*)b.data); L_ERROR("MESH_INTERP_LIST_DATA deserialization not implemented."); exit(-1); break; // TODO
+
         default: L_ERROR("setValueDynamic(): Received a non valid type."); break;
         }
     }
@@ -393,6 +411,12 @@ private:
 
     // }
 
+    template<typename>
+    struct is_std_vector : std::false_type {};
+
+    template<typename T, typename A>
+    struct is_std_vector<std::vector<T,A>> : std::true_type {};
+
     template<typename T>
     inline void setSizeForVector()
     {
@@ -413,6 +437,9 @@ private:
         else if(isOfType<std::vector<Vector2>>())      { vtype = ValidType::LIST_VECTOR2; setSizeForVector<Vector2>(); }
         else if(isOfType<std::vector<Vector3>>())      { vtype = ValidType::LIST_VECTOR3; setSizeForVector<Vector3>(); }
         else if(isOfType<std::vector<Vector4>>())      { vtype = ValidType::LIST_VECTOR4; setSizeForVector<Vector4>(); }
+        else if(isOfType<RenderNodeData>()) vtype = ValidType::RENDER_DATA;
+        else if(isOfType<MeshNodeData>()) vtype = ValidType::MESH_NODE_DATA;
+        else if(isOfType<MeshInterpListData>()) vtype = ValidType::MESH_INTERP_LIST_DATA;
 
         is_list = (static_cast<int>(vtype) >= 100);
     }

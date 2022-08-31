@@ -2,36 +2,9 @@
 #include "node.h"
 #include "mesh_node.h"
 #include "mesh_interp_node.h"
-#include "../../math/vector.h"
-#include "../../../glm/glm/glm.hpp"
+#include "../node_outputs.h"
 #include "../../../glm/glm/gtx/transform.hpp"
 #include "../../../glm/glm/gtx/euler_angles.hpp"
-
-struct RenderNodeData
-{
-    // Instance and mesh rendering data
-    unsigned int   _instanceCount = 0;
-    MeshNodeData** _meshPtr = nullptr;
-    unsigned int   _meshCount = 0;
-    float          _meshParam = 0.0f;
-    Vector4**      _worldPositionPtr = nullptr;
-    glm::mat4**    _worldRotationPtr = nullptr;
-    Vector4**      _instanceColorsPtr = nullptr;
-    glm::mat4**    _motifPositionPtr = nullptr;
-
-    // Fog rendering data
-    float   _fogMax = 50.0f;
-    float   _fogMin = 10.0f;
-    Vector3 _fogColor = { 0.7f, 0.7f, 0.7f };
-    bool    _fogChanged = false;
-
-    // Position related options
-    bool         _repeatBlocks = false;
-    Vector3      _motifSize = Vector3(2.0f, 2.0f, 2.0f);
-    unsigned int _motif_span = 1;
-    unsigned int _motifInstances[3] = {1, 1, 1};
-    bool         _motifChanged = false;
-};
 
 struct RenderNode final : public PropertyNode
 {
@@ -236,7 +209,7 @@ struct RenderNode final : public PropertyNode
         }
 
         // Recalculate instances
-        if(_motif_changed_internal || _first_load)
+        if(_motif_changed_internal || (_first_load && _renderData._repeatBlocks))
         {
             _first_load = false;
             _renderData._motifInstances[0] = (unsigned int)std::ceil(_renderData._fogMax / _renderData._motifSize.x);
@@ -407,7 +380,8 @@ struct RenderNode final : public PropertyNode
                     auto colors = colorLocal->second->getValue<std::vector<Vector4>>();
                     Vector4* color = *(_renderData._instanceColorsPtr);
 
-                    memcpy(color, colors.data(), colors.size() * sizeof(Vector4));
+                    if(_renderData._instanceCount > 0)
+                        memcpy(color, colors.data(), colors.size() * sizeof(Vector4));
 
                     *(_renderData._instanceColorsPtr) = color;
                     outputs[0]->setDataChanged();

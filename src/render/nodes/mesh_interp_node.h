@@ -3,20 +3,12 @@
 #include "mesh_node.h"
 #include "../../util/raycaster/raycaster.inl"
 #include "../../math/kdtree.inl"
+#include "../node_outputs.h"
 #include <set>
 #include <ciso646>
 
 // This node only works with precooked meshes
 // Automatic mesh displacement is not yet working
-
-struct MeshInterpListData
-{
-    std::vector<MeshNodeData> meshes;
-    size_t totalMeshesDataSize = 0; // Unsused by the render node
-    float t = 0;
-    bool changeParamOnly = false;
-};
-
 struct MeshInterpolatorNode final : public PropertyNode
 {
     inline MeshInterpolatorNode() : PropertyNode(Type::MESHINTERP, 3, {"t", "mesh A", "mesh B"}, 1, { "Int. mesh" })

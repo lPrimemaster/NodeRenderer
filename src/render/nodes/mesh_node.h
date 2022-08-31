@@ -1,16 +1,11 @@
 #pragma once
 #include "node.h"
+#include "../node_outputs.h"
 #include "../../util/imgui_ext.inl"
 #include "../../util/objloader.h"
 #include <future>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
-
-struct MeshNodeData
-{
-    float* vertex_data = nullptr;
-    size_t data_size = 0;
-};
 
 struct MeshNode final : public PropertyNode
 {

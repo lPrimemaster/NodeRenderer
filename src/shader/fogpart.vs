@@ -13,7 +13,7 @@ float rand2D(vec2 co)
 
 void main()
 {
-    // TODO: Make this an uniform variable
+    // TODO: Make this a uniform variable
     vec3 camPos = inverse(viewMatrix)[3].xyz;
     vec3 newPos = pos;
     newPos.y -= (time / 10.0);
