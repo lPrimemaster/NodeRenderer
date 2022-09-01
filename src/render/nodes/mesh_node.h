@@ -4,8 +4,8 @@
 #include "../../util/imgui_ext.inl"
 #include "../../util/objloader.h"
 #include <future>
-#include <glad/glad.h>
-#include <GLFW/glfw3.h>
+// #include <glad/glad.h>
+// #include <GLFW/glfw3.h>
 
 struct MeshNode final : public PropertyNode
 {
@@ -138,9 +138,9 @@ private:
     bool loaded_savefile = false;
 
     // NOTE: We are inside a gl context, so this should be fine
-    GLuint _preview_vao;
-    GLuint _preview_vbo;
-    GLuint _preview_prog;
-    GLuint _preview_fbo;
-    GLuint _preview_tex;
+    // GLuint _preview_vao;
+    // GLuint _preview_vbo;
+    // GLuint _preview_prog;
+    // GLuint _preview_fbo;
+    // GLuint _preview_tex;
 };

@@ -5,7 +5,7 @@
 
 static constexpr ImVec4 textColor = ImVec4(0.2f, 0.5f, 0.1f, 1.0f);
 
-void AnalyticsWindow::render()
+void AnalyticsWindow::render(GLFWwindow* rwindow)
 {
     setWindowPos(ImVec2(0, collapsed_pos_y - ImGui::GetWindowSize().y + 19.0f));
     ImGuiIO& io = ImGui::GetIO();

@@ -60,7 +60,7 @@ public:
         return activeDL;
     }
 
-    virtual void render() override;
+    virtual void render(GLFWwindow* rwindow) override;
 
     inline virtual void update() override
     {

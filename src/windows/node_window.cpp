@@ -5,6 +5,9 @@
 #include "../util/base64.h"
 #include <chrono>
 
+// TODO: Blueprint mode
+// TODO: Blueprint window
+
 static inline ImVec2 operator+(const ImVec2& lhs, const ImVec2& rhs) { return ImVec2(lhs.x + rhs.x, lhs.y + rhs.y); }
 static inline ImVec2 operator-(const ImVec2& lhs, const ImVec2& rhs) { return ImVec2(lhs.x - rhs.x, lhs.y - rhs.y); }
 
@@ -20,7 +23,7 @@ void NodeWindow::setDrawActiveList(Renderer::DrawList* dl)
     activeDL = dl;
 }
 
-void NodeWindow::render()
+void NodeWindow::render(GLFWwindow* rwindow)
 {
     // Initialization
     ImGuiIO& io = ImGui::GetIO();
@@ -230,6 +233,18 @@ void NodeWindow::render()
                     draw_list->AddBezierCurve(p1, p1 + ImVec2(+50, 0), p2 + ImVec2(-50, 0), p2, IM_COL32(200, 200, 100, 255), 3.0f);
                     link_from_id = node_idx;
                     link_output_slot = slot_idx;
+
+                    static constexpr float WINDOW_DRAG_ZONE = 10.0f;
+
+                    ImVec2 windowSize = ImGui::GetWindowSize();
+                    ImVec2 windowPos  = ImGui::GetWindowPos();
+
+                    int scroll_x = (windowPos.x + WINDOW_DRAG_ZONE > io.MousePos.x) ? 10 : 
+                        ((windowPos.x + windowSize.x - WINDOW_DRAG_ZONE < io.MousePos.x) ? -10 : 0);
+                    int scroll_y = (windowPos.y + WINDOW_DRAG_ZONE > io.MousePos.y) ? 10 : 
+                        ((windowPos.y + windowSize.y - WINDOW_DRAG_ZONE < io.MousePos.y) ? -10 : 0);
+
+                    scrolling = scrolling + ImVec2(scroll_x, scroll_y);
                 }
 
                 ImGui::PopID();
@@ -246,7 +261,7 @@ void NodeWindow::render()
     }
 
     // Open context menu
-    if(ImGui::IsMouseReleased(ImGuiMouseButton_Right) && ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup))
+    if(ImGui::IsMouseReleased(ImGuiMouseButton_Right) && ImGui::IsWindowHovered(/* ImGuiHoveredFlags_AllowWhenBlockedByPopup */))
     {
         node_selected = node_hovered_in_list = node_hovered_in_scene = -1;
         open_context_menu = true;
@@ -278,7 +293,6 @@ void NodeWindow::render()
             {
                 // Tracking and cleaning up dependants
                 deleteNode(node_selected);
-
             }
             if (ImGui::MenuItem("Copy", NULL, false, false)) {}
         }
@@ -288,83 +302,106 @@ void NodeWindow::render()
             {
                 PropertyNode* newNode = nullptr;
 
-                if (ImGui::MenuItem("Value Node"))
+                // Menu'ed nodes
+                if(ImGui::BeginMenu("Math"))
                 {
-                    newNode = new ValueNode(1);
+                    if (ImGui::MenuItem("Value Node"))
+                    {
+                        newNode = new ValueNode(1);
+                    }
+                    // if (ImGui::MenuItem("Color Node"))
+                    // {
+                    //     newNode = new ColorNode();
+                    // }
+                    if (ImGui::MenuItem("Math Node"))
+                    {
+                        newNode = new MathNode();
+                    }
+                    if (ImGui::MenuItem("Function Node"))
+                    {
+                        newNode = new FunctionNode();
+                    }
+                    ImGui::EndMenu();
                 }
-                if (ImGui::MenuItem("Color Node"))
+                if(ImGui::BeginMenu("List"))
                 {
-                    newNode = new ColorNode();
+                    if (ImGui::MenuItem("List Node"))
+                    {
+                        newNode = new ListNode();
+                    }
+                    if (ImGui::MenuItem("List Access Node"))
+                    {
+                        newNode = new ListAccessNode();
+                    }
+                    if (ImGui::MenuItem("List Join Node"))
+                    {
+                        newNode = new ListJoinNode();
+                    }
+                    ImGui::EndMenu();
                 }
-                if (ImGui::MenuItem("Math Node"))
+                if(ImGui::BeginMenu("Mesh"))
                 {
-                    newNode = new MathNode();
+                    if (ImGui::MenuItem("Mesh Node"))
+                    {
+                        newNode = new MeshNode();
+                    }
+                    if (ImGui::MenuItem("Mesh Interpolator Node"))
+                    {
+                        newNode = new MeshInterpolatorNode();
+                    }
+                    ImGui::EndMenu();
                 }
-                if (ImGui::MenuItem("Function Node"))
+                if(ImGui::BeginMenu("Misc"))
                 {
-                    newNode = new FunctionNode();
+                    if (ImGui::MenuItem("Display Node"))
+                    {
+                        newNode = new DisplayNode();
+                    }
+                    if (ImGui::MenuItem("Feedback Node"))
+                    {
+                        newNode = new FeedbackNode();
+                    }
+                    ImGui::EndMenu();
                 }
+                if(ImGui::BeginMenu("Rendering"))
+                {
+                    if (ImGui::MenuItem("Render Node"))
+                    {
+                        // TODO: We can allow more than one render node in fact
+                        if(render_output_node == nullptr)
+                        {
+                            newNode = new RenderNode();
+                            render_output_node = newNode;
+                            render_output_node_changed = true;
+                        }
+                        else
+                        {
+                            L_WARNING("There can only be one render node.");
+                        }
+                    }
+                    if (ImGui::MenuItem("Camera Node"))
+                    {
+                        newNode = new CameraNode(activeDL->camera);
+                    }
+                    ImGui::EndMenu();
+                }
+
+                // Free nodes
                 if (ImGui::MenuItem("Time Node"))
                 {
                     newNode = new TimeNode();
                 }
-                if (ImGui::MenuItem("WorldPos Node"))
-                {
-                    newNode = new WorldPosNode(activeDL->camera);
-                }
-                if (ImGui::MenuItem("Render Node"))
-                {
-                    // TODO: We can allow more than one render node in fact
-                    if(render_output_node == nullptr)
-                    {
-                        newNode = new RenderNode();
-                        render_output_node = newNode;
-                        render_output_node_changed = true;
-                    }
-                    else
-                    {
-                        L_WARNING("There can only be one render node.");
-                    }
-                }
-                if (ImGui::MenuItem("List Node"))
-                {
-                    newNode = new ListNode();
-                }
-                if (ImGui::MenuItem("List Access Node"))
-                {
-                    newNode = new ListAccessNode();
-                }
-                if (ImGui::MenuItem("List Join Node"))
-                {
-                    newNode = new ListJoinNode();
-                }
-                if (ImGui::MenuItem("Mesh Node"))
-                {
-                    newNode = new MeshNode();
-                }
+                // if (ImGui::MenuItem("WorldPos Node"))
+                // {
+                //     newNode = new WorldPosNode(activeDL->camera);
+                // }
                 if (ImGui::MenuItem("Path Node"))
                 {
                     newNode = new PathNode();
                 }
-                if (ImGui::MenuItem("Camera Node"))
-                {
-                    newNode = new CameraNode(activeDL->camera);
-                }
                 if (ImGui::MenuItem("Audio Node"))
                 {
                     newNode = new AudioNode();
-                }
-                if (ImGui::MenuItem("Display Node"))
-                {
-                    newNode = new DisplayNode();
-                }
-                if (ImGui::MenuItem("Feedback Node"))
-                {
-                    newNode = new FeedbackNode();
-                }
-                if (ImGui::MenuItem("Mesh Interpolator Node"))
-                {
-                    newNode = new MeshInterpolatorNode();
                 }
 
                 if(newNode)
@@ -385,7 +422,7 @@ void NodeWindow::render()
 
                 ImGui::EndMenu();
             }
-            if (ImGui::MenuItem("Paste", NULL, false, false)) {}
+            // if (ImGui::MenuItem("Paste", NULL, false, false)) {}
         }
         ImGui::EndPopup();
     }

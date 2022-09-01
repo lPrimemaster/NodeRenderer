@@ -1,6 +1,4 @@
 #pragma once
-#include <glad/glad.h>
-#include <GLFW/glfw3.h>
 #include <vector>
 #include <unordered_map>
 #include "../../glm/glm/glm.hpp"
@@ -8,6 +6,8 @@
 #include "../windows/analytics_window.h"
 #include "../windows/options_window.h"
 #include "../math/vector.h"
+
+struct GLFWwindow;
 
 namespace Renderer
 {

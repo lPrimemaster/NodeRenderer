@@ -1,4 +1,6 @@
 #pragma once
+#include <glad/glad.h>
+#include <glfw/glfw3.h>
 #include "../../imgui/imgui.h"
 #include <string>
 
@@ -8,7 +10,7 @@ public:
     constexpr Window(const char* name, const bool closeable) : window_name(name), closeable(closeable) {  }
     virtual ~Window() {  }
 
-    virtual void render() = 0;
+    virtual void render(GLFWwindow* rwindow) = 0;
     virtual void update() = 0;
 
     inline void setWindowSize(ImVec2 windowSize)
@@ -36,7 +38,7 @@ public:
         return collapsed;
     }
 
-    void finalRender()
+    void finalRender(GLFWwindow* rwindow)
     {
         update();
         ImGui::SetNextWindowSize(windowSize);
@@ -47,7 +49,7 @@ public:
             collapsed = !ImGui::Begin(window_name, &open, window_flags);
             if(open && !collapsed)
             {
-                render();
+                render(rwindow);
             }
             ImGui::End();
         }
@@ -57,7 +59,7 @@ public:
             collapsed = !ImGui::Begin(window_name, nullptr, window_flags);
             if(!collapsed)
             {
-                render();
+                render(rwindow);
             }
             ImGui::End();
         }
