@@ -17,7 +17,7 @@ static float screen_size[2];
 static bool viewport_changed;
 static float mouse_delta[2];
 static float mouse_scroll;
-static bool holding_mouse_right;
+static int mouse_hold = 0;
 static Renderer::Camera::DirectionFlags cam_dir_f;
 constexpr static Vector3 infinityVec3 = Vector3(std::numeric_limits<float>::infinity(), std::numeric_limits<float>::infinity(), std::numeric_limits<float>::infinity());
 static Vector3 mcm_motif_size = infinityVec3;
@@ -55,8 +55,16 @@ static void _mouse_pos_callback(GLFWwindow* window, double xpos, double ypos)
 {
     ImGuiIO& io = ImGui::GetIO();
     io.AddMousePosEvent((float)xpos, (float)ypos);
-
-    if(holding_mouse_right)
+    
+    // Not the best approach, but it is simple
+    if(mouse_hold > 1)
+    {
+        mouse_delta[0] = 0.0f;
+        mouse_delta[1] = 0.0f;
+        glfwSetCursorPos(window, screen_halfsize[0], screen_halfsize[1]);
+        mouse_hold--;
+    }
+    if(mouse_hold == 1)
     {
         mouse_delta[0] = screen_halfsize[0] - (float)xpos;
         mouse_delta[1] = screen_halfsize[1] - (float)ypos;
@@ -85,11 +93,14 @@ static void _mouse_btn_callback(GLFWwindow* window, int button, int action, int 
     {
         if(button == GLFW_MOUSE_BUTTON_RIGHT && (action == GLFW_PRESS || action == GLFW_REPEAT))
         {
-            holding_mouse_right = true;
+            mouse_hold = 5;
+            glfwSetCursorPos(window, screen_halfsize[0], screen_halfsize[1]);
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
         }
         else if(button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_RELEASE)
         {
-            holding_mouse_right = false;
+            mouse_hold = 0;
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
         }
     }
 }
