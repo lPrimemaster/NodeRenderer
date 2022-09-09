@@ -137,4 +137,19 @@ private:
     static constexpr ImVec2 NODE_WINDOW_PADDING = ImVec2(8.0f, 8.0f);
 
     Renderer::DrawList* activeDL = nullptr;
+
+    struct SelectionBuffer
+    {
+        std::vector<PropertyNode*> selected_nodes;
+    };
+
+    struct CopyPasteBuffer
+    {
+       std::vector<PropertyNode*> copies;
+       void copy(const SelectionBuffer& sb);
+       void paste();
+    };
+
+    SelectionBuffer window_selection_buffer;
+    CopyPasteBuffer window_copypaste_buffer;
 };

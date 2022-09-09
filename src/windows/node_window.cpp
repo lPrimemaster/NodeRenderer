@@ -5,6 +5,8 @@
 #include "../util/base64.h"
 #include <chrono>
 
+// TODO: Drag rectangle and clipboard select from nodes and links 
+//       (we could use serialization internally since it is already implemented, or we can copy the node data directly)
 // TODO: Blueprint mode
 // TODO: Blueprint window
 
@@ -29,6 +31,7 @@ void NodeWindow::render(GLFWwindow* rwindow)
     ImGuiIO& io = ImGui::GetIO();
 
     // Draw a list of nodes on the left side
+    static bool window_mode_large = false;
     bool open_context_menu = false;
     int node_hovered_in_list = -1;
     int node_hovered_in_scene = -1;
@@ -57,6 +60,8 @@ void NodeWindow::render(GLFWwindow* rwindow)
     ImGui::Text("Hold middle mouse button to scroll (%.2f,%.2f)", scrolling.x, scrolling.y);
     ImGui::SameLine(0.01f, 400.0f);
     ImGui::Checkbox("Show grid", &show_grid);
+    ImGui::SameLine(500.0f);
+    bool window_size_changed = ImGui::Button(window_mode_large ? "Retract Window" : "Expand Window");
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(1, 1));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
     ImGui::PushStyleColor(ImGuiCol_ChildBg, IM_COL32(60, 60, 70, 200));
@@ -64,8 +69,20 @@ void NodeWindow::render(GLFWwindow* rwindow)
     ImGui::PopStyleVar(); // WindowPadding
     ImGui::PushItemWidth(120.0f);
 
+    // FIXME: ???
+    if(window_size_changed)
+    {
+        window_mode_large = !window_mode_large;
+        ImVec2 original_size = getWindowSize(); // Window start y size (assuming some stuff from other cu's here)
+        if(window_mode_large) original_size.y *= 3.0f;
+        else                  original_size.y /= 3.0f;
+        L_TRACE("New Window Size Y: %.2f", original_size.y);
+        setWindowSize(original_size);
+    }
+
     const ImVec2 offset = ImGui::GetCursorScreenPos() + scrolling;
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
+    static constexpr float WINDOW_DRAG_ZONE = 10.0f;
 
     // Display grid
     if (show_grid)
@@ -82,6 +99,7 @@ void NodeWindow::render(GLFWwindow* rwindow)
 
     // Additional variables
     bool open_rename = false;
+    bool moving_node_or_making_link = false;
 
     if(!nodes.empty())
     {
@@ -226,6 +244,8 @@ void NodeWindow::render(GLFWwindow* rwindow)
 
                 if(ImGui::IsItemActive() && ImGui::IsMouseDragging(ImGuiMouseButton_Left))
                 {
+                    moving_node_or_making_link = true;
+
                     // Draw line
                     drawing_line = 50;
                     ImVec2 p1 = offset_out;
@@ -233,8 +253,6 @@ void NodeWindow::render(GLFWwindow* rwindow)
                     draw_list->AddBezierCurve(p1, p1 + ImVec2(+50, 0), p2 + ImVec2(-50, 0), p2, IM_COL32(200, 200, 100, 255), 3.0f);
                     link_from_id = node_idx;
                     link_output_slot = slot_idx;
-
-                    static constexpr float WINDOW_DRAG_ZONE = 10.0f;
 
                     ImVec2 windowSize = ImGui::GetWindowSize();
                     ImVec2 windowPos  = ImGui::GetWindowPos();
@@ -252,6 +270,7 @@ void NodeWindow::render(GLFWwindow* rwindow)
 
             if(node_move && drawing_line == 0)
             {
+                moving_node_or_making_link = true;
                 node->_render_data.pos = node->_render_data.pos + io.MouseDelta;
             }
 
@@ -471,6 +490,111 @@ void NodeWindow::render(GLFWwindow* rwindow)
         ImGui::EndPopup();
     }
 
+    // Selection rect
+    if(!moving_node_or_making_link)
+    {
+        static ImVec2 mouse_pos;
+        static ImVec2 p0 = ImVec2(0, 0);
+        static ImVec2 p1 = ImVec2(0, 0);
+        if(ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+        {
+            mouse_pos = io.MousePos;
+        }
+        else if(ImGui::IsMouseDragging(ImGuiMouseButton_Left))
+        {
+            // Figure out the min and max of the rectangle to draw based on the mouse points
+            p0 = ImVec2(std::min(io.MousePos.x, mouse_pos.x), std::min(io.MousePos.y, mouse_pos.y));
+            p1 = ImVec2(std::max(io.MousePos.x, mouse_pos.x), std::max(io.MousePos.y, mouse_pos.y));
+
+            
+
+            draw_list->AddRectFilled(p0, p1, IM_COL32(41, 74, 122, 50));
+            draw_list->AddRect(p0, p1, IM_COL32(41, 74, 122, 255), 0.0f, 0, 2.0f);
+
+            ImVec2 windowSize = ImGui::GetWindowSize();
+            ImVec2 windowPos  = ImGui::GetWindowPos();
+
+            int scroll_x = (windowPos.x + WINDOW_DRAG_ZONE > io.MousePos.x) ? 10 : 
+                ((windowPos.x + windowSize.x - WINDOW_DRAG_ZONE < io.MousePos.x) ? -10 : 0);
+            int scroll_y = (windowPos.y + WINDOW_DRAG_ZONE > io.MousePos.y) ? 10 : 
+                ((windowPos.y + windowSize.y - WINDOW_DRAG_ZONE < io.MousePos.y) ? -10 : 0);
+
+            scrolling = scrolling + ImVec2(scroll_x, scroll_y);
+
+            for(auto* node : nodes)
+            {
+                float x0 = offset.x + node->_render_data.pos.x;
+                float x1 = x0 + node->_render_data.size.x;
+                float y0 = offset.y + node->_render_data.pos.y;
+                float y1 = y0 + node->_render_data.size.y;
+
+                if(x0 > p0.x && x0 < p1.x && x1 > p0.x && x1 < p1.x)
+                {
+                    if(y0 > p0.y && y0 < p1.y && y1 > p0.y && y1 < p1.y)
+                    {
+                        static const ImColor BLUE_CAPS = IM_COL32(255, 0, 0, 255);
+                        static constexpr float OFFSET_CAPS = 3.0f;
+                        static constexpr float THICKN_CAPS = 2.0f;
+                        static constexpr float LEN_CAPS    = 7.5f;
+
+                        // Four end caps on the selected nodes
+                        const ImVec2 left_top_corner[3] = {
+                            ImVec2(x0 - OFFSET_CAPS, y0 + LEN_CAPS), 
+                            ImVec2(x0 - OFFSET_CAPS, y0 - OFFSET_CAPS), 
+                            ImVec2(x0 + LEN_CAPS,    y0 - OFFSET_CAPS)
+                        };
+                        draw_list->AddPolyline(left_top_corner, 3, BLUE_CAPS, ImDrawFlags_RoundCornersAll, THICKN_CAPS);
+
+                        const ImVec2 left_bot_corner[3] = {
+                            ImVec2(x0 - OFFSET_CAPS, y1 - LEN_CAPS), 
+                            ImVec2(x0 - OFFSET_CAPS, y1 + OFFSET_CAPS), 
+                            ImVec2(x0 + LEN_CAPS,    y1 + OFFSET_CAPS)
+                        };
+                        draw_list->AddPolyline(left_bot_corner, 3, BLUE_CAPS, ImDrawFlags_RoundCornersAll, THICKN_CAPS);
+
+                        const ImVec2 right_bot_corner[3] = {
+                            ImVec2(x1 + OFFSET_CAPS, y1 - LEN_CAPS), 
+                            ImVec2(x1 + OFFSET_CAPS, y1 + OFFSET_CAPS), 
+                            ImVec2(x1 - LEN_CAPS,    y1 + OFFSET_CAPS)
+                        };
+                        draw_list->AddPolyline(right_bot_corner, 3, BLUE_CAPS, ImDrawFlags_RoundCornersAll, THICKN_CAPS);
+
+                        const ImVec2 right_top_corner[3] = {
+                            ImVec2(x1 + OFFSET_CAPS, y0 + LEN_CAPS), 
+                            ImVec2(x1 + OFFSET_CAPS, y0 - OFFSET_CAPS), 
+                            ImVec2(x1 - LEN_CAPS,    y0 - OFFSET_CAPS)
+                        };
+                        draw_list->AddPolyline(right_top_corner, 3, BLUE_CAPS, ImDrawFlags_RoundCornersAll, THICKN_CAPS);
+                    }
+                }
+            }
+
+        }
+        else if(ImGui::IsMouseReleased(ImGuiMouseButton_Left) && p1.x - p0.x > 0.5f && p1.y - p0.y > 0.5f /* Prevents zero sized quads */)
+        {
+            window_selection_buffer.selected_nodes.clear();
+            L_TRACE("SEL_RECT = min[%.2f,%.2f] max[%.2f,%.2f]", p0.x, p0.y, p1.x, p1.y);
+            // Check which nodes are inside the selection
+            for(auto* node : nodes)
+            {
+                float x0 = offset.x + node->_render_data.pos.x;
+                float x1 = x0 + node->_render_data.size.x;
+                float y0 = offset.y + node->_render_data.pos.y;
+                float y1 = y0 + node->_render_data.size.y;
+
+                if(x0 > p0.x && x0 < p1.x && x1 > p0.x && x1 < p1.x)
+                {
+                    if(y0 > p0.y && y0 < p1.y && y1 > p0.y && y1 < p1.y)
+                    {
+                        window_selection_buffer.selected_nodes.push_back(node);
+                    }
+                }
+            }
+            p0 = ImVec2(0, 0);
+            p1 = ImVec2(0, 0);
+        }
+    }
+
     ImGui::PopStyleVar();
 
     // Scrolling
@@ -512,7 +636,6 @@ const std::string NodeWindow::serializeWindowState()
 }
 
 // On Load from file
-// BUG: [*][ERROR]: setValueDynamic(): Received a non valid type. (nothing seems to break though)
 void NodeWindow::deserializeWindowState(const std::string& state_string)
 {
     std::vector<unsigned char> data = base64_decode(state_string);
@@ -643,4 +766,14 @@ void NodeWindow::deserializeWindowState(const std::string& state_string)
 
     // Start the save file scene with the node window open
     setWindowCollapsed(false);
+}
+
+void NodeWindow::CopyPasteBuffer::copy(const SelectionBuffer& sb)
+{
+
+}
+
+void NodeWindow::CopyPasteBuffer::paste()
+{
+    
 }
