@@ -6,7 +6,7 @@
 #include "../log/logger.h"
 #include "../../glm/glm/gtx/transform.hpp"
 #include "nodes/render_node.h"
-#include "../../imgui/imgui_impl_glfw.h"
+#include "../../imgui/backends/imgui_impl_glfw.h"
 #include <GLFW/glfw3.h>
 
 #include "../util/objloader.h"

@@ -19,3 +19,7 @@
 [submodule "bvh"]
 	path = bvh
 	url = https://github.com/madmann91/bvh.git
+[submodule "imgui"]
+	path = imgui
+	url = git@github.com:ocornut/imgui.git
+	branch = docking

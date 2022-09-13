@@ -15,6 +15,8 @@ find_package (Python REQUIRED COMPONENTS Interpreter Development)
 # Stop being nasty
 file(GLOB IMGUI_SRC
     ${CMAKE_SOURCE_DIR}/imgui/*.cpp
+    ${CMAKE_SOURCE_DIR}/imgui/backends/imgui_impl_opengl3.cpp
+    ${CMAKE_SOURCE_DIR}/imgui/backends/imgui_impl_glfw.cpp
     ${CMAKE_SOURCE_DIR}/imgui/*.h
 )
 file(GLOB WINDOWS_SRC
@@ -67,7 +69,7 @@ add_executable(cbg64
     src/main.cpp
 )
 
-target_include_directories(cbg64 PRIVATE glad/include glfw/include ${Python_INCLUDE_DIRS})
+target_include_directories(cbg64 PRIVATE glad/include glfw/include imgui ${Python_INCLUDE_DIRS})
 target_link_libraries(cbg64 glfw ${GLFW_LIBRARIES} muparser tinyobjloader bvh ${Python_LIBRARIES} Winmm.lib)
 
 add_custom_target(copy-runtime-files ALL
