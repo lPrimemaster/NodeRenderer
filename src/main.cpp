@@ -97,6 +97,7 @@ int main(int argc, char* argv[])
 
     while (!glfwWindowShouldClose(window))
     {
+        glfwPollEvents();
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         // Render
         dl.render(window, nodeWindow, analyticsWindow, optionsWindow);
@@ -106,13 +107,13 @@ int main(int argc, char* argv[])
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        windowManager.renderAll(window);
+        windowManager.renderAll();
 
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
         glfwSwapBuffers(window);
-        glfwPollEvents();
+        //glfwPollEvents();
     }
 
     ImGui_ImplOpenGL3_Shutdown();

@@ -31,7 +31,7 @@ public:
         collapsed_pos_y = y;
     }
 
-    virtual void render(GLFWwindow* rwindow) override;
+    virtual void render() override;
     virtual void update() override;
 
     inline static constexpr float WIDTH = 350.0f;

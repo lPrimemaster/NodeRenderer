@@ -8,11 +8,11 @@
 class WindowManager
 {
 public:
-    void renderAll(GLFWwindow* rwindow) const
+    void renderAll() const
     {
         for(auto w : windows)
         {
-            w->finalRender(rwindow);
+            w->finalRender();
         }
     }
     static WindowManager& Instance()

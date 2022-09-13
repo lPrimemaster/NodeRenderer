@@ -22,7 +22,7 @@ static void SetClipboardDataFunc(void* user_data, const char* text)
     CloseClipboard();
 }
 
-void OptionsWindow::render(GLFWwindow* rwindow)
+void OptionsWindow::render()
 {
     setWindowPos(ImVec2(WIDTH, collapsed_pos_y - ImGui::GetWindowSize().y + 19.0f));
     ImGuiIO& io = ImGui::GetIO();

@@ -25,7 +25,7 @@ void NodeWindow::setDrawActiveList(Renderer::DrawList* dl)
     activeDL = dl;
 }
 
-void NodeWindow::render(GLFWwindow* rwindow)
+void NodeWindow::render()
 {
     // Initialization
     ImGuiIO& io = ImGui::GetIO();
@@ -62,6 +62,9 @@ void NodeWindow::render(GLFWwindow* rwindow)
     ImGui::Checkbox("Show grid", &show_grid);
     ImGui::SameLine(500.0f);
     bool window_size_changed = ImGui::Button(window_mode_large ? "Retract Window" : "Expand Window");
+    ImGui::SameLine(610.0f);
+    // floating_w = true;
+    floating_w ^= ImGui::Button("Float Window");
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(1, 1));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
     ImGui::PushStyleColor(ImGuiCol_ChildBg, IM_COL32(60, 60, 70, 200));
