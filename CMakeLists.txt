@@ -9,8 +9,12 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
 
 add_subdirectory(glfw)
+add_subdirectory(muparser)
+add_subdirectory(tinyobjloader)
+add_subdirectory(bvh)
+add_subdirectory(glad)
 
-find_package (Python REQUIRED COMPONENTS Interpreter Development)
+find_package(Python REQUIRED COMPONENTS Interpreter Development)
 
 # Stop being nasty
 file(GLOB IMGUI_SRC
@@ -28,15 +32,12 @@ file(GLOB NODES_SRC
     ${CMAKE_SOURCE_DIR}/render/nodes/*.h
 )
 
-add_subdirectory(muparser)
-
-add_subdirectory(tinyobjloader)
-
-add_subdirectory(bvh)
-
-add_subdirectory(glad)
+# EXE Icon
+set(winrc ico/icon.rc)
+set_property(SOURCE winrc APPEND PROPERTY OBJECT_DEPENDS ${CMAKE_SOURCE_DIR/ico/nr.ico})
 
 add_executable(cbg64
+    ${winrc}
     ${IMGUI_SRC}
     ${WINDOWS_SRC}
     ${NODES_SRC}
