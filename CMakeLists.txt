@@ -34,10 +34,9 @@ add_subdirectory(tinyobjloader)
 
 add_subdirectory(bvh)
 
-add_executable(cbg64
-    glad/src/glad.c
-    # glad/include/glad.h
+add_subdirectory(glad)
 
+add_executable(cbg64
     ${IMGUI_SRC}
     ${WINDOWS_SRC}
     ${NODES_SRC}
@@ -69,8 +68,8 @@ add_executable(cbg64
     src/main.cpp
 )
 
-target_include_directories(cbg64 PRIVATE glad/include glfw/include imgui ${Python_INCLUDE_DIRS})
-target_link_libraries(cbg64 glfw ${GLFW_LIBRARIES} muparser tinyobjloader bvh ${Python_LIBRARIES} Winmm.lib)
+target_include_directories(cbg64 PRIVATE glad/include glfw/include imgui ${Python_INCLUDE_DIRS} glad)
+target_link_libraries(cbg64 glad glfw ${GLFW_LIBRARIES} muparser tinyobjloader bvh ${Python_LIBRARIES} Winmm.lib)
 
 add_custom_target(copy-runtime-files ALL
     COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/src/shader ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Release/shader
