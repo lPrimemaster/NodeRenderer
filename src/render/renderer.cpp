@@ -54,7 +54,9 @@ static void _key_callback(GLFWwindow* window, int key, int scancode, int action,
 static void _mouse_pos_callback(GLFWwindow* window, double xpos, double ypos)
 {
     ImGuiIO& io = ImGui::GetIO();
-    io.AddMousePosEvent((float)xpos, (float)ypos);
+
+    // GetMainViewport fix for multi viewports ImGui
+    io.AddMousePosEvent((float)xpos + ImGui::GetMainViewport()->Pos.x, (float)ypos + ImGui::GetMainViewport()->Pos.y);
     
     // Not the best approach, but it is simple
     if(mouse_hold > 1)

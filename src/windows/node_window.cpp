@@ -10,9 +10,6 @@
 // TODO: Blueprint mode
 // TODO: Blueprint window
 
-static inline ImVec2 operator+(const ImVec2& lhs, const ImVec2& rhs) { return ImVec2(lhs.x + rhs.x, lhs.y + rhs.y); }
-static inline ImVec2 operator-(const ImVec2& lhs, const ImVec2& rhs) { return ImVec2(lhs.x - rhs.x, lhs.y - rhs.y); }
-
 static const std::chrono::steady_clock::time_point app_start = std::chrono::steady_clock::now();
 
 const long long NodeWindow::GetApptimeMs()
@@ -63,8 +60,8 @@ void NodeWindow::render()
     ImGui::SameLine(500.0f);
     bool window_size_changed = ImGui::Button(window_mode_large ? "Retract Window" : "Expand Window");
     ImGui::SameLine(610.0f);
-    // floating_w = true;
-    floating_w ^= ImGui::Button("Float Window");
+    floating_clicked = ImGui::Button(floating_w ? "Dock Window" : "Float Window");
+    floating_w ^= floating_clicked;
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(1, 1));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
     ImGui::PushStyleColor(ImGuiCol_ChildBg, IM_COL32(60, 60, 70, 200));
@@ -499,11 +496,13 @@ void NodeWindow::render()
         static ImVec2 mouse_pos;
         static ImVec2 p0 = ImVec2(0, 0);
         static ImVec2 p1 = ImVec2(0, 0);
-        if(ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+        static bool inital_click = false;
+        if(ImGui::IsMouseClicked(ImGuiMouseButton_Left) && ImGui::IsWindowHovered(/* ImGuiHoveredFlags_AllowWhenBlockedByPopup */))
         {
             mouse_pos = io.MousePos;
+            inital_click = true;
         }
-        else if(ImGui::IsMouseDragging(ImGuiMouseButton_Left))
+        else if(inital_click && ImGui::IsMouseDragging(ImGuiMouseButton_Left))
         {
             // Figure out the min and max of the rectangle to draw based on the mouse points
             p0 = ImVec2(std::min(io.MousePos.x, mouse_pos.x), std::min(io.MousePos.y, mouse_pos.y));
@@ -573,8 +572,10 @@ void NodeWindow::render()
             }
 
         }
-        else if(ImGui::IsMouseReleased(ImGuiMouseButton_Left) && p1.x - p0.x > 0.5f && p1.y - p0.y > 0.5f /* Prevents zero sized quads */)
+        else if(ImGui::IsMouseReleased(ImGuiMouseButton_Left) && p1.x - p0.x > 0.5f && p1.y - p0.y > 0.5f /* Prevents zero sized quads */
+                && ImGui::IsWindowHovered(/* ImGuiHoveredFlags_AllowWhenBlockedByPopup */))
         {
+            inital_click = false;
             window_selection_buffer.selected_nodes.clear();
             L_TRACE("SEL_RECT = min[%.2f,%.2f] max[%.2f,%.2f]", p0.x, p0.y, p1.x, p1.y);
             // Check which nodes are inside the selection

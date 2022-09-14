@@ -57,6 +57,10 @@ int main(int argc, char* argv[])
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
 
+    // Set up Multi-Viewports for ImGui
+    io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+    io.ConfigViewportsNoTaskBarIcon = true;
+
     // Setup Dear ImGui style
     ImGui::StyleColorsDark();
 
@@ -97,7 +101,6 @@ int main(int argc, char* argv[])
 
     while (!glfwWindowShouldClose(window))
     {
-        glfwPollEvents();
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         // Render
         dl.render(window, nodeWindow, analyticsWindow, optionsWindow);
@@ -109,11 +112,19 @@ int main(int argc, char* argv[])
 
         windowManager.renderAll();
 
+        ImGui::ShowMetricsWindow();
+
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
+
+        // Multiple viewports!
+        ImGui::UpdatePlatformWindows();
+        ImGui::RenderPlatformWindowsDefault();
+        glfwMakeContextCurrent(window);
+
         glfwSwapBuffers(window);
-        //glfwPollEvents();
+        glfwPollEvents();
     }
 
     ImGui_ImplOpenGL3_Shutdown();

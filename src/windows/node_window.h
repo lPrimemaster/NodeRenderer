@@ -15,7 +15,7 @@ public:
     NodeWindow(const char* name) : Window(name, false) 
     { 
         open = true; 
-        window_flags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize; 
+        window_flags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize;
     }
 
     ~NodeWindow()

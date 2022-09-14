@@ -26,6 +26,9 @@ void AnalyticsWindow::render()
     Vector3 cameraHead = camera->getHeading();
     ImGui::TextColored(textColor, "camera position: (%.1f, %.1f, %.1f)", cameraPos.x, cameraPos.y, cameraPos.z);
     ImGui::TextColored(textColor, "camera  heading: (%.1f, %.1f, %.1f)", cameraHead.x, cameraHead.y, cameraHead.z);
+    ImGui::TextColored(textColor, " mouse position: (%.1f, %.1f)", io.MousePos.x, io.MousePos.y);
+    ImGui::Spacing();
+    ImGui::TextColored(textColor, "main viewport position: (%.1f, %.1f)", ImGui::GetMainViewport()->Pos.x, ImGui::GetMainViewport()->Pos.y);
 }
 
 void AnalyticsWindow::update()
