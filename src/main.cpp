@@ -112,7 +112,7 @@ int main(int argc, char* argv[])
 
         windowManager.renderAll();
 
-        ImGui::ShowMetricsWindow();
+        // ImGui::ShowMetricsWindow();
 
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
