@@ -1,6 +1,9 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
+#define GLFW_EXPOSE_NATIVE_WIN32
+#include <GLFW/glfw3native.h>
+
 #include "log/logger.h"
 
 #include "../imgui/backends/imgui_impl_glfw.h"
@@ -15,6 +18,9 @@
 #include "util/serialization.inl"
 
 #include "math/kdtree.inl"
+
+#include <Windows.h>
+#include "../ico/res.h"
 
 static constexpr int DEF_SCREEN_PX_W = 1280;
 static constexpr int DEF_SCREEN_PX_H =  720;
@@ -35,14 +41,14 @@ int main(int argc, char* argv[])
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
 
-    window = glfwCreateWindow(DEF_SCREEN_PX_W, DEF_SCREEN_PX_H, "CBG", NULL, NULL);
+    window = glfwCreateWindow(DEF_SCREEN_PX_W, DEF_SCREEN_PX_H, "Node Renderer v1.0.0-alpha (Redistribution not allowed)", NULL, NULL);
     if (!window)
     {
         L_ERROR("glfwCreateWindow() error.");
         glfwTerminate();
         return -1;
     }
-    
+
     glfwMakeContextCurrent(window);
     if(!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
     {
@@ -52,6 +58,15 @@ int main(int argc, char* argv[])
     }
     glfwSwapInterval(1);
     glfwWindowHint(GLFW_SAMPLES, 4);
+
+    // Set main window icon (windows only warning ...)
+    HICON hIcon = LoadIcon(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_ICON1));
+    if(hIcon)
+    {
+        SendMessage(glfwGetWin32Window(window), WM_SETICON, ICON_BIG  , (LPARAM)hIcon);
+        SendMessage(glfwGetWin32Window(window), WM_SETICON, ICON_SMALL, (LPARAM)hIcon);
+        DestroyIcon(hIcon);
+    }
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -89,7 +104,7 @@ int main(int argc, char* argv[])
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LEQUAL);
     glClearColor(0.7f, 0.7f, 0.7f, 1.0f);
-    
+
 
     // TODO: Basic model needs to change to apply right backface culling
     // glEnable(GL_CULL_FACE);
@@ -112,7 +127,36 @@ int main(int argc, char* argv[])
 
         windowManager.renderAll();
 
-        // ImGui::ShowMetricsWindow();
+#ifdef DEV_BUILD
+        // Development build
+        // Draw a watermark window with ImGui
+        // Inline this for now
+        // TODO: Create a dev file for this kind of stuff
+        ImGui::SetNextWindowPos(ImVec2(
+                ImGui::GetMainViewport()->Pos.x + io.DisplaySize.x - 255.0f,
+                ImGui::GetMainViewport()->Pos.y + io.DisplaySize.y - 65.0f
+            )
+        );
+        ImGui::SetNextWindowSize(ImVec2(
+                250.0f,
+                60.0f
+            )
+        );
+        ImGui::SetNextWindowBgAlpha(0.1f);
+        if(ImGui::Begin("Watermark_window_dev", 0,
+            ImGuiWindowFlags_NoCollapse    |
+            ImGuiWindowFlags_NoDecoration  |
+            ImGuiWindowFlags_NoMove        |
+            ImGuiWindowFlags_NoTitleBar    |
+            ImGuiWindowFlags_NoResize      ))
+        {
+            ImGui::SetWindowFontScale(2.0f);
+            ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "Development Build");
+            ImGui::SetWindowFontScale(1.0f);
+            ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "Redistribution Prohibited");
+            ImGui::End();
+        }
+#endif
 
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());

@@ -1,1 +1,2 @@
+#include "res.h"
 IDI_ICON1 ICON DISCARDABLE "nr.ico"
