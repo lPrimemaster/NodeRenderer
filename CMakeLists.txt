@@ -119,8 +119,13 @@ file(GLOB EXAMPLES_DIR
     ${CMAKE_SOURCE_DIR}/examples/*.b64
 )
 
+file(GLOB DEPS_DIR
+    ${CMAKE_SOURCE_DIR}/build_depends/*.dll
+)
+
 install(FILES ${SHADERS_DIR}  DESTINATION shader         COMPONENT Core)
 install(FILES ${SCRIPTS_DIR}  DESTINATION scripts        COMPONENT Core)
+install(FILES ${DEPS_DIR}     DESTINATION .              COMPONENT Core)
 install(FILES ${EXAMPLES_DIR} DESTINATION saves/examples COMPONENT Examples)
 
 
