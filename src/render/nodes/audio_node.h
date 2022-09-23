@@ -48,6 +48,12 @@ struct AudioNode final : public PropertyNode
     {
         static int inc = 0;
         name = "Audio Node #" + std::to_string(inc++);
+        // description =
+        //     "This node processes an input audio file (mp3 format only) using python (oof, for now...). "
+        //     "It retrives audio power over time and audio power envelope over time. "
+        //     "Both outputs consist of a floating point value, describing the audio \"volume\" at a given time. "
+        //     "The envelope is similar to a moving average of the power output."
+        // ;
 
         setNamedOutput("power", 0.0f);
         setNamedOutput("envelope", 0.0f);
@@ -234,7 +240,8 @@ struct AudioNode final : public PropertyNode
                     fdata.f_times = nullptr;
                     fdata.freqs = nullptr;
 
-                    setNamedOutput("power", fdata);
+                    setNamedOutput("power", EmptyType());
+                    setNamedOutput("envelope", EmptyType());
                 }
             }
             else if(loading && !popupOpened)

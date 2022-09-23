@@ -71,6 +71,8 @@ add_executable(nr64
     src/util/raycaster/bvh.h
     src/util/raycaster/bvh.cpp
 
+    src/util/misc.inl
+
     src/main.cpp
 )
 

@@ -69,11 +69,10 @@ struct IOIdxDataHashFn
 
 
 struct PropertyNode;
-
+struct EmptyTypeDec {  };
 
 struct PropertyGenericData
 {
-
     enum class ValidType
     {
         FLOAT,
@@ -94,6 +93,32 @@ struct PropertyGenericData
         LIST_VECTOR3,
         LIST_VECTOR4
     };
+
+    // Create compile time map for friendly valid type names
+    template<typename T> struct ValidTypeMap;
+    #define VT_FRIENDLY_NAME(key, name) template <> struct ValidTypeMap<key> { static constexpr const char* value = name; }
+
+    VT_FRIENDLY_NAME(EmptyTypeDec, "No Type");
+
+    VT_FRIENDLY_NAME(float,        "Float");
+    VT_FRIENDLY_NAME(int,          "Int");
+    VT_FRIENDLY_NAME(unsigned int, "Uint");
+    VT_FRIENDLY_NAME(Vector2,      "Vector2");
+    VT_FRIENDLY_NAME(Vector3,      "Vector3");
+    VT_FRIENDLY_NAME(Vector4,      "Vector4");
+    
+    VT_FRIENDLY_NAME(RenderNodeData,     "Render Data");
+    VT_FRIENDLY_NAME(MeshNodeData,       "Mesh Data");
+    VT_FRIENDLY_NAME(MeshInterpListData, "Mesh Data List");
+
+    VT_FRIENDLY_NAME(std::vector<float>,        "Float List");
+    VT_FRIENDLY_NAME(std::vector<int>,          "Int List");
+    VT_FRIENDLY_NAME(std::vector<unsigned int>, "Uint List");
+    VT_FRIENDLY_NAME(std::vector<Vector2>,      "Vector2 List");
+    VT_FRIENDLY_NAME(std::vector<Vector3>,      "Vector3 List");
+    VT_FRIENDLY_NAME(std::vector<Vector4>,      "Vector4 List");
+
+    #undef VT_FRIENDLY_NAME
 
     template<typename T>
     PropertyGenericData(T value, PropertyNode* data_holder) : type(typeid(T)), _data_holder_instance(data_holder)
@@ -215,6 +240,7 @@ struct PropertyGenericData
                 }
             }
 
+            value_type_name = ValidTypeMap<T>::value;
             is_fixed_array = false;
             data = new T(value);
             type = std::type_index(typeid(T));
@@ -255,6 +281,7 @@ struct PropertyGenericData
                 }
             }
 
+            value_type_name = ValidTypeMap<T>::value;
             size = N * sizeof(T);
             data = new T[N];
             memcpy(data, arr, N * sizeof(T));
@@ -397,6 +424,7 @@ struct PropertyGenericData
     bool is_list = false;
     bool _data_changed = false;
     PropertyNode* _data_holder_instance = nullptr;
+    std::string value_type_name = "No Type";
 
 private:
     // template<typename V>
@@ -477,7 +505,7 @@ struct PropertyNode
         MESHINTERP
     };
 
-    struct EmptyType {  };
+    using EmptyType = EmptyTypeDec;
 
     PropertyNode
     (
@@ -544,6 +572,14 @@ struct PropertyNode
 
     std::unordered_map<IOIdxData, PropertyGenericData*, IOIdxDataHashFn> inputs;
     std::map<std::string, PropertyGenericData*> inputs_named;
+
+    // Mapped with _input_labels
+    // Points to static declaration inside the disconnectInputIfNotOfType() function
+    std::map<std::string, const std::vector<std::string>*> allowed_inputs_type_name;
+    std::map<std::string, std::string> inputs_description;
+    // TODO
+    std::map<std::string, std::string> outputs_description;
+    // std::map<std::string, const std::vector<std::string>*> outputs_type_name;
     
     // Outputs
     int _output_count = 0;
@@ -593,6 +629,11 @@ struct PropertyNode
     template<typename... Args>
     inline bool disconnectInputIfNotOfType(const std::string& inputName)
     {
+        static const std::vector<std::string> local_inputs = {
+            PropertyGenericData::ValidTypeMap<Args>::value...
+        };
+        allowed_inputs_type_name[inputName] = &local_inputs;
+
         auto input = inputs_named.find(inputName);
         if(input != inputs_named.end())
         {
@@ -631,30 +672,7 @@ struct PropertyNode
         {
             for(auto it = inputs_named.begin(); it != inputs_named.end(); it++)
             {
-                auto input = *it;
-                PropertyNode* other = input.second->_data_holder_instance;
-                PropertyGenericData* other_data = input.second;
-                if(!other_data->isOfType<Args...>())
-                {
-                    // Clear the input dependencies of the node links
-                    for(IOIdxData out_dep : other->output_dependencies)
-                    {
-                        auto fit = inputs.find(out_dep);
-                        if(fit != inputs.end())
-                        {
-                            inputs.erase(fit);
-                            inputs_named.erase(input.first);
-                        }
-                    }
-
-                    L_WARNING("This node requires an input with types:");
-                    for(auto tid : { std::type_index(typeid(Args))... })
-                    {
-                        L_WARNING("%s", tid.name());
-                    }
-                    L_WARNING("Supplied type:\n%s", other_data->type.name());
-                    disconnected = true;
-                }
+                disconnected = disconnectInputIfNotOfType<Args...>(it->first);
             }
         }
         return disconnected;
@@ -662,8 +680,14 @@ struct PropertyNode
 
     inline void setInputsOrdered(std::vector<std::string> in)
     {
+        static const std::vector<std::string> const_any_type = { "Any Type" };
         _input_count = (int)in.size();
         _input_labels = in;
+
+        for(auto k : in)
+        {
+            allowed_inputs_type_name[k] = &const_any_type;
+        }
 
         _input_max_pad_px = ImGui::CalcTextSize(
             std::max_element(

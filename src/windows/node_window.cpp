@@ -3,6 +3,7 @@
 #include "../render/nodes/nodedef.h"
 #include "../render/renderer.h"
 #include "../util/base64.h"
+#include "../util/misc.inl"
 #include <chrono>
 
 // TODO: Drag rectangle and clipboard select from nodes and links 
@@ -32,6 +33,7 @@ void NodeWindow::render()
     bool open_context_menu = false;
     int node_hovered_in_list = -1;
     int node_hovered_in_scene = -1;
+
     ImGui::BeginChild("node_list", ImVec2(100, 0));
     ImGui::Text("Nodes");
     ImGui::Separator();
@@ -62,6 +64,8 @@ void NodeWindow::render()
     ImGui::SameLine(610.0f);
     floating_clicked = ImGui::Button(floating_w ? "Dock Window" : "Float Window");
     floating_w ^= floating_clicked;
+    ImGui::SameLine(720.0f);
+    ImGui::Text("Mouse over inputs/outputs for additional details.");
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(1, 1));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
     ImGui::PushStyleColor(ImGuiCol_ChildBg, IM_COL32(60, 60, 70, 200));
@@ -100,11 +104,22 @@ void NodeWindow::render()
     // Additional variables
     bool open_rename = false;
     bool moving_node_or_making_link = false;
+    bool input_hovered = false;
+    bool output_hovered = false;
+    struct TooltipDisplay
+    {
+        bool enabled = false;
+        int slot_idx = 0;
+        PropertyNode* node = nullptr;
+        ImVec2 pos = ImVec2(0, 0);
+    } static tooltip_display;
+
+    tooltip_display.enabled = false;
 
     if(!nodes.empty())
     {
         // Display links
-        draw_list->ChannelsSplit(2);
+        draw_list->ChannelsSplit(4);
         draw_list->ChannelsSetCurrent(0); // Background
         for (int node_idx = 0; node_idx < nodes.size(); node_idx++)
         {
@@ -184,6 +199,7 @@ void NodeWindow::render()
             draw_list->AddRectFilled(node_rect_min, node_rect_max, node_bg_color, 4.0f);
             draw_list->AddRect(node_rect_min, node_rect_max, IM_COL32(100, 100, 100, 255), 4.0f);
 
+
             for (int slot_idx = 0; slot_idx < node->_input_count; slot_idx++)
             {
                 ImVec2 offset_in = offset + node->getInputPos(slot_idx);
@@ -192,7 +208,6 @@ void NodeWindow::render()
                 ImGui::SetCursorScreenPos(offset_in - ImVec2(NODE_SLOT_RADIUS, NODE_SLOT_RADIUS));
                 ImGui::PushID(node->id + slot_idx + 1);
                 ImGui::InvisibleButton("", ImVec2(NODE_SLOT_RADIUS*2, NODE_SLOT_RADIUS*2));
-
                 if(ImGui::IsItemHovered())
                 {
                     if(drawing_line > 0 && !ImGui::IsMouseDown(ImGuiMouseButton_Left))
@@ -227,6 +242,76 @@ void NodeWindow::render()
                             node->onConnection(node->_input_labels[slot_idx]);
                         }
                     }
+                }
+
+                if(ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal))
+                {
+                    tooltip_display.enabled = true;
+                    tooltip_display.slot_idx = slot_idx;
+                    tooltip_display.node = node;
+                    // tooltip_display.pos = offset_in;
+                    tooltip_display.pos = io.MousePos + ImVec2(15, 15);
+
+                    // Render help tooltip
+                    ImVec2 tooltip_rect_min = tooltip_display.pos;
+
+                    draw_list->ChannelsSetCurrent(3);
+                    ImGui::SetCursorScreenPos(tooltip_rect_min + NODE_WINDOW_PADDING);
+                    ImGui::BeginGroup();
+                    
+                    // Need to copy the string here in the param
+                    // TODO: Justify text as well
+                    auto wrapTextManual = [](std::string str, int nth_char = 50) -> std::string {
+                        int n = 0;
+                        while(n + nth_char < str.size()) // Just to make sure string is not zero sized
+                        {
+                            n = str.rfind(' ', n + nth_char);
+                            if(n != std::string::npos)
+                            {
+                                str[n] = '\n';
+                            }
+                            else break;
+                        }
+                        return str;
+                    };
+                    
+                    std::string input_name = node->_input_labels[slot_idx];
+                    input_name[0] = std::toupper(input_name[0]);
+
+                    ImGui::Text("%s [%s]", input_name.c_str(), node->name.c_str());
+                    ImVec2 line_draw_pos = ImGui::GetCursorScreenPos();
+                    line_draw_pos.y += 1.0f;
+                    ImGui::Spacing();
+                    float line_text_offset = ImGui::GetTextLineHeightWithSpacing() / 2.2f;
+
+                    // Build text description
+                    std::string description = wrapTextManual(node->inputs_description[node->_input_labels[slot_idx]]);
+                    ImGui::Text(description.c_str());
+                    ImGui::Spacing();
+                    ImGui::Text("Valid input types:");
+                    int idx = 0;
+                    for(auto type_name : *node->allowed_inputs_type_name[node->_input_labels[slot_idx]])
+                    {
+                        ImVec2 cursor_pos = ImGui::GetCursorScreenPos();
+                        ImGui::Text(("\t" + type_name + "\n").c_str());
+                        draw_list->AddCircleFilled(cursor_pos + ImVec2(20, line_text_offset), 2.0f, IM_COL32_WHITE);
+                    }
+
+                    ImGui::EndGroup();
+
+                    // Handmade separator
+                    draw_list->AddLine(line_draw_pos, line_draw_pos + ImVec2(ImGui::GetItemRectSize().x, 0), IM_COL32(255, 255, 255, 127));
+                    ImVec2 size = ImGui::GetItemRectSize() + NODE_WINDOW_PADDING + NODE_WINDOW_PADDING;
+                    ImVec2 tooltip_rect_max = tooltip_rect_min + size;
+
+                    // Same style as the nodes
+                    draw_list->ChannelsSetCurrent(2);
+                    ImU32 tooltip_bg_color = IM_COL32(60, 60, 60, 255);
+                    ImGui::SetCursorScreenPos(tooltip_rect_min);
+                    draw_list->AddRectFilled(tooltip_rect_min, tooltip_rect_max, tooltip_bg_color, 4.0f);
+                    draw_list->AddRect(tooltip_rect_min, tooltip_rect_max, IM_COL32(100, 100, 100, 255), 4.0f);
+
+                    draw_list->ChannelsSetCurrent(0);
                 }
 
                 ImGui::PopID();
@@ -276,6 +361,7 @@ void NodeWindow::render()
 
             ImGui::PopID();
         }
+
         draw_list->ChannelsMerge();
     }
 
@@ -600,6 +686,36 @@ void NodeWindow::render()
     }
 
     ImGui::PopStyleVar();
+
+    // Tooltips
+    // if(tooltip_display.enabled)
+    // {
+    //     // printf("Input types [hovered input]: %s\n", tooltip_display.node->allowed_inputs_type_name[tooltip_display.node->_input_labels[tooltip_display.slot_idx]]->at(0).c_str());
+    //     // draw_list->ChannelsSetCurrent(3); // Top
+
+    //     ImVec2 tooltip_rect_min = tooltip_display.pos;
+
+    //     draw_list->ChannelsSplit(2);
+    //     draw_list->ChannelsSetCurrent(1);
+    //     ImGui::SetCursorScreenPos(tooltip_rect_min + NODE_WINDOW_PADDING);
+    //     ImGui::BeginGroup();
+
+    //     ImGui::Text("Tooltip title goes in here.");
+    //     ImGui::TextWrapped("A very long tooltip description will probably go in here, telling us what the functionality of something is.");
+
+    //     ImGui::EndGroup();
+
+    //     ImVec2 size = ImGui::GetItemRectSize() + NODE_WINDOW_PADDING + NODE_WINDOW_PADDING;
+    //     ImVec2 tooltip_rect_max = tooltip_rect_min + size;
+
+    //     // Same style as the nodes
+    //     draw_list->ChannelsSetCurrent(0);
+    //     ImU32 tooltip_bg_color = IM_COL32(60, 60, 60, 255);
+    //     ImGui::SetCursorScreenPos(tooltip_rect_min);
+    //     draw_list->AddRectFilled(tooltip_rect_min, tooltip_rect_max, tooltip_bg_color, 4.0f);
+    //     draw_list->AddRect(tooltip_rect_min, tooltip_rect_max, IM_COL32(100, 100, 100, 255), 4.0f);
+    //     draw_list->ChannelsMerge();
+    // }
 
     // Scrolling
     if (ImGui::IsWindowHovered() && !ImGui::IsAnyItemActive() && ImGui::IsMouseDragging(ImGuiMouseButton_Middle, 0.0f))

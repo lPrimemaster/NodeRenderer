@@ -5,6 +5,8 @@
 #include "../node_outputs.h"
 #include "../../../glm/glm/gtx/transform.hpp"
 #include "../../../glm/glm/gtx/euler_angles.hpp"
+#include <functional>
+#include <algorithm>
 
 struct RenderNode final : public PropertyNode
 {
@@ -34,6 +36,31 @@ struct RenderNode final : public PropertyNode
 
         name = "Render Node #" + std::to_string(inc++);
         priority = PropertyNode::Priority::RENDER;
+
+        inputs_description["instanceCount"] = 
+            "The number of instances in the current motif. "
+            "Must be equal to the size of the \"worldPosition\", \"worldRotation\" and \"colors\" lists."
+        ;
+
+        inputs_description["worldPosition"] = 
+            "The positions for the current motif. "
+            "If linked, must be equal to the size of the \"worldRotation\" and \"colors\" lists."
+        ;
+
+        inputs_description["worldRotation"] = 
+            "The rotations for the current motif. "
+            "If linked, must be equal to the size of the \"worldPosition\" and \"colors\" lists."
+        ;
+
+        inputs_description["colors"] = 
+            "The colors for the current motif. "
+            "If linked, must be equal to the size of the \"worldPosition\" and \"worldRotation\" lists."
+        ;
+
+        inputs_description["mesh"] = 
+            "The mesh the current motif uses to render objects. "
+            "If linked, must be a obj mesh file or a list of meshes (for interpolation scenarios)."
+        ;
 
         outputs[0]->setValue(_renderData);
     }
@@ -78,47 +105,16 @@ struct RenderNode final : public PropertyNode
         ImGui::Text("This node converts data to be rendered.");
         ImGui::TextColored(ImVec4(0.8f, 0.7f, 0.0f, 1.0f), "Warn: Data types are not checked!");
 
-        #define AND_BHEADER(i) allCollapsed &= !bheaders.all[i]
-        #define HEADER_SZ 2
-        struct
-        {
-            union
-            {
-                struct
-                {
-                    bool fog;
-                    bool pos;
-                };
-                bool all[HEADER_SZ];
-            };
-        } static bheaders;
-        static_assert(HEADER_SZ == sizeof(bheaders) / sizeof(bool));
+        _motif_changed_internal = false;
+        ImGui::BeginGroup();
 
-        bool allCollapsed = true;
-        for(int i = 0; i < HEADER_SZ; i++) AND_BHEADER(i);
-
-        ImVec2 childSize = ImVec2(400.0f, (ImGui::GetTextLineHeightWithSpacing() + 15.0f) * HEADER_SZ);
-
-        #undef AND_BHEADER
-        #undef HEADER_SZ
-
-        if(!allCollapsed) childSize = ImVec2(400.0f, 300.0f);
-
-        ImGui::BeginChild("#details_window", childSize, true);
+        // Header flags
+        static bool fog_header = false;
+        static bool pos_header = false;
 
         // Fog settings header
-        ImU32 frame_color = IM_COL32(179, 102, 0, 255);
-        ImGui::PushStyleColor(ImGuiCol_Header, frame_color);
-        bheaders.fog = ImGui::CollapsingHeader("Fog");
-        ImGui::PopStyleColor();
-
-        _motif_changed_internal = false;
-        if(bheaders.fog)
-        {
-            ImDrawList* draw_list = ImGui::GetWindowDrawList();
-            ImVec2 border_start = ImGui::GetItemRectMin();
-            ImGui::BeginChild("#fog_details");
-
+        renderSubMenu("Fog Settings", ImVec4(179, 102, 0, 255), &fog_header, [&]() -> void {
+            pos_header = false;
             bool fogmax = ImGui::InputFloat("Fog Maximum", &_renderData._fogMax, 1.0f, 0.0f, "%.1f");
             bool fogmin = ImGui::InputFloat("Fog Minimum", &_renderData._fogMin, 1.0f, 0.0f, "%.1f");
             bool fogcol = ImGui::ColorPicker3("Fog Color", _renderData._fogColor.data);
@@ -139,27 +135,12 @@ struct RenderNode final : public PropertyNode
                 _fog_changed_last_frame = false;
                 outputs[0]->setValue(_renderData);
             }
-
-            ImGui::EndChild();
-
-            ImVec2 border_end = ImGui::GetItemRectMax();
-            border_end.x += ImGui::GetStyle().WindowPadding.x / 2;
-            draw_list->AddRect(border_start, border_end, frame_color);
-        }
+        });
 
         // Position settings header
-        frame_color = IM_COL32(50, 205, 50, 255);
-        ImGui::PushStyleColor(ImGuiCol_Header, frame_color);
-        bheaders.pos = ImGui::CollapsingHeader("Position");
-        ImGui::PopStyleColor();
-        if(bheaders.pos)
-        {
-            ImDrawList* draw_list = ImGui::GetWindowDrawList();
-            ImVec2 border_start = ImGui::GetItemRectMin();
-            ImGui::BeginChild("#pos_details");
-
+        renderSubMenu("Position Settings", ImVec4(50, 205, 50, 255), &pos_header, [&]() -> void {
+            fog_header = false;
             _motif_changed_internal = ImGui::Checkbox("Repeat Motif", &_renderData._repeatBlocks);
-
             if(_motif_changed_internal)
             {
                 auto worldPositionLocal = inputs_named.find("worldPosition");
@@ -200,13 +181,9 @@ struct RenderNode final : public PropertyNode
 
                 outputs[0]->setValue(_renderData);
             }
+        });
 
-            ImGui::EndChild();
-
-            ImVec2 border_end = ImGui::GetItemRectMax();
-            border_end.x += ImGui::GetStyle().WindowPadding.x / 2;
-            draw_list->AddRect(border_start, border_end, frame_color);
-        }
+        ImGui::EndGroup();
 
         // Recalculate instances
         if(_motif_changed_internal || (_first_load && _renderData._repeatBlocks))
@@ -267,8 +244,6 @@ struct RenderNode final : public PropertyNode
             _renderData._motifChanged = false;
             outputs[0]->setValue(_renderData);
         }
-
-        ImGui::EndChild();
     }
 
     inline virtual void update() override
@@ -609,6 +584,71 @@ struct RenderNode final : public PropertyNode
     }
 
 private:
+    inline void renderSubMenu(const char* name, ImVec4 color, bool* flag, std::function<void()> func)
+    {
+        static std::unordered_map<std::string, int> id;
+        static int sid = 0;
+
+        ImDrawList* draw_list = ImGui::GetWindowDrawList();
+
+        ImVec2 cursor_start = ImGui::GetCursorScreenPos();
+        const float text_spacing = ImGui::GetTextLineHeightWithSpacing();
+        const float y_pad = (text_spacing - ImGui::GetTextLineHeight()) / 2.0f;
+        const float x_pad = 15;
+        const ImVec2 tree_size = ImVec2(300, text_spacing);
+        const ImVec2 text_pad  = ImVec2(x_pad, y_pad);
+        
+        if(id.find(name) == id.end()) id[name] = sid++;
+        
+        (*flag) ^= ImGui::InvisibleButton((std::string("##tree_") + std::to_string(id[name])).c_str(), tree_size);
+        draw_list->AddRectFilled(cursor_start, cursor_start + tree_size, ImGui::IsItemHovered() ? 
+            IM_COL32(color.x, color.y, color.z, color.w) : 
+            IM_COL32(color.x - 10 > 0 ? color.x - 10 : 0,
+                     color.y - 10 > 0 ? color.y - 10 : 0,
+                     color.z - 10 > 0 ? color.z - 10 : 0,
+                     color.w
+            )
+        );
+        draw_list->AddText(cursor_start + text_pad, IM_COL32_WHITE, name);
+
+        ImVec2 tri_c = cursor_start + ImVec2(x_pad - 7.5f, text_spacing / 2);
+
+        ImVec2 tri_0_rc = ImVec2(2.5f, 0.0f);
+        ImVec2 tri_1_rc = ImVec2(-2.5f, -3);
+        ImVec2 tri_2_rc = ImVec2(-2.5f,  3);
+
+        auto rotate2D_90 = [](ImVec2& vec) -> void {
+            float tx = vec.x;
+            vec.x = -vec.y;
+            vec.y = tx;
+        };
+
+        if(*flag)
+        {
+            // Open tree, rotate the triangle 90deg clockwise
+            rotate2D_90(tri_0_rc);
+            rotate2D_90(tri_1_rc);
+            rotate2D_90(tri_2_rc);
+
+            ImVec2 border_start = ImGui::GetItemRectMin();
+            ImGui::SetCursorScreenPos(ImGui::GetCursorScreenPos() + ImVec2(5, 5));
+
+            ImGui::BeginGroup();
+            func();
+            ImGui::EndGroup();
+
+            ImVec2 border_end = ImVec2(cursor_start.x + tree_size.x, ImGui::GetItemRectMax().y + y_pad * 2);
+            draw_list->AddRect(border_start, border_end, IM_COL32(color.x, color.y, color.z, color.w));
+        }
+        
+        draw_list->AddTriangleFilled(
+            tri_c + tri_0_rc,
+            tri_c + tri_1_rc,
+            tri_c + tri_2_rc,
+            IM_COL32_WHITE
+        );
+    }
+
     inline float positionMaxFromArray(const Vector3* data, int offset)
     {
         const float* fdata = data->data;
