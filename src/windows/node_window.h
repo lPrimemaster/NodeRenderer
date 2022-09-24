@@ -35,6 +35,11 @@ public:
         nodes.clear();
     }
 
+    inline int nodeCount() const
+    {
+        return (int)nodes.size();
+    }
+
     static const long long GetApptimeMs();
 
     inline PropertyNode* getRenderOutputNode()
@@ -51,6 +56,11 @@ public:
         }
 
         return false;
+    }
+
+    inline bool isFloating() const
+    {
+        return floating_w;
     }
 
     void setDrawActiveList(Renderer::DrawList* dl);

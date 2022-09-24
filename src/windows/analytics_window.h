@@ -10,11 +10,12 @@ namespace Renderer
 }
 
 class NodeWindow;
+class OptionsWindow;
 
 class AnalyticsWindow : public Window
 {
 public:
-    AnalyticsWindow(const char* name, NodeWindow* nodeWindow) : Window(name, false), nodeWindow(nodeWindow)
+    AnalyticsWindow(const char* name, NodeWindow* nodeWindow, OptionsWindow* optionsWindow) : Window(name, false), nodeWindow(nodeWindow), optionsWindow(optionsWindow)
     {
         open = true; 
         setWindowCollapsed(false);
@@ -35,5 +36,6 @@ public:
 
 private:
     NodeWindow* nodeWindow;
+    OptionsWindow* optionsWindow;
     float collapsed_pos_y = 0.0f;
 };

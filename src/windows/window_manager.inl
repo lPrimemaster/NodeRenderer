@@ -40,9 +40,10 @@ private:
     WindowManager()
     {
         NodeWindow* nodeEditor = new NodeWindow("Node Editor");
+        OptionsWindow* optionsWindow = new OptionsWindow("Options", nodeEditor);
         windows.push_back(nodeEditor);
-        windows.push_back(new AnalyticsWindow("Analytics", nodeEditor));
-        windows.push_back(new OptionsWindow("Options", nodeEditor));
+        windows.push_back(new AnalyticsWindow("Analytics", nodeEditor, optionsWindow));
+        windows.push_back(optionsWindow);
     }
 
     ~WindowManager()

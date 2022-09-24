@@ -764,34 +764,34 @@ void Renderer::DrawList::render(GLFWwindow* window, NodeWindow* nodeWindow, Anal
         glUniformMatrix4fv(_uniforms.fog_projectionMatrix, 1, GL_FALSE, &camera->projectionMatrix[0][0]);
 
         // Resize the node window
-        nodeWindow->setWindowSize(ImVec2(screen_size[0], screen_size[1] / 3));
-        nodeWindow->setWindowPos(ImVec2(0, 0));
+        nodeWindow->setWindowSize(ImVec2(screen_size[0] - optionsWindow->getBarWidth(), screen_size[1] / 3));
+        nodeWindow->setWindowPos(ImVec2(optionsWindow->getBarWidth(), 0));
 
         analyticsWindow->setWindowSize(ImVec2(AnalyticsWindow::WIDTH, screen_size[1] / 3.0f));
 
         if(analyticsWindow->isCollapsed())
         {
-            analyticsWindow->setWindowPos(ImVec2(0, screen_size[1] - 19.0f));
+            analyticsWindow->setWindowPos(ImVec2(optionsWindow->getBarWidth(), screen_size[1] - 19.0f));
             analyticsWindow->setCollapsedPosY(screen_size[1] - 19.0f);
         }
         else
         {
-            analyticsWindow->setWindowPos(ImVec2(0, screen_size[1] - analyticsWindow->getWindowSize().y));
+            analyticsWindow->setWindowPos(ImVec2(optionsWindow->getBarWidth(), screen_size[1] - analyticsWindow->getWindowSize().y));
             analyticsWindow->setCollapsedPosY(screen_size[1] - 19.0f);
         }
 
-        optionsWindow->setWindowSize(ImVec2(OptionsWindow::WIDTH, screen_size[1] / 3.0f));
+        // optionsWindow->setWindowSize(ImVec2(OptionsWindow::WIDTH, screen_size[1] / 3.0f));
 
-        if(optionsWindow->isCollapsed())
-        {
-            optionsWindow->setWindowPos(ImVec2(AnalyticsWindow::WIDTH, screen_size[1] - 19.0f));
-            optionsWindow->setCollapsedPosY(screen_size[1] - 19.0f);
-        }
-        else
-        {
-            optionsWindow->setWindowPos(ImVec2(AnalyticsWindow::WIDTH, screen_size[1] - optionsWindow->getWindowSize().y));
-            optionsWindow->setCollapsedPosY(screen_size[1] - 19.0f);
-        }
+        // if(optionsWindow->isCollapsed())
+        // {
+        //     optionsWindow->setWindowPos(ImVec2(0, 0));
+        //     optionsWindow->setCollapsedPosY(screen_size[1] - 19.0f);
+        // }
+        // else
+        // {
+        //     optionsWindow->setWindowPos(ImVec2(0, 0));
+        //     optionsWindow->setCollapsedPosY(screen_size[1] - 19.0f);
+        // }
     }
 
     static float last_time = (float)glfwGetTime();

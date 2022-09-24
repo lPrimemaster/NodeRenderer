@@ -17,3 +17,4 @@
 #include "display_node.h"
 #include "feedback_node.h"
 #include "mesh_interp_node.h"
+#include "hist_node.h"

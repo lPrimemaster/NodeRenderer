@@ -38,8 +38,11 @@ file(GLOB WINDOWS_SRC
 )
 
 # EXE Icon
-set(winrc ico/icon.rc)
-set_property(SOURCE winrc APPEND PROPERTY OBJECT_DEPENDS ${CMAKE_SOURCE_DIR}/ico/nr.ico)
+set(winrc res/image/resources.rc)
+set_property(SOURCE winrc APPEND PROPERTY OBJECT_DEPENDS ${CMAKE_SOURCE_DIR}/res/image/nr.ico)
+set_property(SOURCE winrc APPEND PROPERTY OBJECT_DEPENDS ${CMAKE_SOURCE_DIR}/res/image/newfile.png)
+set_property(SOURCE winrc APPEND PROPERTY OBJECT_DEPENDS ${CMAKE_SOURCE_DIR}/res/image/loadfile.png)
+set_property(SOURCE winrc APPEND PROPERTY OBJECT_DEPENDS ${CMAKE_SOURCE_DIR}/res/image/savefile.png)
 
 add_executable(nr64
     ${winrc}

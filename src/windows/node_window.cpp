@@ -466,6 +466,10 @@ void NodeWindow::render()
                     {
                         newNode = new FeedbackNode();
                     }
+                    if (ImGui::MenuItem("Histogram Node"))
+                    {
+                        newNode = new HistogramNode();
+                    }
                     ImGui::EndMenu();
                 }
                 if(ImGui::BeginMenu("Rendering"))

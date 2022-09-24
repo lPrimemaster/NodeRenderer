@@ -502,7 +502,8 @@ struct PropertyNode
         DISPLAY,
         FEEDBACK,
         TEST,
-        MESHINTERP
+        MESHINTERP,
+        HISTOGRAM
     };
 
     using EmptyType = EmptyTypeDec;

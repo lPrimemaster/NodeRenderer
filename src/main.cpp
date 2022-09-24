@@ -20,7 +20,7 @@
 #include "math/kdtree.inl"
 
 #include <Windows.h>
-#include "../ico/res.h"
+#include "../res/image/res.h"
 
 static constexpr int DEF_SCREEN_PX_W = 1280;
 static constexpr int DEF_SCREEN_PX_H =  720;
@@ -41,7 +41,7 @@ int main(int argc, char* argv[])
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
 
-    window = glfwCreateWindow(DEF_SCREEN_PX_W, DEF_SCREEN_PX_H, "Node Renderer v1.0.0-alpha (Redistribution not allowed)", NULL, NULL);
+    window = glfwCreateWindow(DEF_SCREEN_PX_W, DEF_SCREEN_PX_H, "Node Renderer v1.0.1-alpha (Redistribution not allowed)", NULL, NULL);
     if (!window)
     {
         L_ERROR("glfwCreateWindow() error.");
@@ -90,16 +90,16 @@ int main(int argc, char* argv[])
     Renderer::DrawList dl(window, DEF_SCREEN_PX_W, DEF_SCREEN_PX_H);
     nodeWindow->setDrawActiveList(&dl);
 
-    nodeWindow->setWindowSize(ImVec2((float)DEF_SCREEN_PX_W, (float)DEF_SCREEN_PX_H / 3.0f));
-    nodeWindow->setWindowPos(ImVec2(0, 0));
+    nodeWindow->setWindowSize(ImVec2((float)DEF_SCREEN_PX_W - optionsWindow->getBarWidth(), (float)DEF_SCREEN_PX_H / 3.0f));
+    nodeWindow->setWindowPos(ImVec2(optionsWindow->getBarWidth(), 0));
 
     analyticsWindow->setWindowSize(ImVec2(AnalyticsWindow::WIDTH, (float)DEF_SCREEN_PX_H / 3.0f));
-    analyticsWindow->setWindowPos(ImVec2(0, (float)DEF_SCREEN_PX_H - 19.0f));
+    analyticsWindow->setWindowPos(ImVec2(optionsWindow->getBarWidth(), (float)DEF_SCREEN_PX_H - 19.0f));
     analyticsWindow->setCollapsedPosY((float)DEF_SCREEN_PX_H - 19.0f);
 
-    optionsWindow->setWindowSize(ImVec2(OptionsWindow::WIDTH, (float)DEF_SCREEN_PX_H / 3.0f));
-    optionsWindow->setWindowPos(ImVec2(AnalyticsWindow::WIDTH, (float)DEF_SCREEN_PX_H - 19.0f));
-    optionsWindow->setCollapsedPosY((float)DEF_SCREEN_PX_H - 19.0f);
+    // optionsWindow->setWindowSize(ImVec2(OptionsWindow::WIDTH, (float)DEF_SCREEN_PX_H / 3.0f));
+    // optionsWindow->setWindowPos(ImVec2(AnalyticsWindow::WIDTH, (float)DEF_SCREEN_PX_H - 19.0f));
+    // optionsWindow->setCollapsedPosY((float)DEF_SCREEN_PX_H - 19.0f);
 
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LEQUAL);

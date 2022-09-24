@@ -1,0 +1,5 @@
+#pragma once
+#define IDI_ICON1 101
+#define IDI_ICON_NEWFILE 102
+#define IDI_ICON_LOADFILE 103
+#define IDI_ICON_SAVEFILE 104
