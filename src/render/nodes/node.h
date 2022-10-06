@@ -95,6 +95,7 @@ struct PropertyGenericData
     };
 
     // Create compile time map for friendly valid type names
+    // These are the only types nodes can receive/emit
     template<typename T> struct ValidTypeMap;
     #define VT_FRIENDLY_NAME(key, name) template <> struct ValidTypeMap<key> { static constexpr const char* value = name; }
 
@@ -383,7 +384,7 @@ struct PropertyGenericData
         case ValidType::VECTOR2: setValue<Vector2>(*(Vector2*)b.data); break;
         case ValidType::VECTOR3: setValue<Vector3>(*(Vector3*)b.data); break;
         case ValidType::VECTOR4: setValue<Vector4>(*(Vector4*)b.data); break;
-
+        
         // List values for node outputs
         case ValidType::LIST_FLOAT:   setValue<std::vector<float>>(*(std::vector<float>*)b.data); break;
         case ValidType::LIST_INT:     setValue<std::vector<int>>(*(std::vector<int>*)b.data); break;
@@ -395,7 +396,7 @@ struct PropertyGenericData
         // Custom values for node outputs
         case ValidType::RENDER_DATA:           setValue<RenderNodeData>(*(RenderNodeData*)b.data); break;
         case ValidType::MESH_NODE_DATA:        setValue<MeshNodeData>(MeshNodeData()); break; // Mesh node data is just loaded from disk
-        case ValidType::MESH_INTERP_LIST_DATA: setValue<MeshInterpListData>(*(MeshInterpListData*)b.data); L_ERROR("MESH_INTERP_LIST_DATA deserialization not implemented."); exit(-1); break; // TODO
+        case ValidType::MESH_INTERP_LIST_DATA: setValue<MeshInterpListData>(*(MeshInterpListData*)b.data); L_ERROR("MESH_INTERP_LIST_DATA deserialization not implemented."); break; // TODO
 
         default: L_ERROR("setValueDynamic(): Received a non valid type."); break;
         }
@@ -485,6 +486,7 @@ struct PropertyNode
 
     enum class Type
     {
+        INVALID = -1,
         VALUE,
         COLOR,
         MATH,
@@ -503,7 +505,7 @@ struct PropertyNode
         FEEDBACK,
         TEST,
         MESHINTERP,
-        HISTOGRAM
+        GRAPH
     };
 
     using EmptyType = EmptyTypeDec;
@@ -542,7 +544,7 @@ struct PropertyNode
         }
         else
         {
-            L_ERROR("A PropertyNode needs to have at least one output.");
+            L_WARNING("PropertyNode does not have an output.");
         }
     }
 
@@ -580,7 +582,7 @@ struct PropertyNode
     std::map<std::string, std::string> inputs_description;
     // TODO
     std::map<std::string, std::string> outputs_description;
-    // std::map<std::string, const std::vector<std::string>*> outputs_type_name;
+    std::map<std::string, const std::vector<std::string>*> nominal_outputs_type_name;
     
     // Outputs
     int _output_count = 0;
@@ -592,6 +594,19 @@ struct PropertyNode
 
     // Display
     NodeRenderData _render_data;
+
+    // Misc
+    bool _select_candidate = false;
+
+    template<typename... Args>
+    inline void setOutputNominalTypes(const std::string& name, const std::string& desc = "")
+    {
+        static const std::vector<std::string> local_outputs = {
+            PropertyGenericData::ValidTypeMap<Args>::value...
+        };
+        nominal_outputs_type_name[name] = &local_outputs;
+        outputs_description[name] = desc;
+    }
 
     template<typename T>
     inline bool setNamedOutput(const std::string& name, T data)
@@ -774,10 +789,22 @@ struct PropertyNode
             _render_data.pos.y + _render_data.size.y * ((float)i + 1) / ((float)_output_count + 1)
         ); 
     }
+    
+    // Basic AABB Test
+    inline const bool selectionIsecTest(const ImVec2& offset, const ImVec2& p0, const ImVec2& p1) const
+    {
+        const float x0 = offset.x + _render_data.pos.x;
+        const float x1 = x0 + _render_data.size.x;
+        const float y0 = offset.y + _render_data.pos.y;
+        const float y1 = y0 + _render_data.size.y;
+
+        return (x0 > p0.x && x0 < p1.x && x1 > p0.x && x1 < p1.x) && (y0 > p0.y && y0 < p1.y && y1 > p0.y && y1 < p1.y);
+    } 
 
     inline virtual void render() = 0;
     inline virtual void update() {  }
     inline virtual void onConnection(const std::string& inputName) {  }
+    inline virtual void onDisconnect(const std::string& inputName) {  }
 
     inline virtual ByteBuffer serialize() const
     {

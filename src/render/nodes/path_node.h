@@ -13,6 +13,8 @@ struct PathNode final : public PropertyNode
     {
         static int inc = 0;
         name = "Path Node #" + std::to_string(inc++);
+
+        setOutputNominalTypes<Vector3>("position", "The result point for the current choose line path parametrization.");
     }
     
     ~PathNode() {  }
@@ -28,6 +30,8 @@ struct PathNode final : public PropertyNode
 
     inline virtual void render() override
     {
+        // FIXME
+        ImGui::TextColored(ImVec4(1, 0, 0, 1), "This node is working incorrectly.");
         static const char* const type_names[] = {
             "Along X",
             "Along Y",

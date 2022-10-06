@@ -10,6 +10,14 @@ struct ListAccessNode final : public PropertyNode
     {
         static int inc = 0;
         name = "List Access Node #" + std::to_string(inc++);
+
+        inputs_description["index"] = "The list index to lookup.";
+        inputs_description["list"] = "The list object to lookup.";
+
+        setOutputNominalTypes<float>("value", 
+            "The list index corresponding value."
+        );
+
     }
     
     ~ListAccessNode()

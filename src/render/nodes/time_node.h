@@ -7,6 +7,8 @@ struct TimeNode final : public PropertyNode
     {
         static int inc = 0;
         name = "Time Node #" + std::to_string(inc++);
+
+        setOutputNominalTypes<float>("t", "Returns the number of fractional seconds ellapsed since the application started.");
     }
     
     ~TimeNode() {  }

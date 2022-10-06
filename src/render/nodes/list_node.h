@@ -42,6 +42,19 @@ struct ListNode final : public PropertyNode
         _extra_vars[0] = '\0';
 
         name = "List Node #" + std::to_string(inc++);
+
+        inputs_description["sizex"] = "The x dimension size.";
+        inputs_description["sizey"] = "The y dimension size.";
+        inputs_description["sizez"] = "The z dimension size.";
+
+        setOutputNominalTypes<
+            std::vector<float>, 
+            std::vector<int>, 
+            std::vector<unsigned int>,
+            std::vector<Vector2>,
+            std::vector<Vector3>,
+            std::vector<Vector4>
+        >("list", "The generated list object.");
     }
     
     ~ListNode()

@@ -16,6 +16,10 @@ struct MeshInterpolatorNode final : public PropertyNode
         static int inc = 0;
         name = "Mesh Interpolator Node #" + std::to_string(inc++);
 
+        inputs_description["t"] = "Float value dictating how much to linearly interpolate between mesh A and mesh B's points spacially.";
+
+        setOutputNominalTypes<MeshInterpListData, MeshNodeData>("Int. mesh", "The output interpolated mesh from A and B (if both are connected).");
+
         // glGenVertexArrays(1, &_preview_vao);
         // glBindVertexArray(_preview_vao);
 

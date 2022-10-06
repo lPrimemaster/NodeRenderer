@@ -11,6 +11,11 @@ struct ValueNode final : public PropertyNode
         static int inc = 0;
         name = "Value Node #" + std::to_string(inc++);
         outputs[0]->setValue(val);
+
+        setOutputNominalTypes<float, int, unsigned int, Vector2, Vector3, Vector4>(
+            "value",
+            "Returns the inserted value."
+        );
     }
     
     ~ValueNode() {  }

@@ -10,6 +10,10 @@ struct FunctionNode final : public PropertyNode
         static int inc = 0;
         name = "Function Node #" + std::to_string(inc++);
 
+        setOutputNominalTypes<float, Vector2, Vector3, Vector4>("value", 
+            "The ouput of the function."
+        );
+
         _vars_name = std::vector<std::string>(1, "x");
         for(auto s : _vars_name)
         {

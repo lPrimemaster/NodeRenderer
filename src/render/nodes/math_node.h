@@ -17,6 +17,11 @@ struct MathNode final : public PropertyNode
         static int inc = 0;
         name = "Math Node #" + std::to_string(inc++);
         mode = m;
+
+        setOutputNominalTypes<float, int, unsigned int, Vector2, Vector3, Vector4>(
+            "result",
+            "The resulting value from the specified math operation."
+        );
     }
     
     ~MathNode() {  }

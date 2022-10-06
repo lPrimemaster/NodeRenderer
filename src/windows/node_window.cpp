@@ -11,11 +11,85 @@
 // TODO: Blueprint mode
 // TODO: Blueprint window
 
+static void RenderSelectionOutlines(const PropertyNode* node, const ImVec2& offset, ImDrawList* draw_list, const ImColor caps_color)
+{
+    const float x0 = offset.x + node->_render_data.pos.x;
+    const float x1 = x0 + node->_render_data.size.x;
+    const float y0 = offset.y + node->_render_data.pos.y;
+    const float y1 = y0 + node->_render_data.size.y;
+
+    static constexpr float OFFSET_CAPS = 3.0f;
+    static constexpr float THICKN_CAPS = 2.0f;
+    static constexpr float LEN_CAPS    = 7.5f;
+
+    // Four end caps on the selected nodes
+    const ImVec2 left_top_corner[3] = {
+        ImVec2(x0 - OFFSET_CAPS, y0 + LEN_CAPS), 
+        ImVec2(x0 - OFFSET_CAPS, y0 - OFFSET_CAPS), 
+        ImVec2(x0 + LEN_CAPS,    y0 - OFFSET_CAPS)
+    };
+    draw_list->AddPolyline(left_top_corner, 3, caps_color, ImDrawFlags_RoundCornersAll, THICKN_CAPS);
+
+    const ImVec2 left_bot_corner[3] = {
+        ImVec2(x0 - OFFSET_CAPS, y1 - LEN_CAPS), 
+        ImVec2(x0 - OFFSET_CAPS, y1 + OFFSET_CAPS), 
+        ImVec2(x0 + LEN_CAPS,    y1 + OFFSET_CAPS)
+    };
+    draw_list->AddPolyline(left_bot_corner, 3, caps_color, ImDrawFlags_RoundCornersAll, THICKN_CAPS);
+
+    const ImVec2 right_bot_corner[3] = {
+        ImVec2(x1 + OFFSET_CAPS, y1 - LEN_CAPS), 
+        ImVec2(x1 + OFFSET_CAPS, y1 + OFFSET_CAPS), 
+        ImVec2(x1 - LEN_CAPS,    y1 + OFFSET_CAPS)
+    };
+    draw_list->AddPolyline(right_bot_corner, 3, caps_color, ImDrawFlags_RoundCornersAll, THICKN_CAPS);
+
+    const ImVec2 right_top_corner[3] = {
+        ImVec2(x1 + OFFSET_CAPS, y0 + LEN_CAPS), 
+        ImVec2(x1 + OFFSET_CAPS, y0 - OFFSET_CAPS), 
+        ImVec2(x1 - LEN_CAPS,    y0 - OFFSET_CAPS)
+    };
+    draw_list->AddPolyline(right_top_corner, 3, caps_color, ImDrawFlags_RoundCornersAll, THICKN_CAPS);
+}
+
 static const std::chrono::steady_clock::time_point app_start = std::chrono::steady_clock::now();
 
 const long long NodeWindow::GetApptimeMs()
 {
     return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - app_start).count();
+}
+
+PropertyNode* NodeWindow::createNodeDynamic(const PropertyNode::Type& t)
+{
+    switch (t)
+    {
+        case PropertyNode::Type::VALUE: return new ValueNode();
+        case PropertyNode::Type::COLOR: return new ColorNode();
+        case PropertyNode::Type::MATH: return new MathNode();
+        case PropertyNode::Type::FUNCTION: return new FunctionNode();
+        case PropertyNode::Type::TIME: return new TimeNode();
+        case PropertyNode::Type::WORLDPOS: return new WorldPosNode(activeDL->camera);
+        case PropertyNode::Type::RENDER:
+        { 
+            PropertyNode* newNode = new RenderNode();
+            render_output_node = newNode;
+            render_output_node_changed = true;
+            return newNode;
+        };
+        case PropertyNode::Type::LIST: return new ListNode();
+        case PropertyNode::Type::LISTACCESS: return new ListAccessNode();
+        case PropertyNode::Type::LISTJOIN: return new ListJoinNode();
+        case PropertyNode::Type::MESH: return new MeshNode();
+        case PropertyNode::Type::PATH: return new PathNode();
+        case PropertyNode::Type::CAMERA: return new CameraNode(activeDL->camera);
+        case PropertyNode::Type::AUDIO: return new AudioNode();
+        case PropertyNode::Type::DISPLAY: return new DisplayNode();
+        case PropertyNode::Type::FEEDBACK: return new FeedbackNode();
+        case PropertyNode::Type::TEST: return new TestNode();
+        case PropertyNode::Type::MESHINTERP: return new MeshInterpolatorNode();
+        case PropertyNode::Type::GRAPH: return new GraphNode();
+        default: L_ERROR("Node Window deserialization encountered an invalid node type."); return nullptr;
+    }
 }
 
 void NodeWindow::setDrawActiveList(Renderer::DrawList* dl)
@@ -165,7 +239,15 @@ void NodeWindow::render()
             bool node_move = false;
             draw_list->ChannelsSetCurrent(0); // Background
             ImGui::SetCursorScreenPos(node_rect_min);
-            ImGui::InvisibleButton("node", node->_render_data.size);
+            if(ImGui::InvisibleButton("node", node->_render_data.size))
+            {
+                if(!node->_select_candidate)
+                {
+                    window_selection_buffer.invalidate();
+                    node->_select_candidate = true;
+                    window_selection_buffer.selected_nodes.push_back(node);
+                }
+            }
             if (ImGui::IsItemHovered())
             {
                 node_hovered_in_scene = node_idx;
@@ -180,12 +262,6 @@ void NodeWindow::render()
                 if(ImGui::IsKeyPressed(ImGuiKey_F2))
                 {
                     open_rename = true;
-                }
-                if(ImGui::IsKeyPressed(ImGuiKey_Delete))
-                {
-                    deleteNode(node_selected);
-                    ImGui::PopID();
-                    break;
                 }
             }
             
@@ -244,6 +320,7 @@ void NodeWindow::render()
                     }
                 }
 
+                // Inputs tooltip
                 if(ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal))
                 {
                     tooltip_display.enabled = true;
@@ -350,16 +427,113 @@ void NodeWindow::render()
                     scrolling = scrolling + ImVec2(scroll_x, scroll_y);
                 }
 
+                // Inputs tooltip
+                if(ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal))
+                {
+                    tooltip_display.enabled = true;
+                    tooltip_display.slot_idx = slot_idx;
+                    tooltip_display.node = node;
+                    // tooltip_display.pos = offset_in;
+                    tooltip_display.pos = io.MousePos + ImVec2(15, 15);
+
+                    // Render help tooltip
+                    ImVec2 tooltip_rect_min = tooltip_display.pos;
+
+                    draw_list->ChannelsSetCurrent(3);
+                    ImGui::SetCursorScreenPos(tooltip_rect_min + NODE_WINDOW_PADDING);
+                    ImGui::BeginGroup();
+                    
+                    // Need to copy the string here in the param
+                    // TODO: Justify text as well
+                    auto wrapTextManual = [](std::string str, int nth_char = 50) -> std::string {
+                        int n = 0;
+                        while(n + nth_char < str.size()) // Just to make sure string is not zero sized
+                        {
+                            n = str.rfind(' ', n + nth_char);
+                            if(n != std::string::npos)
+                            {
+                                str[n] = '\n';
+                            }
+                            else break;
+                        }
+                        return str;
+                    };
+                    
+                    std::string output_name = node->_output_labels[slot_idx];
+                    output_name[0] = std::toupper(output_name[0]);
+
+                    ImGui::Text("%s [%s]", output_name.c_str(), node->name.c_str());
+                    ImVec2 line_draw_pos = ImGui::GetCursorScreenPos();
+                    line_draw_pos.y += 1.0f;
+                    ImGui::Spacing();
+                    float line_text_offset = ImGui::GetTextLineHeightWithSpacing() / 2.2f;
+
+                    // Build text description
+                    std::string description = wrapTextManual(node->outputs_description[node->_output_labels[slot_idx]]);
+                    ImGui::Text(description.c_str());
+                    ImGui::Spacing();
+                    ImGui::Text("Output types:");
+                    int idx = 0;
+                    for(auto type_name : *node->nominal_outputs_type_name[node->_output_labels[slot_idx]])
+                    {
+                        ImVec2 cursor_pos = ImGui::GetCursorScreenPos();
+                        ImGui::Text(("\t" + type_name + "\n").c_str());
+                        draw_list->AddCircleFilled(cursor_pos + ImVec2(20, line_text_offset), 2.0f, IM_COL32_WHITE);
+                    }
+
+                    ImGui::EndGroup();
+
+                    // Handmade separator
+                    draw_list->AddLine(line_draw_pos, line_draw_pos + ImVec2(ImGui::GetItemRectSize().x, 0), IM_COL32(255, 255, 255, 127));
+                    ImVec2 size = ImGui::GetItemRectSize() + NODE_WINDOW_PADDING + NODE_WINDOW_PADDING;
+                    ImVec2 tooltip_rect_max = tooltip_rect_min + size;
+
+                    // Same style as the nodes
+                    draw_list->ChannelsSetCurrent(2);
+                    ImU32 tooltip_bg_color = IM_COL32(60, 60, 60, 255);
+                    ImGui::SetCursorScreenPos(tooltip_rect_min);
+                    draw_list->AddRectFilled(tooltip_rect_min, tooltip_rect_max, tooltip_bg_color, 4.0f);
+                    draw_list->AddRect(tooltip_rect_min, tooltip_rect_max, IM_COL32(100, 100, 100, 255), 4.0f);
+
+                    draw_list->ChannelsSetCurrent(0);
+                }
+
                 ImGui::PopID();
             }
 
             if(node_move && drawing_line == 0)
             {
                 moving_node_or_making_link = true;
-                node->_render_data.pos = node->_render_data.pos + io.MouseDelta;
+
+                // Move the selection if there is any
+                if(!window_selection_buffer.selected_nodes.empty())
+                {
+                    for(auto* node : window_selection_buffer.selected_nodes)
+                    {
+                        node->_render_data.pos = node->_render_data.pos + io.MouseDelta;
+                    }
+                }
+                else
+                {
+                    node->_render_data.pos = node->_render_data.pos + io.MouseDelta;
+                }
             }
 
             ImGui::PopID();
+        }
+
+        if(!window_selection_buffer.selected_nodes.empty() && ImGui::IsKeyPressed(ImGuiKey_Delete))
+        {
+            // Tracking and cleaning up dependants
+            for(auto* node : window_selection_buffer.selected_nodes)
+            {
+                int node_id = getNodeIndex(node);
+                if(node_id != -1)
+                    deleteNode(node_id);
+            }
+            
+            // Invalidate would cause nullptr access exception
+            window_selection_buffer.clear();
         }
 
         draw_list->ChannelsMerge();
@@ -397,34 +571,41 @@ void NodeWindow::render()
             if (ImGui::MenuItem("Delete", NULL, false, true))
             {
                 // Tracking and cleaning up dependants
-                deleteNode(node_selected);
+                if(!window_selection_buffer.selected_nodes.empty())
+                {
+                    for(auto* node : window_selection_buffer.selected_nodes)
+                    {
+                        int node_id = getNodeIndex(node);
+                        if(node_id != -1)
+                            deleteNode(node_id);
+                    }
+                }
+                else
+                {
+                    deleteNode(node_selected);
+                }
             }
             if (ImGui::MenuItem("Copy", NULL, false, false)) {}
         }
         else
         {
+            PropertyNode::Type t = PropertyNode::Type::INVALID;
             if (ImGui::BeginMenu("Add..."))
             {
-                PropertyNode* newNode = nullptr;
-
                 // Menu'ed nodes
                 if(ImGui::BeginMenu("Math"))
                 {
                     if (ImGui::MenuItem("Value Node"))
                     {
-                        newNode = new ValueNode(1);
+                        t = PropertyNode::Type::VALUE;
                     }
-                    // if (ImGui::MenuItem("Color Node"))
-                    // {
-                    //     newNode = new ColorNode();
-                    // }
                     if (ImGui::MenuItem("Math Node"))
                     {
-                        newNode = new MathNode();
+                        t = PropertyNode::Type::MATH;
                     }
                     if (ImGui::MenuItem("Function Node"))
                     {
-                        newNode = new FunctionNode();
+                        t = PropertyNode::Type::FUNCTION;
                     }
                     ImGui::EndMenu();
                 }
@@ -432,15 +613,15 @@ void NodeWindow::render()
                 {
                     if (ImGui::MenuItem("List Node"))
                     {
-                        newNode = new ListNode();
+                        t = PropertyNode::Type::LIST;
                     }
                     if (ImGui::MenuItem("List Access Node"))
                     {
-                        newNode = new ListAccessNode();
+                        t = PropertyNode::Type::LISTACCESS;
                     }
                     if (ImGui::MenuItem("List Join Node"))
                     {
-                        newNode = new ListJoinNode();
+                        t = PropertyNode::Type::LISTJOIN;
                     }
                     ImGui::EndMenu();
                 }
@@ -448,11 +629,11 @@ void NodeWindow::render()
                 {
                     if (ImGui::MenuItem("Mesh Node"))
                     {
-                        newNode = new MeshNode();
+                        t = PropertyNode::Type::MESH;
                     }
                     if (ImGui::MenuItem("Mesh Interpolator Node"))
                     {
-                        newNode = new MeshInterpolatorNode();
+                        t = PropertyNode::Type::MESHINTERP;
                     }
                     ImGui::EndMenu();
                 }
@@ -460,15 +641,15 @@ void NodeWindow::render()
                 {
                     if (ImGui::MenuItem("Display Node"))
                     {
-                        newNode = new DisplayNode();
+                        t = PropertyNode::Type::DISPLAY;
                     }
                     if (ImGui::MenuItem("Feedback Node"))
                     {
-                        newNode = new FeedbackNode();
+                        t = PropertyNode::Type::FEEDBACK;
                     }
-                    if (ImGui::MenuItem("Histogram Node"))
+                    if (ImGui::MenuItem("Graph Node"))
                     {
-                        newNode = new HistogramNode();
+                        t = PropertyNode::Type::GRAPH;
                     }
                     ImGui::EndMenu();
                 }
@@ -479,18 +660,17 @@ void NodeWindow::render()
                         // TODO: We can allow more than one render node in fact
                         if(render_output_node == nullptr)
                         {
-                            newNode = new RenderNode();
-                            render_output_node = newNode;
-                            render_output_node_changed = true;
+                            t = PropertyNode::Type::RENDER;
                         }
                         else
                         {
                             L_WARNING("There can only be one render node.");
+                            t = PropertyNode::Type::INVALID;
                         }
                     }
                     if (ImGui::MenuItem("Camera Node"))
                     {
-                        newNode = new CameraNode(activeDL->camera);
+                        t = PropertyNode::Type::CAMERA;
                     }
                     ImGui::EndMenu();
                 }
@@ -498,37 +678,36 @@ void NodeWindow::render()
                 // Free nodes
                 if (ImGui::MenuItem("Time Node"))
                 {
-                    newNode = new TimeNode();
+                    t = PropertyNode::Type::TIME;
                 }
-                // if (ImGui::MenuItem("WorldPos Node"))
-                // {
-                //     newNode = new WorldPosNode(activeDL->camera);
-                // }
                 if (ImGui::MenuItem("Path Node"))
                 {
-                    newNode = new PathNode();
+                    t = PropertyNode::Type::PATH;
                 }
                 if (ImGui::MenuItem("Audio Node"))
                 {
-                    newNode = new AudioNode();
+                    t = PropertyNode::Type::AUDIO;
                 }
 
-                if(newNode)
+                if(t != PropertyNode::Type::INVALID)
                 {
-                    newNode->id = last_node_id;
-                    newNode->_render_data.pos = scene_pos;
-                    last_node_id += (newNode->_input_count + newNode->_output_count + 1);
-
-                    switch(newNode->priority)
+                    PropertyNode* newNode = createNodeDynamic(t);
+                    if(newNode)
                     {
-                        case PropertyNode::Priority::NORMAL:   nodes.push_back(newNode);             break;
-                        // case PropertyNode::Priority::FEEDBACK: nodes.insert(nodes.begin(), newNode); break;
-                        case PropertyNode::Priority::FEEDBACK: nodes.push_back(newNode);             break;
-                        case PropertyNode::Priority::RENDER:   nodes.push_back(newNode);             break;
+                        newNode->id = last_node_id;
+                        newNode->_render_data.pos = scene_pos;
+                        last_node_id += (newNode->_input_count + newNode->_output_count + 1);
+
+                        switch(newNode->priority)
+                        {
+                            case PropertyNode::Priority::NORMAL:   nodes.push_back(newNode);             break;
+                            // case PropertyNode::Priority::FEEDBACK: nodes.insert(nodes.begin(), newNode); break;
+                            case PropertyNode::Priority::FEEDBACK: nodes.push_back(newNode);             break;
+                            case PropertyNode::Priority::RENDER:   nodes.push_back(newNode);             break;
+                        }
+
                     }
-
                 }
-
                 ImGui::EndMenu();
             }
             // if (ImGui::MenuItem("Paste", NULL, false, false)) {}
@@ -584,24 +763,30 @@ void NodeWindow::render()
     if(!moving_node_or_making_link)
     {
         static ImVec2 mouse_pos;
+        static ImVec2 start_scrolling;
         static ImVec2 p0 = ImVec2(0, 0);
         static ImVec2 p1 = ImVec2(0, 0);
         static bool inital_click = false;
         if(ImGui::IsMouseClicked(ImGuiMouseButton_Left) && ImGui::IsWindowHovered(/* ImGuiHoveredFlags_AllowWhenBlockedByPopup */))
         {
             mouse_pos = io.MousePos;
+            start_scrolling = scrolling;
             inital_click = true;
+            window_selection_buffer.invalidate();
         }
         else if(inital_click && ImGui::IsMouseDragging(ImGuiMouseButton_Left))
         {
             // Figure out the min and max of the rectangle to draw based on the mouse points
-            p0 = ImVec2(std::min(io.MousePos.x, mouse_pos.x), std::min(io.MousePos.y, mouse_pos.y));
-            p1 = ImVec2(std::max(io.MousePos.x, mouse_pos.x), std::max(io.MousePos.y, mouse_pos.y));
-
+            p0 = ImVec2(std::min(io.MousePos.x, mouse_pos.x - start_scrolling.x + scrolling.x), std::min(io.MousePos.y, mouse_pos.y - start_scrolling.y + scrolling.y));
+            p1 = ImVec2(std::max(io.MousePos.x, mouse_pos.x - start_scrolling.x + scrolling.x), std::max(io.MousePos.y, mouse_pos.y - start_scrolling.y + scrolling.y));
             
 
             draw_list->AddRectFilled(p0, p1, IM_COL32(41, 74, 122, 50));
             draw_list->AddRect(p0, p1, IM_COL32(41, 74, 122, 255), 0.0f, 0, 2.0f);
+
+            // Debug circles
+            // draw_list->AddCircleFilled(p0, 5.0f, IM_COL32(255, 0, 0, 255));
+            // draw_list->AddCircleFilled(p1, 5.0f, IM_COL32(0, 255, 0, 255));
 
             ImVec2 windowSize = ImGui::GetWindowSize();
             ImVec2 windowPos  = ImGui::GetWindowPos();
@@ -615,49 +800,10 @@ void NodeWindow::render()
 
             for(auto* node : nodes)
             {
-                float x0 = offset.x + node->_render_data.pos.x;
-                float x1 = x0 + node->_render_data.size.x;
-                float y0 = offset.y + node->_render_data.pos.y;
-                float y1 = y0 + node->_render_data.size.y;
-
-                if(x0 > p0.x && x0 < p1.x && x1 > p0.x && x1 < p1.x)
+                node->_select_candidate = node->selectionIsecTest(offset, p0, p1);
+                if(node->_select_candidate)
                 {
-                    if(y0 > p0.y && y0 < p1.y && y1 > p0.y && y1 < p1.y)
-                    {
-                        static const ImColor BLUE_CAPS = IM_COL32(255, 0, 0, 255);
-                        static constexpr float OFFSET_CAPS = 3.0f;
-                        static constexpr float THICKN_CAPS = 2.0f;
-                        static constexpr float LEN_CAPS    = 7.5f;
-
-                        // Four end caps on the selected nodes
-                        const ImVec2 left_top_corner[3] = {
-                            ImVec2(x0 - OFFSET_CAPS, y0 + LEN_CAPS), 
-                            ImVec2(x0 - OFFSET_CAPS, y0 - OFFSET_CAPS), 
-                            ImVec2(x0 + LEN_CAPS,    y0 - OFFSET_CAPS)
-                        };
-                        draw_list->AddPolyline(left_top_corner, 3, BLUE_CAPS, ImDrawFlags_RoundCornersAll, THICKN_CAPS);
-
-                        const ImVec2 left_bot_corner[3] = {
-                            ImVec2(x0 - OFFSET_CAPS, y1 - LEN_CAPS), 
-                            ImVec2(x0 - OFFSET_CAPS, y1 + OFFSET_CAPS), 
-                            ImVec2(x0 + LEN_CAPS,    y1 + OFFSET_CAPS)
-                        };
-                        draw_list->AddPolyline(left_bot_corner, 3, BLUE_CAPS, ImDrawFlags_RoundCornersAll, THICKN_CAPS);
-
-                        const ImVec2 right_bot_corner[3] = {
-                            ImVec2(x1 + OFFSET_CAPS, y1 - LEN_CAPS), 
-                            ImVec2(x1 + OFFSET_CAPS, y1 + OFFSET_CAPS), 
-                            ImVec2(x1 - LEN_CAPS,    y1 + OFFSET_CAPS)
-                        };
-                        draw_list->AddPolyline(right_bot_corner, 3, BLUE_CAPS, ImDrawFlags_RoundCornersAll, THICKN_CAPS);
-
-                        const ImVec2 right_top_corner[3] = {
-                            ImVec2(x1 + OFFSET_CAPS, y0 + LEN_CAPS), 
-                            ImVec2(x1 + OFFSET_CAPS, y0 - OFFSET_CAPS), 
-                            ImVec2(x1 - LEN_CAPS,    y0 - OFFSET_CAPS)
-                        };
-                        draw_list->AddPolyline(right_top_corner, 3, BLUE_CAPS, ImDrawFlags_RoundCornersAll, THICKN_CAPS);
-                    }
+                    RenderSelectionOutlines(node, offset, draw_list, IM_COL32(255, 0, 0, 255));
                 }
             }
 
@@ -666,22 +812,15 @@ void NodeWindow::render()
                 && ImGui::IsWindowHovered(/* ImGuiHoveredFlags_AllowWhenBlockedByPopup */))
         {
             inital_click = false;
-            window_selection_buffer.selected_nodes.clear();
+            window_selection_buffer.invalidate();
             L_TRACE("SEL_RECT = min[%.2f,%.2f] max[%.2f,%.2f]", p0.x, p0.y, p1.x, p1.y);
+
             // Check which nodes are inside the selection
             for(auto* node : nodes)
             {
-                float x0 = offset.x + node->_render_data.pos.x;
-                float x1 = x0 + node->_render_data.size.x;
-                float y0 = offset.y + node->_render_data.pos.y;
-                float y1 = y0 + node->_render_data.size.y;
-
-                if(x0 > p0.x && x0 < p1.x && x1 > p0.x && x1 < p1.x)
+                if(node->_select_candidate)
                 {
-                    if(y0 > p0.y && y0 < p1.y && y1 > p0.y && y1 < p1.y)
-                    {
-                        window_selection_buffer.selected_nodes.push_back(node);
-                    }
+                    window_selection_buffer.selected_nodes.push_back(node);
                 }
             }
             p0 = ImVec2(0, 0);
@@ -689,37 +828,13 @@ void NodeWindow::render()
         }
     }
 
+    // Display selected nodes outlines
+    for(auto* node : window_selection_buffer.selected_nodes)
+    {
+        RenderSelectionOutlines(node, offset, draw_list, IM_COL32(0, 255, 0, 255));
+    }
+
     ImGui::PopStyleVar();
-
-    // Tooltips
-    // if(tooltip_display.enabled)
-    // {
-    //     // printf("Input types [hovered input]: %s\n", tooltip_display.node->allowed_inputs_type_name[tooltip_display.node->_input_labels[tooltip_display.slot_idx]]->at(0).c_str());
-    //     // draw_list->ChannelsSetCurrent(3); // Top
-
-    //     ImVec2 tooltip_rect_min = tooltip_display.pos;
-
-    //     draw_list->ChannelsSplit(2);
-    //     draw_list->ChannelsSetCurrent(1);
-    //     ImGui::SetCursorScreenPos(tooltip_rect_min + NODE_WINDOW_PADDING);
-    //     ImGui::BeginGroup();
-
-    //     ImGui::Text("Tooltip title goes in here.");
-    //     ImGui::TextWrapped("A very long tooltip description will probably go in here, telling us what the functionality of something is.");
-
-    //     ImGui::EndGroup();
-
-    //     ImVec2 size = ImGui::GetItemRectSize() + NODE_WINDOW_PADDING + NODE_WINDOW_PADDING;
-    //     ImVec2 tooltip_rect_max = tooltip_rect_min + size;
-
-    //     // Same style as the nodes
-    //     draw_list->ChannelsSetCurrent(0);
-    //     ImU32 tooltip_bg_color = IM_COL32(60, 60, 60, 255);
-    //     ImGui::SetCursorScreenPos(tooltip_rect_min);
-    //     draw_list->AddRectFilled(tooltip_rect_min, tooltip_rect_max, tooltip_bg_color, 4.0f);
-    //     draw_list->AddRect(tooltip_rect_min, tooltip_rect_max, IM_COL32(100, 100, 100, 255), 4.0f);
-    //     draw_list->ChannelsMerge();
-    // }
 
     // Scrolling
     if (ImGui::IsWindowHovered() && !ImGui::IsAnyItemActive() && ImGui::IsMouseDragging(ImGuiMouseButton_Middle, 0.0f))
@@ -784,34 +899,7 @@ void NodeWindow::deserializeWindowState(const std::string& state_string)
         PropertyNode::Type t;
         buffer.get(&t);
 
-        PropertyNode* newNode = nullptr;
-        switch (t)
-        {
-            case PropertyNode::Type::VALUE: newNode = new ValueNode(); break;
-            case PropertyNode::Type::COLOR: newNode = new ColorNode(); break;
-            case PropertyNode::Type::MATH: newNode = new MathNode(); break;
-            case PropertyNode::Type::FUNCTION: newNode = new FunctionNode(); break;
-            case PropertyNode::Type::TIME: newNode = new TimeNode(); break;
-            case PropertyNode::Type::WORLDPOS: newNode = new WorldPosNode(activeDL->camera); break;
-            case PropertyNode::Type::RENDER: // Render node needs to have these details
-            { 
-                newNode = new RenderNode();
-                render_output_node = newNode;
-                render_output_node_changed = true;
-            } break;
-            case PropertyNode::Type::LIST: newNode = new ListNode(); break;
-            case PropertyNode::Type::LISTACCESS: newNode = new ListAccessNode(); break;
-            case PropertyNode::Type::LISTJOIN: newNode = new ListJoinNode(); break;
-            case PropertyNode::Type::MESH: newNode = new MeshNode(); break;
-            case PropertyNode::Type::PATH: newNode = new PathNode(); break;
-            case PropertyNode::Type::CAMERA: newNode = new CameraNode(activeDL->camera); break;
-            case PropertyNode::Type::AUDIO: newNode = new AudioNode(); break;
-            case PropertyNode::Type::DISPLAY: newNode = new DisplayNode(); break;
-            case PropertyNode::Type::FEEDBACK: newNode = new FeedbackNode(); break;
-            case PropertyNode::Type::TEST: newNode = new TestNode(); break;
-            case PropertyNode::Type::MESHINTERP: newNode = new MeshInterpolatorNode(); break;
-            default: L_ERROR("Node Window deserialization encountered an invalid node type."); break;
-        }
+        PropertyNode* newNode = createNodeDynamic(t);
 
         if(newNode)
         {
@@ -885,6 +973,7 @@ void NodeWindow::deserializeWindowState(const std::string& state_string)
 
             other->inputs.emplace(idxd, node->outputs[link_output_slot]);
             other->inputs_named.emplace(other->_input_labels[slot_idx], node->outputs[link_output_slot]);
+            other->onConnection(other->_input_labels[slot_idx]);
         }
     }
 

@@ -14,6 +14,7 @@ struct FeedbackNode final : public PropertyNode
 
     inline virtual void render() override
     {
+        ImGui::TextColored(ImVec4(1, 0, 0, 1), "This node is obsolete.");
         auto in = inputs_named.find("in");
         if(in != inputs_named.end())
         {

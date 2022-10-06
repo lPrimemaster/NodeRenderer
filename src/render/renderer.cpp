@@ -50,7 +50,7 @@ static void _key_callback(GLFWwindow* window, int key, int scancode, int action,
     }
 }
 
-// FIX: Check if we are in the screen region or not
+// FIXME: Check if we are in the screen region or not
 static void _mouse_pos_callback(GLFWwindow* window, double xpos, double ypos)
 {
     ImGuiIO& io = ImGui::GetIO();
@@ -180,7 +180,7 @@ static int LoadShaderFromFile(GLuint shadertype, std::string file, GLuint* progr
 
     int nrAttributes = -1;
     glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &nrAttributes);
-    L_DEBUG("# supported vtx attributes: %d", nrAttributes);
+    L_TRACE("GL supported max vtx attributes: %d", nrAttributes);
 
     if(!result)
     {

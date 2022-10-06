@@ -11,8 +11,6 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "../../stb/stb_image.h"
 
-static constexpr ImVec4 textColor = ImVec4(0.2f, 0.5f, 0.1f, 1.0f);
-
 static void SetClipboardDataFunc(void* user_data, const char* text)
 {
     const size_t len = strlen(text) + 1;
@@ -24,108 +22,6 @@ static void SetClipboardDataFunc(void* user_data, const char* text)
     SetClipboardData(CF_TEXT, hMem);
     CloseClipboard();
 }
-
-
-// void OptionsWindow::render()
-// {
-//     setWindowPos(ImVec2(WIDTH, collapsed_pos_y - ImGui::GetWindowSize().y + 19.0f));
-//     ImGuiIO& io = ImGui::GetIO();
-
-//     if(!io.SetClipboardTextFn) io.SetClipboardTextFn = SetClipboardDataFunc;
-
-//     if(ImGui::Button("Save Scene"))
-//     {
-//         data64 = nodeWindow->serializeWindowState();
-
-//         if(b64buffer) delete[] b64buffer;
-//         b64buffer = new char[data64.size() + 1];
-//         memcpy(b64buffer, data64.c_str(), data64.size() + 1);
-
-//         ImGui::OpenPopup("Save Data");
-//     }
-//     ImGui::SameLine();
-//     if(ImGui::Button("Load Scene"))
-//     {
-//         if(b64buffer) delete[] b64buffer;
-//         b64buffer = new char[102400]; // ? Sussy ?
-//         b64buffer[0] = '\0';
-//         ImGui::OpenPopup("Load Data");
-//     }
-
-//     if(ImGui::BeginPopupModal("Save Data", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize))
-//     {
-//         ImGui::InputTextMultiline("base64", b64buffer, data64.size() + 1, ImVec2(0, 0), ImGuiInputTextFlags_ReadOnly);
-
-//         if(ImGui::Button("Ok"))
-//         {
-//             ImGui::CloseCurrentPopup();
-//         }
-//         ImGui::SameLine();
-//         if(ImGui::Button("Copy"))
-//         {
-//             ImGui::SetClipboardText(data64.c_str());
-//             ImGui::CloseCurrentPopup();
-//         }
-//         ImGui::SameLine();
-//         std::string where;
-//         static const std::vector<std::string> ext = { ".b64" };
-//         if(ImGuiExt::FileBrowser(&where, ext, "Save As...", "Save", true, "save.b64"))
-//         {
-//             FILE* f = fopen(where.c_str(), "wb");
-//             if(f != nullptr)
-//             {
-//                 fwrite(data64.c_str(), sizeof(char), data64.size(), f);
-//                 fclose(f);
-//             }
-//             else
-//             {
-//                 L_ERROR("OptionsWindow: Could not create save file.");
-//             }
-
-//             ImGui::CloseCurrentPopup();
-//         }
-//         ImGui::EndPopup();
-//     }
-
-//     if(ImGui::BeginPopupModal("Load Data", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize))
-//     {
-//         ImGui::InputTextMultiline("base64", b64buffer, 102400, ImVec2(0, 0));
-
-//         if(ImGui::Button("Load"))
-//         {
-//             nodeWindow->deserializeWindowState(b64buffer);
-//             ImGui::CloseCurrentPopup();
-//         }
-//         ImGui::SameLine();
-//         std::string where;
-//         static const std::vector<std::string> ext = { ".b64" };
-//         if(ImGuiExt::FileBrowser(&where, ext, "Load File...", "Load"))
-//         {
-//             FILE* f = fopen(where.c_str(), "rb");
-//             if(f != nullptr)
-//             {
-//                 fseek(f, 0, SEEK_END);
-//                 long fsize = ftell(f);
-//                 fseek(f, 0, SEEK_SET);
-//                 fread(b64buffer, fsize, 1, f);
-//                 fclose(f);
-//                 nodeWindow->deserializeWindowState(b64buffer);
-//             }
-//             else
-//             {
-//                 L_ERROR("OptionsWindow: Could not load save file.");
-//             }
-
-//             ImGui::CloseCurrentPopup();
-//         }
-//         ImGui::SameLine();
-//         if(ImGui::Button("Cancel"))
-//         {
-//             ImGui::CloseCurrentPopup();
-//         }
-//         ImGui::EndPopup();
-//     }
-// }
 
 void OptionsWindow::loadIcons(const std::initializer_list<const int> resources_id)
 {
@@ -176,7 +72,7 @@ void OptionsWindow::render()
     bool bar_open_last = bar_open;
     bar_open = ImGui::IsWindowHovered(ImGuiHoveredFlags_DelayShort | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem);
 
-    // This is nasty (handling node editor's window state here)...
+    // HACK: This is nasty (handling node editor's window state here)...
     if((bar_open_last ^ bar_open) && !nodeWindow->isFloating())
     {
         ImVec2 newsize = nodeWindow->getWindowSize();
@@ -195,6 +91,7 @@ void OptionsWindow::render()
     // Internal bar render
     if(bar_open)
     {
+        // HACK: This padding might not be okie tokie for a different style
         const float text_padding = 25.0f;
         bool new_file = ImGui::ImageButton("new_file", (void*)(intptr_t)icons_id[IDI_ICON_NEWFILE], ImVec2(64, 64));
         ImGui::SameLine();
@@ -243,7 +140,7 @@ void OptionsWindow::render()
         if(load_file)
         {
             if(b64buffer) delete[] b64buffer;
-            b64buffer = new char[102400]; // ? Sussy ?
+            b64buffer = new char[102400]; // FIXME: Might fail or not... ? Sussy ? In fact, this is wrong in so many ways...
             b64buffer[0] = '\0';
             ImGui::OpenPopup("Load Data");
         }
@@ -282,7 +179,7 @@ void OptionsWindow::render()
 
     if(ImGui::BeginPopupModal("New File", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize))
     {
-        ImGui::Text("Current scene will be erased!");
+        ImGui::Text("The current scene will be erased!");
 
         if(ImGui::Button("I understand."))
         {

@@ -42,6 +42,8 @@ public:
 
     static const long long GetApptimeMs();
 
+    PropertyNode* createNodeDynamic(const PropertyNode::Type& t);
+
     inline PropertyNode* getRenderOutputNode()
     {
         return render_output_node;
@@ -80,6 +82,15 @@ public:
         }
     }
 
+    inline int getNodeIndex(PropertyNode* node)
+    {
+        for(int i = 0; i < (int)nodes.size(); i++)
+        {
+            if(nodes[i] == node) return i;
+        }
+        return -1;
+    }
+
     inline void deleteNode(int idx)
     {
         PropertyNode* node = *(nodes.data() + idx);
@@ -106,6 +117,7 @@ public:
                     {
                         if(named_node_it->second == fit->second)
                         {
+                            other->onDisconnect(named_node_it->first);
                             named_node_it = other->inputs_named.erase(named_node_it);
                             break;
                         }
@@ -151,6 +163,20 @@ private:
     struct SelectionBuffer
     {
         std::vector<PropertyNode*> selected_nodes;
+
+        inline void invalidate()
+        {
+            for(auto* node : selected_nodes)
+            {
+                node->_select_candidate = false;
+            }
+            selected_nodes.clear();
+        }
+
+        inline void clear()
+        {
+            selected_nodes.clear();
+        }
     };
 
     struct CopyPasteBuffer

@@ -11,6 +11,20 @@ struct ListJoinNode final : public PropertyNode
     {
         static int inc = 0;
         name = "List Join Node #" + std::to_string(inc++);
+
+        inputs_description["list A"] = "The list A to concatenate.";
+        inputs_description["list B"] = "The list B to concatenate.";
+
+        setOutputNominalTypes<
+            std::vector<float>, 
+            std::vector<int>, 
+            std::vector<unsigned int>,
+            std::vector<Vector2>,
+            std::vector<Vector3>,
+            std::vector<Vector4>
+        >("list", "The output concatenated list. [A + B]");
+
+        setOutputNominalTypes<unsigned int>("size", "The new size of the output list.");
     }
     
     ~ListJoinNode()

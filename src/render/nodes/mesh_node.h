@@ -14,6 +14,8 @@ struct MeshNode final : public PropertyNode
         static int inc = 0;
         name = "Mesh Node #" + std::to_string(inc++);
 
+        setOutputNominalTypes<MeshNodeData>("mesh", "The mesh loaded from the .obj file.");
+
         // glGenVertexArrays(1, &_preview_vao);
         // glBindVertexArray(_preview_vao);
 

@@ -57,6 +57,13 @@ struct AudioNode final : public PropertyNode
 
         setNamedOutput("power", 0.0f);
         setNamedOutput("envelope", 0.0f);
+
+        setOutputNominalTypes<float>("power", 
+            "A floating point value that yields the currently playing audio stream \"volume\" value."
+        );
+        setOutputNominalTypes<float>("envelope", 
+            "A floating point value that yields the currently playing audio stream moving average like \"volume\" value."
+        );
     }
     
     ~AudioNode()

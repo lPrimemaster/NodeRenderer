@@ -37,6 +37,13 @@ file(GLOB WINDOWS_SRC
     ${CMAKE_SOURCE_DIR}/src/windows/*.inl
 )
 
+set(IMPLOT_SRC
+    ${CMAKE_SOURCE_DIR}/implot/implot.h
+    ${CMAKE_SOURCE_DIR}/implot/implot_internal.h
+    ${CMAKE_SOURCE_DIR}/implot/implot.cpp
+    ${CMAKE_SOURCE_DIR}/implot/implot_items.cpp
+)
+
 # EXE Icon
 set(winrc res/image/resources.rc)
 set_property(SOURCE winrc APPEND PROPERTY OBJECT_DEPENDS ${CMAKE_SOURCE_DIR}/res/image/nr.ico)
@@ -47,6 +54,7 @@ set_property(SOURCE winrc APPEND PROPERTY OBJECT_DEPENDS ${CMAKE_SOURCE_DIR}/res
 add_executable(nr64
     ${winrc}
     ${IMGUI_SRC}
+    ${IMPLOT_SRC}
     ${WINDOWS_SRC}
     ${NODES_SRC}
 
@@ -139,12 +147,12 @@ set(CPACK_PACKAGE_NAME "NodeRenderer")
 set(CPACK_PACKAGE_VENDOR "Primemaster")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "NodeRenderer - Render anything visually.")
 set(CPACK_PACKAGE_DIRECTORY ${CMAKE_SOURCE_DIR}/bin/Installer)
-set(CPACK_PACKAGE_ICON "${CMAKE_SOURCE_DIR}/ico\\\\nr.ico")
-set(CPACK_NSIS_MUI_ICON ${CMAKE_SOURCE_DIR}/ico/nr.ico)
-set(CPACK_PACKAGE_VERSION "1.0.0-alpha")
+set(CPACK_PACKAGE_ICON "${CMAKE_SOURCE_DIR}/res/image\\\\nr.ico")
+set(CPACK_NSIS_MUI_ICON ${CMAKE_SOURCE_DIR}/res/image/nr.ico)
+set(CPACK_PACKAGE_VERSION "1.0.1-alpha")
 set(CPACK_PACKAGE_VERSION_MAJOR "1")
 set(CPACK_PACKAGE_VERSION_MINOR "0")
-set(CPACK_PACKAGE_VERSION_PATCH "0")
+set(CPACK_PACKAGE_VERSION_PATCH "1")
 set(CPACK_PACKAGE_INSTALL_DIRECTORY NodeRenderer)
 set(CPACK_NSIS_MODIFY_PATH OFF)
 set(CPACK_NSIS_IGNORE_LICENSE_PAGE ON)

@@ -7,6 +7,13 @@ struct DisplayNode final : public PropertyNode
     {
         static int inc = 0;
         name = "Display Node #" + std::to_string(inc++);
+
+        inputs_description["in"] = "Any numeric or vector value to be visualized.";
+
+        // TODO: All output/input nodes will break when new types are added
+        setOutputNominalTypes<float, int, unsigned int, Vector2, Vector3, Vector4>("out", 
+            "The same value as the input value."
+        );
     }
     
     ~DisplayNode() {  }
