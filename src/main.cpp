@@ -15,8 +15,6 @@
 
 #include "render/renderer.h"
 
-#include "python/loader.h" // For init and deinit
-
 #include "util/serialization.inl"
 
 #include "math/kdtree.inl"
@@ -29,9 +27,6 @@ static constexpr int DEF_SCREEN_PX_H =  720;
 
 int main(int argc, char* argv[])
 {
-    PythonLoader::Init();
-    Py_BEGIN_ALLOW_THREADS
-
     GLFWwindow* window;
 
     if (!glfwInit())
@@ -181,9 +176,6 @@ int main(int argc, char* argv[])
 
     glfwDestroyWindow(window);
     glfwTerminate();
-
-    Py_END_ALLOW_THREADS
-    PythonLoader::Deinit();
 
     return 0;
 }

@@ -35,3 +35,6 @@
 [submodule "minimp3"]
 	path = minimp3
 	url = https://github.com/lieff/minimp3.git
+[submodule "kissfft"]
+	path = kissfft
+	url = https://github.com/mborgerding/kissfft.git

@@ -22,7 +22,10 @@ add_subdirectory(tinyobjloader EXCLUDE_FROM_ALL)
 add_subdirectory(bvh EXCLUDE_FROM_ALL)
 add_subdirectory(glad EXCLUDE_FROM_ALL)
 
-find_package(Python REQUIRED COMPONENTS Interpreter Development)
+set(KISSFFT_PKGCONFIG OFF CACHE BOOL "Build pkg-config files" FORCE)
+set(KISSFFT_TEST OFF CACHE BOOL "Build kissfft tests" FORCE)
+set(KISSFFT_TOOLS OFF CACHE BOOL "Build kissfft command-line tools" FORCE)
+add_subdirectory(kissfft EXCLUDE_FROM_ALL)
 
 # Stop being nasty
 file(GLOB IMGUI_SRC
@@ -73,9 +76,6 @@ add_executable(nr64
     src/util/audio.h
     src/util/audio.cpp
 
-    src/python/loader.h
-    src/python/loader.cpp
-
     src/util/base64.h
     src/util/base64.cpp
 
@@ -93,15 +93,10 @@ endif()
 
 
 target_include_directories(nr64 PRIVATE glad/include glfw/include imgui ${Python_INCLUDE_DIRS} glad)
-target_link_libraries(nr64 glad glfw ${GLFW_LIBRARIES} muparser tinyobjloader bvh ${Python_LIBRARIES} Winmm.lib) #msvcrt.lib)
+target_link_libraries(nr64 glad glfw ${GLFW_LIBRARIES} muparser tinyobjloader bvh ${Python_LIBRARIES} Winmm.lib kissfft) #msvcrt.lib)
 
 add_custom_target(copy-runtime-files ALL
     COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/src/shader ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Release/shader
-    DEPENDS nr64
-)
-
-add_custom_target(copy-runtime-files-py ALL
-    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/src/python/scripts ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Release/scripts
     DEPENDS nr64
 )
 

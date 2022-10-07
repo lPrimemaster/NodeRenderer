@@ -1,7 +1,6 @@
 #pragma once
 #include "node.h"
 #include "../../util/imgui_ext.inl"
-#include "../../python/loader.h"
 #include "../../util/audio.h"
 #include "../../math/comb.inl"
 #include <future>
@@ -68,12 +67,11 @@ struct AudioNode final : public PropertyNode
         {
             // Send a float with current power rms for testing
             float ms = (float)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - audio_start).count();
-            int closest_power_rms_idx = Audio::GetClosestFrameIndexFromTime(&fdata, ms);
+            int closest_idx = Audio::GetClosestFrameIndexFromTime(&fdata, ms);
             // L_TRACE("closest_power_rms_idx: %d", closest_power_rms_idx);
-            setNamedOutput("power", fdata.rms[closest_power_rms_idx]);
+            setNamedOutput("power", fdata.rms[closest_idx]);
 
-            // int closest_power_rms_env_idx = Math::FindClosestIdx(fdata.f_times_env, fdata.sizes.f_times_env_sz, s);
-            // setNamedOutput("envelope", fdata.f_avg_rms_power_env[closest_power_rms_env_idx]);
+            setNamedOutput("envelope", fdata.high_freq_sum[closest_idx]);
         }
     }
 
@@ -141,8 +139,6 @@ struct AudioNode final : public PropertyNode
                 }
                 else
                 {
-                    
-
                     setNamedOutput("power", EmptyType());
                     setNamedOutput("envelope", EmptyType());
                 }

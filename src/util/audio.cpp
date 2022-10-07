@@ -13,20 +13,88 @@
 
 #include <cassert>
 
+#include "../../kissfft/kiss_fft.h"
+
 #define PCM16_MIN_SIZE (int16_t)0x8000
 #define PCM16_MAX_SIZE (int16_t)0x7FFF
+#define PI_F 3.141592654f
 
 struct frames_iterate_data
 {
     mp3dec_t *mp3d;
     mp3dec_file_info_t *info;
-    size_t allocated;
     Audio::AudioInternalData* aid;
+    size_t allocated = 0;
+    bool first_frame = true;
+
+    kiss_fft_cfg fft_cfg;
+    kiss_fft_cpx* fft_in;
+    kiss_fft_cpx* fft_out;
+    float* fft_window = nullptr;
+    float* fft_mag_spectrum = nullptr;
 };
 
 static const float s16_to_f32_unity(const int16_t value)
 {
     return (float)value / (float)PCM16_MAX_SIZE;
+}
+
+static float* create_hamming_window(const int samples)
+{
+    float* window = new float[samples];
+
+    float samples_minus_one = samples - 1;
+    constexpr float two_pi = 2.0f * PI_F;
+
+    for(int i = 0; i < samples; i++)
+    {
+        window[i] = 0.54f - (0.46f * cosf(two_pi * i / samples_minus_one));
+    }
+
+    return window;
+}
+
+static void calculate_frame_fft(frames_iterate_data* d, const int16_t* buffer, const int samples)
+{
+    for(int i = 0; i < samples; i++)
+    {
+        d->fft_in[i].r = s16_to_f32_unity(buffer[i]) * d->fft_window[i];
+        d->fft_in[i].i = 0.0f;
+    }
+
+    kiss_fft(d->fft_cfg, d->fft_in, d->fft_out);
+}
+
+static void calculate_frame_magnitude_spectrum(frames_iterate_data* d, const int samples)
+{
+    for(int i = 0; i < samples / 2; i++)
+    {
+        d->fft_mag_spectrum[i] = sqrtf(d->fft_out[i].r * d->fft_out[i].r + d->fft_out[i].i * d->fft_out[i].i);
+    }
+}
+
+static float calculate_frame_high_freq_sum(const float* mag_spectrum, const int samples)
+{
+    float sum = 0.0f;
+    
+    for(int i = 0; i < samples / 2; i++)
+    {
+        sum += mag_spectrum[i] * (float)(i + 1);
+    }
+
+    return sum;
+}
+
+static float calculate_frame_low_freq_sum(const float* mag_spectrum, const int samples)
+{
+    float sum = 0.0f;
+    
+    for(int i = 0; i < samples / 2; i++)
+    {
+        sum += mag_spectrum[i] * (float)((samples / 2) - i);
+    }
+
+    return sum;
 }
 
 static float calculate_frame_peak_energy(const int16_t* buffer, const int samples)
@@ -147,7 +215,27 @@ static int frames_iterate_cb(void *user_data, const uint8_t *frame, int frame_si
         d->aid->peak_energy.push_back(frame_peak_energy);
         d->aid->rms.push_back(frame_rms);
         d->aid->zcr.push_back(frame_zcr);
-        d->aid->samples_per_frame = samples;
+
+        if(d->first_frame)
+        {
+            d->first_frame = false;
+            d->aid->samples_per_frame = samples;
+
+            d->fft_cfg = kiss_fft_alloc(samples, 0, 0, 0);
+            d->fft_in = new kiss_fft_cpx[samples];
+            d->fft_out = new kiss_fft_cpx[samples];
+            d->fft_mag_spectrum = new float[samples/2];
+            d->fft_window = create_hamming_window(samples);
+        }
+
+        calculate_frame_fft(d, buffer, samples);
+        calculate_frame_magnitude_spectrum(d, samples);
+
+        float frame_high_freq = calculate_frame_high_freq_sum(d->fft_mag_spectrum, samples);
+        float frame_low_freq  = calculate_frame_low_freq_sum(d->fft_mag_spectrum, samples);
+
+        d->aid->high_freq_sum.push_back(frame_high_freq);
+        d->aid->low_freq_sum.push_back(frame_low_freq);
     }
     return 0;
 }
@@ -191,7 +279,11 @@ Audio::AudioInternalData Audio::LoadMp3FileToMemory(const std::string& filename)
     memset(&info, 0, sizeof(info));
     Audio::AudioInternalData aid;
 
-    frames_iterate_data d = { &mp3d, &info, 0, &aid };
+    frames_iterate_data d;
+    d.mp3d = &mp3d;
+    d.info = &info;
+    d.aid = &aid;
+
     mp3dec_init(&mp3d);
     int res = mp3dec_iterate(filename.c_str(), frames_iterate_cb, &d);
 
@@ -219,6 +311,12 @@ Audio::AudioInternalData Audio::LoadMp3FileToMemory(const std::string& filename)
     fwrite(aid.wav_buffer, 1, buffer_size, f);
 
     fclose(f);
+
+    free(d.fft_cfg);
+    delete[] d.fft_in;
+    delete[] d.fft_out;
+    delete[] d.fft_window;
+    delete[] d.fft_mag_spectrum;
 
     free(info.buffer);
 

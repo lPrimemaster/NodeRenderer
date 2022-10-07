@@ -11,6 +11,9 @@ namespace Audio
         std::vector<float> rms;
         std::vector<int> zcr;
 
+        std::vector<float> low_freq_sum;
+        std::vector<float> high_freq_sum;
+
         int samples_per_frame;
         float ms_per_frame;
         int sample_rate;
