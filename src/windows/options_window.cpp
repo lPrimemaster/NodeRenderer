@@ -118,7 +118,7 @@ void OptionsWindow::render()
         static const char* end_text0 = "Node Renderer";
         ImGui::SetCursorPos(ImVec2((ImGui::GetWindowSize().x - ImGui::CalcTextSize(end_text0).x) / 2, ImGui::GetWindowSize().y - ImGui::GetTextLineHeightWithSpacing() * 3));
         ImGui::Text(end_text0);
-        static const char* end_text1 = "v1.0.1-alpha";
+        static const char* end_text1 = "v1.0.2-alpha";
         ImGui::SetCursorPos(ImVec2((ImGui::GetWindowSize().x - ImGui::CalcTextSize(end_text1).x) / 2, ImGui::GetWindowSize().y - ImGui::GetTextLineHeightWithSpacing() * 2));
         ImGui::Text(end_text1);
 

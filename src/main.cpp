@@ -38,7 +38,7 @@ int main(int argc, char* argv[])
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
 
-    window = glfwCreateWindow(DEF_SCREEN_PX_W, DEF_SCREEN_PX_H, "Node Renderer v1.0.1-alpha (Redistribution not allowed)", NULL, NULL);
+    window = glfwCreateWindow(DEF_SCREEN_PX_W, DEF_SCREEN_PX_H, "Node Renderer v1.0.2-alpha (Redistribution not allowed)", NULL, NULL);
     if (!window)
     {
         L_ERROR("glfwCreateWindow() error.");

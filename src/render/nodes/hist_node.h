@@ -97,6 +97,7 @@ struct GraphNode final : public PropertyNode
 
         inputs_description["x"] = "x value to graphically display.";
         inputs_description["y"] = "y value to graphically display.";
+        inputs_description["list"] = "list to graphically display.";
     }
     
     ~GraphNode() {  }
@@ -104,45 +105,83 @@ struct GraphNode final : public PropertyNode
     // TODO: Rename this to graph node as well
     inline virtual void render() override
     {
-        const char* const modes[] = {"Scrolling x", "Fixed x"};
+        const char* const modes[] = {"Scrolling x", "List display"};
 
-        ImGui::Combo("Mode", &graph_mode, modes, 2);
+        if(ImGui::Combo("Mode", &graph_mode, modes, 2))
+        {
+            // Mode changed
+            // Handle it
+            if(graph_mode == 0) // Scrolling x
+            {
+                disconnectInputIfNotOfType<PropertyNode::EmptyType>("list");
+                setInputsOrdered({"x", "y"});
+                waiting_message = "x/y";
+            }
+            else if(graph_mode == 1) // List display
+            {
+                disconnectInputIfNotOfType<PropertyNode::EmptyType>("x");
+                disconnectInputIfNotOfType<PropertyNode::EmptyType>("y");
+                setInputsOrdered({"list"});
+                waiting_message = "list";
+            }
+        }
 
         if(assign_value && linename)
         {
             if(ImPlot::BeginPlot("##GraphWindow", ImVec2(0, 0), ImPlotFlags_NoTitle | ImPlotFlags_NoFrame | ImPlotFlags_NoChild))
             {
-                float x_max;
-                float x_min;
-                
-                if(graph_mode == 0) // Scrolling x mode
+                constexpr bool paused = false; // ???
+                if(graph_mode == 0) // Scrolling x
                 {
-                    x_max = scrolling_buffer.curr_x;
-                    x_min = scrolling_buffer.least_x;
+                    const float x_max = scrolling_buffer.getXMax();
+                    const float x_min = scrolling_buffer.getXMin();
+
+                    // FIXME: This does not work if the limits are zero
+                    const float max_y = scrolling_buffer.getYMax() * 1.1f;
+                    const float min_y = scrolling_buffer.getYMin() * 1.1f;
+
+                    ImPlot::SetupAxisLimits(ImAxis_X1, x_min, x_max, paused ? ImGuiCond_Once : ImGuiCond_Always);
+                    ImPlot::SetupAxisLimits(ImAxis_Y1, min_y, max_y, ImGuiCond_Always);
+                    ImPlot::PlotLine(
+                        linename->c_str(),
+                        &scrolling_buffer.data[0].x,
+                        &scrolling_buffer.data[0].y,
+                        scrolling_buffer.size,
+                        0,
+                        scrolling_buffer.offset,
+                        2 * sizeof(float)
+                    );
                 }
-                else if(graph_mode == 1) // Fixed x mode
+                else if(graph_mode == 1) // List display
                 {
-                    x_max = scrolling_buffer.getXMax();
-                    x_min = scrolling_buffer.getXMin();
+                    auto in_list = inputs_named.find("list");
+                    if(in_list != inputs_named.end())
+                    {
+                        auto list = in_list->second->getValuePtr<std::vector<float>>();
+                        if(in_list->second->dataChanged() || first_run)
+                        {
+                            first_run = false;
+
+                            // Create/Update the x axis for this list
+                            
+                        }
+                        ImPlot::SetupAxisLimits(ImAxis_X1, 0.0f, (float)list->size(), paused ? ImGuiCond_Once : ImGuiCond_Always);
+                        // ImPlot::SetupAxisLimits(ImAxis_Y1, min_y, max_y, ImGuiCond_Always);
+                        ImPlot::PlotBars(
+                            linename->c_str(),
+                            &scrolling_buffer.data[0].x,
+                            &scrolling_buffer.data[0].y,
+                            scrolling_buffer.size,
+                            0,
+                            scrolling_buffer.offset,
+                            2 * sizeof(float)
+                        );
+                    }
+                    else
+                    {
+                        first_run = true;
+                    }
                 }
-
-                // FIXME: This does not work if the limits are zero
-                const float max_y = scrolling_buffer.getYMax() * 1.1f;
-                const float min_y = scrolling_buffer.getYMin() * 1.1f;
-
-
-                bool paused = false;
-                ImPlot::SetupAxisLimits(ImAxis_X1, x_min, x_max, paused ? ImGuiCond_Once : ImGuiCond_Always);
-                ImPlot::SetupAxisLimits(ImAxis_Y1, min_y, max_y, ImGuiCond_Always);
-                ImPlot::PlotLine(
-                    linename->c_str(),
-                    &scrolling_buffer.data[0].x,
-                    &scrolling_buffer.data[0].y,
-                    scrolling_buffer.size,
-                    0,
-                    scrolling_buffer.offset,
-                    2 * sizeof(float)
-                );
                 ImPlot::EndPlot();
             }
         }
@@ -150,7 +189,7 @@ struct GraphNode final : public PropertyNode
         {
             ImGuiExt::SpinnerText();
             ImGui::SameLine();
-            ImGui::Text("Waiting for x/y data...");
+            ImGui::Text("Waiting for %s data...", waiting_message.c_str());
         }
     }
 
@@ -160,69 +199,76 @@ struct GraphNode final : public PropertyNode
         float y;
         assign_value = false;
 
-        disconnectInputIfNotOfType<float, int, unsigned int>("x");
-        disconnectInputIfNotOfType<float, int, unsigned int>("y");
-
-        auto in_x = inputs_named.find("x");
-        if(in_x != inputs_named.end())
+        if(graph_mode == 0) // Scrolling x
         {
-            PropertyGenericData::TypeDataBuffer buffer = in_x->second->getValueDynamic();
+            disconnectInputIfNotOfType<float, int, unsigned int>("x");
+            disconnectInputIfNotOfType<float, int, unsigned int>("y");
 
-            switch (buffer.vtype)
+            auto in_x = inputs_named.find("x");
+            if(in_x != inputs_named.end())
             {
-            case PropertyGenericData::ValidType::FLOAT:
-                x = *(float*)buffer.data;
-                assign_value = true;
-                break;
-            case PropertyGenericData::ValidType::INT:
-                x = (float)*(int*)buffer.data;
-                assign_value = true;
-                break;
-            case PropertyGenericData::ValidType::UINT:
-                x = (float)*(unsigned int*)buffer.data;
-                assign_value = true;
-                break;
-            
-            default:
-                L_ERROR("GraphNode only suppports inputs of type FLOAT, INT and UNSIGNED INT.");
-                break;
+                PropertyGenericData::TypeDataBuffer buffer = in_x->second->getValueDynamic();
+
+                switch (buffer.vtype)
+                {
+                case PropertyGenericData::ValidType::FLOAT:
+                    x = *(float*)buffer.data;
+                    assign_value = true;
+                    break;
+                case PropertyGenericData::ValidType::INT:
+                    x = (float)*(int*)buffer.data;
+                    assign_value = true;
+                    break;
+                case PropertyGenericData::ValidType::UINT:
+                    x = (float)*(unsigned int*)buffer.data;
+                    assign_value = true;
+                    break;
+                
+                default:
+                    L_ERROR("GraphNode only suppports inputs of type FLOAT, INT and UNSIGNED INT.");
+                    break;
+                }
             }
-        }
 
-        auto in_y = inputs_named.find("y");
-        if(in_y != inputs_named.end())
-        {
-            PropertyGenericData::TypeDataBuffer buffer = in_y->second->getValueDynamic();
-
-            switch (buffer.vtype)
+            auto in_y = inputs_named.find("y");
+            if(in_y != inputs_named.end())
             {
-            case PropertyGenericData::ValidType::FLOAT:
-                y = *(float*)buffer.data;
-                assign_value &= true;
-                break;
-            case PropertyGenericData::ValidType::INT:
-                y = (float)*(int*)buffer.data;
-                assign_value &= true;
-                break;
-            case PropertyGenericData::ValidType::UINT:
-                y = (float)*(unsigned int*)buffer.data;
-                assign_value &= true;
-                break;
-            
-            default:
+                PropertyGenericData::TypeDataBuffer buffer = in_y->second->getValueDynamic();
+
+                switch (buffer.vtype)
+                {
+                case PropertyGenericData::ValidType::FLOAT:
+                    y = *(float*)buffer.data;
+                    assign_value &= true;
+                    break;
+                case PropertyGenericData::ValidType::INT:
+                    y = (float)*(int*)buffer.data;
+                    assign_value &= true;
+                    break;
+                case PropertyGenericData::ValidType::UINT:
+                    y = (float)*(unsigned int*)buffer.data;
+                    assign_value &= true;
+                    break;
+                
+                default:
+                    assign_value = false;
+                    L_ERROR("GraphNode only suppports inputs of type FLOAT, INT and UNSIGNED INT in the current mode.");
+                    break;
+                }
+            }
+            else
+            {
                 assign_value = false;
-                L_ERROR("GraphNode only suppports inputs of type FLOAT, INT and UNSIGNED INT.");
-                break;
+            }
+
+            if(assign_value)
+            {
+                scrolling_buffer.addPoint(x, y);
             }
         }
-        else
+        else if(graph_mode == 1) // List display
         {
-            assign_value = false;
-        }
-
-        if(assign_value)
-        {
-            scrolling_buffer.addPoint(x, y);
+            disconnectInputIfNotOfType<std::vector<float>>("list");
         }
     }
 
@@ -252,8 +298,10 @@ struct GraphNode final : public PropertyNode
     }
 
 private:
-    int graph_mode = 1;
+    int graph_mode = 0;
     ScrollingBuffer<float, float, 4096> scrolling_buffer;
     std::string* linename = nullptr;
     bool assign_value = false;
+    bool first_run = true;
+    std::string waiting_message;
 };
