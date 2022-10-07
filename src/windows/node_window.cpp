@@ -241,6 +241,15 @@ void NodeWindow::render()
             ImGui::SetCursorScreenPos(node_rect_min);
             if(ImGui::InvisibleButton("node", node->_render_data.size))
             {
+                // if(!node->_select_candidate)
+                // {
+                //     window_selection_buffer.invalidate();
+                //     node->_select_candidate = true;
+                //     window_selection_buffer.selected_nodes.push_back(node);
+                // }
+            }
+            if(ImGui::IsItemClicked())
+            {
                 if(!node->_select_candidate)
                 {
                     window_selection_buffer.invalidate();
@@ -813,7 +822,7 @@ void NodeWindow::render()
         {
             inital_click = false;
             window_selection_buffer.invalidate();
-            L_TRACE("SEL_RECT = min[%.2f,%.2f] max[%.2f,%.2f]", p0.x, p0.y, p1.x, p1.y);
+            // L_TRACE("SEL_RECT = min[%.2f,%.2f] max[%.2f,%.2f]", p0.x, p0.y, p1.x, p1.y);
 
             // Check which nodes are inside the selection
             for(auto* node : nodes)

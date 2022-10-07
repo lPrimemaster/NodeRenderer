@@ -126,15 +126,14 @@ struct GraphNode final : public PropertyNode
                     x_min = scrolling_buffer.getXMin();
                 }
 
-                float min_y = scrolling_buffer.getYMin();
-                float max_y = scrolling_buffer.getYMax();
+                // FIXME: This does not work if the limits are zero
+                const float max_y = scrolling_buffer.getYMax() * 1.1f;
+                const float min_y = scrolling_buffer.getYMin() * 1.1f;
 
-                // L_TRACE("min_y: %f", min_y);
-                // L_TRACE("max_y: %f", max_y);
 
                 bool paused = false;
                 ImPlot::SetupAxisLimits(ImAxis_X1, x_min, x_max, paused ? ImGuiCond_Once : ImGuiCond_Always);
-                ImPlot::SetupAxisLimits(ImAxis_Y1, scrolling_buffer.getYMin(), scrolling_buffer.getYMax(), ImGuiCond_Always);
+                ImPlot::SetupAxisLimits(ImAxis_Y1, min_y, max_y, ImGuiCond_Always);
                 ImPlot::PlotLine(
                     linename->c_str(),
                     &scrolling_buffer.data[0].x,
