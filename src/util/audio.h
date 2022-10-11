@@ -12,14 +12,19 @@ namespace Audio
         std::vector<int> zcr;
 
         std::vector<float> low_freq_sum;
-        std::vector<float> high_freq_sum;
+        std::vector<float> averaged_spectral_flux;
+        std::vector<std::vector<float>> magnitude_spectrum;
+        std::vector<std::vector<float>> band_spectrum;
+        std::vector<float> envelope;
+
+        float duration_ms; 
 
         int samples_per_frame;
         float ms_per_frame;
         int sample_rate;
     };
 
-    // TODO : Replace all this with waveOutWrite (?)
+    // TODO : Use DirectSound
     void PlayAudio(const std::string& file);
     void PlayAudio(const AudioInternalData* data);
     void StopAudio();

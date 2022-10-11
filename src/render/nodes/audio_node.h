@@ -19,6 +19,19 @@ struct AudioParams
     int freqs_sz;
 };
 
+static std::string ms_to_min_sec_string(float ms)
+{
+    int sec = (int)std::roundf(ms / 1000.0f);
+
+    int min_f = sec / 60;
+    int sec_f = sec % 60;
+
+    std::string min_s = std::to_string(min_f);
+    std::string sec_s = (sec_f < 10 ? "0" : "") + std::to_string(sec_f);
+
+    return min_s + ":" + sec_s;
+}
+// TODO: Add options to control the flux frequencies and the envelope mode
 struct AudioNode final : public PropertyNode
 {
     struct DisplayMsg
@@ -26,7 +39,7 @@ struct AudioNode final : public PropertyNode
         char data[64];
     };
 
-    inline AudioNode() : PropertyNode(Type::AUDIO, 0, {}, 2, { "power", "envelope" })
+    inline AudioNode() : PropertyNode(Type::AUDIO, 0, {}, 4, { "power", "envelope", "spectrum", "flux" })
     {
         static int inc = 0;
         name = "Audio Node #" + std::to_string(inc++);
@@ -39,12 +52,20 @@ struct AudioNode final : public PropertyNode
 
         setNamedOutput("power", 0.0f);
         setNamedOutput("envelope", 0.0f);
+        setNamedOutput("flux", 0.0f);
 
         setOutputNominalTypes<float>("power", 
             "A floating point value that yields the currently playing audio stream \"volume\" value."
         );
         setOutputNominalTypes<float>("envelope", 
             "A floating point value that yields the currently playing audio stream moving average like \"volume\" value."
+        );
+        setOutputNominalTypes<std::vector<float>>("spectrum", 
+            "A List of floating point values that contains the currently playing audio stream spectral data."
+        );
+        setOutputNominalTypes<float>("flux", 
+            "A floating point value that contains the currently playing audio stream flux. "
+            "This is an average of the full spectrum difference between frames. May be usefull for beat detection."
         );
     }
     
@@ -66,12 +87,13 @@ struct AudioNode final : public PropertyNode
         if(playing)
         {
             // Send a float with current power rms for testing
-            float ms = (float)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - audio_start).count();
-            int closest_idx = Audio::GetClosestFrameIndexFromTime(&fdata, ms);
+            curr_play_ms = (float)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - audio_start).count();
+            closest_idx = Audio::GetClosestFrameIndexFromTime(&fdata, curr_play_ms);
             // L_TRACE("closest_power_rms_idx: %d", closest_power_rms_idx);
             setNamedOutput("power", fdata.rms[closest_idx]);
-
-            setNamedOutput("envelope", fdata.high_freq_sum[closest_idx]);
+            setNamedOutput("envelope", fdata.envelope[closest_idx]);
+            setNamedOutput("spectrum", fdata.band_spectrum[closest_idx]);
+            setNamedOutput("flux", fdata.averaged_spectral_flux[closest_idx]);
         }
     }
 
@@ -81,7 +103,9 @@ struct AudioNode final : public PropertyNode
         if(valid)
         {
             ImGui::Text("Currently loaded: %s", std::filesystem::path(to_load).filename().string().c_str());
-            ImGui::SameLine();
+
+            ImGui::Dummy(ImVec2(0.0f, 10.0f));
+
             if(ImGui::Button(playing ? "Stop" : "Play"))
             {
                 if(!playing)
@@ -95,6 +119,15 @@ struct AudioNode final : public PropertyNode
                 }
                 playing = !playing;
             }
+            ImGui::SameLine();
+            float slider_size = _render_data.size.x - _output_max_pad_px - 200.0f;
+            if(slider_size < 150.0f) slider_size = 150.0f;
+
+            ImVec2 slider_pos_next = ImGuiExt::SliderAutomatic(closest_idx / (float)fdata.rms.size(), slider_size);
+            ImGui::SameLine();
+            ImGui::Dummy(ImVec2(slider_size + 5.0f, 0.0f));
+            ImGui::SameLine();
+            ImGui::Text("%s/%s", ms_to_min_sec_string(curr_play_ms), ms_to_min_sec_string(fdata.duration_ms));
         }
         
         bool closepopup = false;
@@ -136,11 +169,13 @@ struct AudioNode final : public PropertyNode
                 {
                     setNamedOutput("power", 0.0f);
                     setNamedOutput("envelope", 0.0f);
+                    setNamedOutput("flux", 0.0f);
                 }
                 else
                 {
                     setNamedOutput("power", EmptyType());
                     setNamedOutput("envelope", EmptyType());
+                    setNamedOutput("flux", EmptyType());
                 }
             }
             else if(loading && !popupOpened)
@@ -185,8 +220,11 @@ private:
     bool loading = false;
     bool popupOpened = false;
     bool playing = false;
+    int closest_idx = 0;
 
     std::atomic<DisplayMsg> message;
+
+    float curr_play_ms;
 
     std::chrono::steady_clock::time_point audio_start;
 };

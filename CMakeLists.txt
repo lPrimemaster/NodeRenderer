@@ -119,20 +119,16 @@ file(GLOB SHADERS_DIR
     ${CMAKE_SOURCE_DIR}/src/shader/*.vs
     ${CMAKE_SOURCE_DIR}/src/shader/*.fs
 )
-file(GLOB SCRIPTS_DIR
-    ${CMAKE_SOURCE_DIR}/src/python/scripts/*.py
-)
 
 file(GLOB EXAMPLES_DIR
     ${CMAKE_SOURCE_DIR}/examples/*.b64
 )
 
 file(GLOB DEPS_DIR
-    ${CMAKE_SOURCE_DIR}/build_depends/*.dll
+    ${CMAKE_SOURCE_DIR}/bin/Release/kissfft-float.dll
 )
 
 install(FILES ${SHADERS_DIR}  DESTINATION shader         COMPONENT Core)
-install(FILES ${SCRIPTS_DIR}  DESTINATION scripts        COMPONENT Core)
 install(FILES ${DEPS_DIR}     DESTINATION .              COMPONENT Core)
 install(FILES ${EXAMPLES_DIR} DESTINATION saves/examples COMPONENT Examples)
 

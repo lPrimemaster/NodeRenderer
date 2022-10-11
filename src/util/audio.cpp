@@ -12,6 +12,8 @@
 #include "../log/logger.h"
 
 #include <cassert>
+#include <array>
+#include <algorithm>
 
 #include "../../kissfft/kiss_fft.h"
 
@@ -27,9 +29,11 @@ struct frames_iterate_data
     size_t allocated = 0;
     bool first_frame = true;
 
+    kiss_fft_cfg ifft_cfg;
     kiss_fft_cfg fft_cfg;
     kiss_fft_cpx* fft_in;
-    kiss_fft_cpx* fft_out;
+    kiss_fft_cpx* fft_out_l;
+    kiss_fft_cpx* fft_out_r;
     float* fft_window = nullptr;
     float* fft_mag_spectrum = nullptr;
 };
@@ -56,45 +60,102 @@ static float* create_hamming_window(const int samples)
 
 static void calculate_frame_fft(frames_iterate_data* d, const int16_t* buffer, const int samples)
 {
-    for(int i = 0; i < samples; i++)
-    {
-        d->fft_in[i].r = s16_to_f32_unity(buffer[i]) * d->fft_window[i];
-        d->fft_in[i].i = 0.0f;
-    }
+    bool stereo = (d->info->channels > 1);
 
-    kiss_fft(d->fft_cfg, d->fft_in, d->fft_out);
+    if(stereo)
+    {
+        // L
+        for(int i = 0; i < samples; i++)
+        {
+            d->fft_in[i].r = s16_to_f32_unity(buffer[2*i]) * d->fft_window[i];
+            d->fft_in[i].i = 0.0f;
+        }
+        kiss_fft(d->fft_cfg, d->fft_in, d->fft_out_l);
+
+        // R
+        for(int i = 0; i < samples; i++)
+        {
+            d->fft_in[i].r = s16_to_f32_unity(buffer[2*i+1]) * d->fft_window[i];
+            d->fft_in[i].i = 0.0f;
+        }
+        kiss_fft(d->fft_cfg, d->fft_in, d->fft_out_r);
+    }
+    else
+    {
+        for(int i = 0; i < samples; i++)
+        {
+            d->fft_in[i].r = s16_to_f32_unity(buffer[i]) * d->fft_window[i];
+            d->fft_in[i].i = 0.0f;
+        }
+        kiss_fft(d->fft_cfg, d->fft_in, d->fft_out_l);
+    }
 }
 
 static void calculate_frame_magnitude_spectrum(frames_iterate_data* d, const int samples)
 {
+    bool stereo = (d->info->channels > 1);
+
     for(int i = 0; i < samples / 2; i++)
     {
-        d->fft_mag_spectrum[i] = sqrtf(d->fft_out[i].r * d->fft_out[i].r + d->fft_out[i].i * d->fft_out[i].i);
+        d->fft_mag_spectrum[i] = sqrtf(d->fft_out_l[i].r * d->fft_out_l[i].r + d->fft_out_l[i].i * d->fft_out_l[i].i);
+    }
+
+    if(stereo)
+    {
+        for(int i = 0; i < samples / 2; i++)
+        {
+            d->fft_mag_spectrum[i] += sqrtf(d->fft_out_r[i].r * d->fft_out_r[i].r + d->fft_out_r[i].i * d->fft_out_r[i].i);
+        }
     }
 }
 
-static float calculate_frame_high_freq_sum(const float* mag_spectrum, const int samples)
+static std::vector<float> calculate_frame_band_spectrum(const int num_bands, const float* spectrum, const int samples)
 {
-    float sum = 0.0f;
-    
-    for(int i = 0; i < samples / 2; i++)
+    std::vector<float> result(num_bands, 5.0f);
+
+    float divisor = (samples/2) / (float)num_bands;
+    assert(divisor > 0);
+
+    for(int i = 1; i < samples/2; i++)
     {
-        sum += mag_spectrum[i] * (float)(i + 1);
+        result[(int)(i / divisor)] += spectrum[i];
     }
 
-    return sum;
+    for(int i = 0; i < (int)result.size(); i++)
+    {
+        result[i] /= (divisor * (samples / 2));
+
+        // To dB
+        // result[i] = 20.0f * log10f(result[i]);
+    }
+
+    return result;
 }
 
-static float calculate_frame_low_freq_sum(const float* mag_spectrum, const int samples)
+static float calculate_frame_spectral_flux(const float* old_spectrum, const float* new_spectrum, const int samples)
 {
-    float sum = 0.0f;
-    
-    for(int i = 0; i < samples / 2; i++)
+    float specFlux = 0.0f;
+
+    for(int i = 1; i < samples / 2; i++)
     {
-        sum += mag_spectrum[i] * (float)((samples / 2) - i);
+        float diff = new_spectrum[i] - old_spectrum[i-1];
+        if(diff > 0) specFlux += diff;
     }
 
-    return sum;
+    return specFlux;
+}
+
+template<size_t N>
+static float calculate_frame_spectral_flux_median(const float specFlux, std::array<float, N>& fluxes)
+{
+    static_assert(N % 2 == 0);
+    static int i = 0;
+
+    fluxes[i++ % N] = specFlux;
+
+    std::sort(fluxes.begin(), fluxes.end());
+
+    return fluxes[N/2];
 }
 
 static float calculate_frame_peak_energy(const int16_t* buffer, const int samples)
@@ -112,6 +173,47 @@ static float calculate_frame_peak_energy(const int16_t* buffer, const int sample
     }
 
     return s16_to_f32_unity(peak);
+}
+
+static float calculate_hilbert_transform_avg(frames_iterate_data* d, const kiss_fft_cpx* fft, const int nfft)
+{
+    int middle;
+    int zero_start;
+    std::vector<kiss_fft_cpx> fft_local(fft, fft + nfft);
+    std::vector<kiss_fft_cpx> h_transform(nfft);
+
+    if(nfft % 2 == 0)
+    {
+        middle = nfft/2;
+        zero_start = middle + 1;
+    }
+    else
+    {
+        middle = (nfft+1)/2;
+        zero_start = middle;
+    }
+
+    for(int i = 1; i < middle; i++)
+    {
+        fft_local[i].r *= 2.0f;
+        fft_local[i].i *= 2.0f;
+    }
+
+    for(int i = zero_start; i < nfft; i++)
+    {
+        fft_local[i].r = 0.0f;
+        fft_local[i].i = 0.0f;
+    }
+
+    kiss_fft(d->ifft_cfg, fft_local.data(), &h_transform.front());
+
+    float real_h_transform_avg = 0.0f;
+    for(int i = 0; i < (int)h_transform.size(); i++)
+    {
+        real_h_transform_avg += h_transform[i].i;
+    }
+    real_h_transform_avg /= h_transform.size();
+    return real_h_transform_avg;
 }
 
 static float calculate_frame_rms(const int16_t* buffer, const int samples)
@@ -207,6 +309,11 @@ static int frames_iterate_cb(void *user_data, const uint8_t *frame, int frame_si
         int total_samples = samples*info->channels;
         d->info->samples += total_samples;
 
+        static std::array<float, 10> fluxes;
+        static int frame_cnt = 0;
+        static constexpr unsigned MAVG_C = 100;
+        static std::array<float, MAVG_C> rms_prev;
+
         // Time domain calculations
         float frame_peak_energy = calculate_frame_peak_energy(buffer, total_samples);
         float frame_rms         = calculate_frame_rms(buffer, total_samples);
@@ -216,26 +323,76 @@ static int frames_iterate_cb(void *user_data, const uint8_t *frame, int frame_si
         d->aid->rms.push_back(frame_rms);
         d->aid->zcr.push_back(frame_zcr);
 
+
+        int nfft = samples / info->channels;
         if(d->first_frame)
         {
             d->first_frame = false;
             d->aid->samples_per_frame = samples;
 
-            d->fft_cfg = kiss_fft_alloc(samples, 0, 0, 0);
-            d->fft_in = new kiss_fft_cpx[samples];
-            d->fft_out = new kiss_fft_cpx[samples];
-            d->fft_mag_spectrum = new float[samples/2];
-            d->fft_window = create_hamming_window(samples);
+            // d->fft_cfg = kiss_fft_alloc(samples, 0, 0, 0);
+            // d->fft_in = new kiss_fft_cpx[samples];
+            // d->fft_out = new kiss_fft_cpx[samples];
+            // d->fft_mag_spectrum = new float[samples/2];
+            // d->fft_window = create_hamming_window(samples);
+
+            d->ifft_cfg = kiss_fft_alloc(nfft, 1, 0, 0);
+            d->fft_cfg = kiss_fft_alloc(nfft, 0, 0, 0);
+            d->fft_in = new kiss_fft_cpx[nfft];
+            d->fft_out_l = new kiss_fft_cpx[nfft];
+            d->fft_out_r = new kiss_fft_cpx[nfft];
+            d->fft_mag_spectrum = new float[nfft/2];
+            d->fft_window = create_hamming_window(nfft);
+
+            fluxes.fill(0);
+            rms_prev.fill(0);
+            frame_cnt = 0;
+
+            L_DEBUG("Decoding mp3 :: %s - %d Hz", info->channels > 1 ? "Stereo" : "Mono", info->hz);
+            L_DEBUG("Minimum frequency detection: %.1f Hz.", ((float)info->hz / nfft));
         }
 
-        calculate_frame_fft(d, buffer, samples);
-        calculate_frame_magnitude_spectrum(d, samples);
+        calculate_frame_fft(d, buffer, nfft);
+        calculate_frame_magnitude_spectrum(d, nfft);
 
-        float frame_high_freq = calculate_frame_high_freq_sum(d->fft_mag_spectrum, samples);
-        float frame_low_freq  = calculate_frame_low_freq_sum(d->fft_mag_spectrum, samples);
+        // FIXME:  Hilbert transform
+        // Envelope using hilbert transform
+        // float h_transform_l = calculate_hilbert_transform_avg(d, d->fft_out_l, nfft);
+        // float h_transform_r = calculate_hilbert_transform_avg(d, d->fft_out_r, nfft);
+        // float envelope = (h_transform_l + h_transform_r) / 2.0f;
 
-        d->aid->high_freq_sum.push_back(frame_high_freq);
-        d->aid->low_freq_sum.push_back(frame_low_freq);
+        // Envelope using moving average
+        rms_prev[frame_cnt++ % MAVG_C] = frame_rms;
+        float envelope = 0.0f;
+        for(int i = 0; i < (int)MAVG_C; i++)
+        {
+            envelope += rms_prev[i];
+        }
+        envelope /= (frame_cnt < MAVG_C) ? frame_cnt : MAVG_C;
+
+        float specFlux = 0.0f;
+        if(!d->aid->magnitude_spectrum.empty())
+        {
+            specFlux = calculate_frame_spectral_flux(d->aid->magnitude_spectrum.back().data(), d->fft_mag_spectrum, nfft);
+        }
+
+        float specFluxMedian = calculate_frame_spectral_flux_median(specFlux, fluxes);
+
+        // Copy the magnitude
+        d->aid->magnitude_spectrum.push_back(std::vector<float>(d->fft_mag_spectrum + 1, d->fft_mag_spectrum + nfft/2));
+
+        constexpr unsigned int bands = 64;
+        // constexpr unsigned int bands = 10;
+        std::vector<float> band_spectrum = calculate_frame_band_spectrum(bands, d->fft_mag_spectrum, nfft);
+        d->aid->band_spectrum.push_back(band_spectrum);
+
+        // ???
+        // float frame_high_freq = calculate_frame_high_freq_sum(d->fft_mag_spectrum, 256);
+        // float frame_low_freq  = calculate_frame_low_freq_sum(d->fft_mag_spectrum, 256);
+
+        d->aid->envelope.push_back(envelope);
+        d->aid->averaged_spectral_flux.push_back(specFlux - specFluxMedian);
+        // d->aid->low_freq_sum.push_back(frame_low_freq);
     }
     return 0;
 }
@@ -294,6 +451,8 @@ Audio::AudioInternalData Audio::LoadMp3FileToMemory(const std::string& filename)
     aid.sample_rate = info.hz;
     aid.ms_per_frame = ((float)aid.samples_per_frame / (float)info.hz) * 1000.0f;
 
+    aid.duration_ms = aid.ms_per_frame * (float)aid.rms.size();
+
     size_t pcm_data_size = info.samples * sizeof(int16_t);
     size_t buffer_size = pcm_data_size + 44;
 
@@ -306,15 +465,17 @@ Audio::AudioInternalData Audio::LoadMp3FileToMemory(const std::string& filename)
     // Copy riff wave header
     memcpy(aid.wav_buffer, create_wav_header(info.hz, info.channels, 16, pcm_data_size), 44);
 
-    FILE* f = fopen("objdumps/wave_conv.wav", "wb");
-
-    fwrite(aid.wav_buffer, 1, buffer_size, f);
-
-    fclose(f);
+    // FILE* f = fopen("objdumps/wave_conv.wav", "wb");
+    // if (f)
+    // {
+    //     fwrite(aid.wav_buffer, 1, buffer_size, f);
+    //     fclose(f);
+    // }
 
     free(d.fft_cfg);
     delete[] d.fft_in;
-    delete[] d.fft_out;
+    delete[] d.fft_out_l;
+    delete[] d.fft_out_r;
     delete[] d.fft_window;
     delete[] d.fft_mag_spectrum;
 

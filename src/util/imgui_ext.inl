@@ -252,4 +252,26 @@ namespace ImGuiExt
         if(frames % frames_per_anim == 0) idx++;
         frames++;
     }
+
+    inline ImVec2 SliderAutomatic(const float pct, const float width)
+    {
+        static ImDrawList* draw_list = ImGui::GetWindowDrawList();
+
+        ImVec2 p0 = ImGui::GetCursorScreenPos();
+
+        // Pad for button
+        p0.x += 5.0f;
+        p0.y += 7.0f;
+        const ImVec2 p1 = ImVec2(p0.x + width, p0.y);
+        const ImVec2 circle = ImVec2(p0.x + width * pct, p0.y);
+
+        
+        draw_list->AddLine(p0, circle, IM_COL32(66, 150, 250, 127), 8.0f);
+        draw_list->AddLine(circle, p1, IM_COL32(41, 74, 122, 127), 8.0f);
+
+        draw_list->AddCircleFilled(circle, 7.0f, IM_COL32(41, 74, 122, 255));
+        draw_list->AddCircle(circle, 7.0f, IM_COL32(255, 255, 255, 255));
+
+        return ImVec2(p1.x + 20.0f, p1.y);
+    }
 }

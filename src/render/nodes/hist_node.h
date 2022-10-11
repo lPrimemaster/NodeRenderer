@@ -2,6 +2,7 @@
 #include "node.h"
 #include "../../../implot/implot.h"
 #include "../../util/imgui_ext.inl"
+#include <algorithm>
 
 template<typename T, typename U>
 struct AnyVec2
@@ -80,6 +81,14 @@ struct ScrollingBuffer
         offset = 0;
     }
 
+    inline void setMaxXSize(size_t size)
+    {
+        assert(size <= MAX);
+        curr_max_size = size;
+        offset = 0ULL;
+        this->size = 0ULL;
+    }
+
     size_t size;
     size_t curr_max_size;
     size_t offset;
@@ -102,7 +111,6 @@ struct GraphNode final : public PropertyNode
     
     ~GraphNode() {  }
 
-    // TODO: Rename this to graph node as well
     inline virtual void render() override
     {
         const char* const modes[] = {"Scrolling x", "List display"};
@@ -128,6 +136,13 @@ struct GraphNode final : public PropertyNode
 
         if(assign_value && linename)
         {
+            if(graph_mode == 0) // Scrolling x
+            {
+                if(ImGui::SliderInt("Scrolling size", &scroll_size, 10, 4096))
+                {
+                    scrolling_buffer.setMaxXSize(scroll_size);
+                }
+            }
             if(ImPlot::BeginPlot("##GraphWindow", ImVec2(0, 0), ImPlotFlags_NoTitle | ImPlotFlags_NoFrame | ImPlotFlags_NoChild))
             {
                 constexpr bool paused = false; // ???
@@ -153,28 +168,45 @@ struct GraphNode final : public PropertyNode
                     );
                 }
                 else if(graph_mode == 1) // List display
-                {
+                { 
                     auto in_list = inputs_named.find("list");
                     if(in_list != inputs_named.end())
                     {
+                        static float y_max;
+                        static float y_min;
+
                         auto list = in_list->second->getValuePtr<std::vector<float>>();
                         if(in_list->second->dataChanged() || first_run)
                         {
                             first_run = false;
 
                             // Create/Update the x axis for this list
+                            list_x_data.resize(list->size());
+                            float x_val = 0.0f;
+                            for(size_t i = 0; i < list_x_data.size(); i++)
+                            {
+                                list_x_data[i] = x_val;
+                                x_val += 1.0f;
+                            }
                             
+                            float candidate_y_max = *std::max_element(list->begin(), list->end());
+                            if(candidate_y_max > y_max) y_max = candidate_y_max;
+                            float candidate_y_min = *std::min_element(list->begin(), list->end());
+                            if(candidate_y_min < y_min) y_min = candidate_y_min;
                         }
-                        ImPlot::SetupAxisLimits(ImAxis_X1, 0.0f, (float)list->size(), paused ? ImGuiCond_Once : ImGuiCond_Always);
-                        // ImPlot::SetupAxisLimits(ImAxis_Y1, min_y, max_y, ImGuiCond_Always);
+
+                        const float x_max = (float)(list_x_data.size() - 1);
+                        constexpr float x_min = 0;
+                        
+
+                        ImPlot::SetupAxisLimits(ImAxis_X1, x_min, x_max, paused ? ImGuiCond_Once : ImGuiCond_Always);
+                        ImPlot::SetupAxisLimits(ImAxis_Y1, y_min, y_max, ImGuiCond_Always);
                         ImPlot::PlotBars(
                             linename->c_str(),
-                            &scrolling_buffer.data[0].x,
-                            &scrolling_buffer.data[0].y,
-                            scrolling_buffer.size,
-                            0,
-                            scrolling_buffer.offset,
-                            2 * sizeof(float)
+                            list_x_data.data(),
+                            list->data(),
+                            list_x_data.size(),
+                            0.7
                         );
                     }
                     else
@@ -269,12 +301,13 @@ struct GraphNode final : public PropertyNode
         else if(graph_mode == 1) // List display
         {
             disconnectInputIfNotOfType<std::vector<float>>("list");
+            assign_value = true;
         }
     }
 
     inline virtual void onConnection(const std::string& inputName) override
     {
-        if(inputName == "y")
+        if(inputName == "y" || inputName == "list")
         {
             PropertyGenericData* ygdata = inputs_named.find(inputName)->second;
             linename = &ygdata->_data_holder_instance->name;
@@ -286,6 +319,7 @@ struct GraphNode final : public PropertyNode
         ByteBuffer buffer = PropertyNode::serialize();
 
         buffer.add(graph_mode);
+        buffer.add(scroll_size);
 
         return buffer;
     }
@@ -295,11 +329,26 @@ struct GraphNode final : public PropertyNode
         PropertyNode::deserialize(buffer);
 
         buffer.get(&graph_mode);
+        buffer.get(&scroll_size);
+
+        if(graph_mode == 0) // Scrolling x
+        {
+            setInputsOrdered({"x", "y"});
+            waiting_message = "x/y";
+        }
+        else if(graph_mode == 1) // List display
+        {
+            setInputsOrdered({"list"});
+            waiting_message = "list";
+        }
     }
 
 private:
     int graph_mode = 0;
+    int scroll_size = 1000;
+
     ScrollingBuffer<float, float, 4096> scrolling_buffer;
+    std::vector<float> list_x_data;
     std::string* linename = nullptr;
     bool assign_value = false;
     bool first_run = true;
