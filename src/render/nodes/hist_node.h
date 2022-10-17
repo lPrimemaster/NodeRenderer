@@ -138,7 +138,7 @@ struct GraphNode final : public PropertyNode
         {
             if(graph_mode == 0) // Scrolling x
             {
-                if(ImGui::SliderInt("Scrolling size", &scroll_size, 10, 4096))
+                if(ImGui::SliderInt("Scrolling sample size", &scroll_size, 10, 4096))
                 {
                     scrolling_buffer.setMaxXSize(scroll_size);
                 }

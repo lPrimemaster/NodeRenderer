@@ -1,5 +1,10 @@
 cmake_minimum_required (VERSION 3.8)
-project(NodeRenderer CXX)
+project(NodeRenderer VERSION 1.0.3 LANGUAGES CXX)
+set(NodeRenderer_VERSION_SUFFIX "alpha")
+
+message("Setting version: ${CMAKE_PROJECT_VERSION}-${NodeRenderer_VERSION_SUFFIX}")
+configure_file(src/config/version.h.in version.h)
+
 set(CMAKE_CXX_STANDARD 20)
 
 option(INSTALLER_BUILD "Set if this is a shipping build." OFF)
@@ -70,6 +75,9 @@ add_executable(nr64
     src/math/vector.h
     src/math/vector.cpp
 
+    src/util/updateclient.h
+    src/util/updateclient.cpp
+
     src/util/objloader.h
     src/util/objloader.cpp
 
@@ -92,8 +100,8 @@ if(INSTALLER_BUILD)
 endif()
 
 
-target_include_directories(nr64 PRIVATE glad/include glfw/include imgui ${Python_INCLUDE_DIRS} glad)
-target_link_libraries(nr64 glad glfw ${GLFW_LIBRARIES} muparser tinyobjloader bvh ${Python_LIBRARIES} Winmm.lib kissfft) #msvcrt.lib)
+target_include_directories(nr64 PRIVATE glad/include glfw/include imgui ${Python_INCLUDE_DIRS} glad ${PROJECT_BINARY_DIR})
+target_link_libraries(nr64 glad glfw ${GLFW_LIBRARIES} muparser tinyobjloader bvh ${Python_LIBRARIES} Winmm.lib WinHttp.lib kissfft) #msvcrt.lib)
 
 add_custom_target(copy-runtime-files ALL
     COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/src/shader ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Release/shader
@@ -140,10 +148,10 @@ set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "NodeRenderer - Render anything visually."
 set(CPACK_PACKAGE_DIRECTORY ${CMAKE_SOURCE_DIR}/bin/Installer)
 set(CPACK_PACKAGE_ICON "${CMAKE_SOURCE_DIR}/res/image\\\\nr.ico")
 set(CPACK_NSIS_MUI_ICON ${CMAKE_SOURCE_DIR}/res/image/nr.ico)
-set(CPACK_PACKAGE_VERSION "1.0.2-alpha")
-set(CPACK_PACKAGE_VERSION_MAJOR "1")
-set(CPACK_PACKAGE_VERSION_MINOR "0")
-set(CPACK_PACKAGE_VERSION_PATCH "2")
+set(CPACK_PACKAGE_VERSION "${CMAKE_PROJECT_VERSION}-${NodeRenderer_VERSION_SUFFIX}")
+set(CPACK_PACKAGE_VERSION_MAJOR "${PROJECT_VERSION_MAJOR}")
+set(CPACK_PACKAGE_VERSION_MINOR "${PROJECT_VERSION_MINOR}")
+set(CPACK_PACKAGE_VERSION_PATCH "${PROJECT_VERSION_PATCH}")
 set(CPACK_PACKAGE_INSTALL_DIRECTORY NodeRenderer)
 set(CPACK_NSIS_MODIFY_PATH OFF)
 set(CPACK_NSIS_IGNORE_LICENSE_PAGE ON)

@@ -1,0 +1,5 @@
+#define NodeRenderer_VERSION_MAJOR @NodeRenderer_VERSION_MAJOR@
+#define NodeRenderer_VERSION_MINOR @NodeRenderer_VERSION_MINOR@
+#define NodeRenderer_VERSION_PATCH @NodeRenderer_VERSION_PATCH@
+#define NodeRenderer_VERSION_SUFFIX "@NodeRenderer_VERSION_SUFFIX@"
+#define NodeRenderer_VERSION_FULL "@NodeRenderer_VERSION_MAJOR@.@NodeRenderer_VERSION_MINOR@.@NodeRenderer_VERSION_PATCH@-@NodeRenderer_VERSION_SUFFIX@"

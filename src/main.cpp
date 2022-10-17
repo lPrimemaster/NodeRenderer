@@ -22,6 +22,10 @@
 #include <Windows.h>
 #include "../res/image/res.h"
 
+#include "util/updateclient.h"
+
+#include "version.h"
+
 static constexpr int DEF_SCREEN_PX_W = 1280;
 static constexpr int DEF_SCREEN_PX_H =  720;
 
@@ -38,7 +42,7 @@ int main(int argc, char* argv[])
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
 
-    window = glfwCreateWindow(DEF_SCREEN_PX_W, DEF_SCREEN_PX_H, "Node Renderer v1.0.2-alpha (Redistribution not allowed)", NULL, NULL);
+    window = glfwCreateWindow(DEF_SCREEN_PX_W, DEF_SCREEN_PX_H, "Node Renderer v" NodeRenderer_VERSION_FULL " (Redistribution not allowed)", NULL, NULL);
     if (!window)
     {
         L_ERROR("glfwCreateWindow() error.");
@@ -85,6 +89,7 @@ int main(int argc, char* argv[])
     NodeWindow* nodeWindow = WindowManager::GetNodeWindow();
     AnalyticsWindow* analyticsWindow = WindowManager::GetAnalyticsWindow();
     OptionsWindow* optionsWindow = WindowManager::GetOptionsWindow();
+    WindowManager::GetUpdateCheckWindow()->setGlfwWindowHandle(window);
     Renderer::DrawList dl(window, DEF_SCREEN_PX_W, DEF_SCREEN_PX_H);
     nodeWindow->setDrawActiveList(&dl);
 

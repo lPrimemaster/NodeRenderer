@@ -11,6 +11,8 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "../../stb/stb_image.h"
 
+#include "version.h"
+
 static void SetClipboardDataFunc(void* user_data, const char* text)
 {
     const size_t len = strlen(text) + 1;
@@ -118,7 +120,7 @@ void OptionsWindow::render()
         static const char* end_text0 = "Node Renderer";
         ImGui::SetCursorPos(ImVec2((ImGui::GetWindowSize().x - ImGui::CalcTextSize(end_text0).x) / 2, ImGui::GetWindowSize().y - ImGui::GetTextLineHeightWithSpacing() * 3));
         ImGui::Text(end_text0);
-        static const char* end_text1 = "v1.0.2-alpha";
+        static const char* end_text1 = "v" NodeRenderer_VERSION_FULL;
         ImGui::SetCursorPos(ImVec2((ImGui::GetWindowSize().x - ImGui::CalcTextSize(end_text1).x) / 2, ImGui::GetWindowSize().y - ImGui::GetTextLineHeightWithSpacing() * 2));
         ImGui::Text(end_text1);
 

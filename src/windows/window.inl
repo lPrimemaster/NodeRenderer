@@ -47,51 +47,12 @@ public:
         return collapsed;
     }
 
-    void finalRender()
+    inline void killWindow()
     {
-        update();
-
-
-        if(!floating_w)
-        {
-            ImGui::SetNextWindowSize(windowSize);
-            ImGui::SetNextWindowPos(windowPos + ImGui::GetMainViewport()->Pos);
-        }
-
-        if(floating_clicked)
-        {
-            if(floating_w)
-            {
-                window_flags_last = window_flags;
-                window_flags = 0;
-            }
-            else
-            {
-                window_flags = window_flags_last;
-            }
-        }
-
-        ImGui::SetNextWindowCollapsed(collapsed);
-        if(closeable)
-        {
-            collapsed = !ImGui::Begin(window_name, &open, window_flags);
-            if(open && !collapsed)
-            {
-                render();
-            }
-            ImGui::End();
-        }
-        else
-        {
-            
-            collapsed = !ImGui::Begin(window_name, nullptr, window_flags);
-            if(!collapsed)
-            {
-                render();
-            }
-            ImGui::End();
-        }
+        tagged_delete = true;
     }
+
+    void finalRender();
 
 protected:
     bool open = false;
@@ -103,6 +64,7 @@ protected:
     bool floating_clicked = false;
     
 private:
+    bool tagged_delete = false;
     ImGuiWindowFlags window_flags_last = 0;
     ImVec2 windowSize;
     ImVec2 windowPos;

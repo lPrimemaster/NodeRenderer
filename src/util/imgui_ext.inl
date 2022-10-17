@@ -274,4 +274,19 @@ namespace ImGuiExt
 
         return ImVec2(p1.x + 20.0f, p1.y);
     }
+
+    inline ImVec2 ProgressBar(const float pct, const float width)
+    {
+        static ImDrawList* draw_list = ImGui::GetWindowDrawList();
+
+        ImVec2 p0 = ImGui::GetCursorScreenPos();
+        
+        const ImVec2 p1 = ImVec2(p0.x + width, p0.y);
+        const ImVec2 circle = ImVec2(p0.x + width * pct, p0.y);
+        
+        draw_list->AddLine(p0, circle, IM_COL32(66, 150, 250, 127), 8.0f);
+        draw_list->AddLine(circle, p1, IM_COL32(41, 74, 122, 127), 8.0f);
+
+        return ImVec2(p1.x + 20.0f, p1.y);
+    }
 }

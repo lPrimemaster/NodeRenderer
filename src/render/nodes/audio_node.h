@@ -61,7 +61,7 @@ struct AudioNode final : public PropertyNode
             "A floating point value that yields the currently playing audio stream moving average like \"volume\" value."
         );
         setOutputNominalTypes<std::vector<float>>("spectrum", 
-            "A List of floating point values that contains the currently playing audio stream spectral data."
+            "A List of floating point values that contains the currently playing audio stream linear spectral data."
         );
         setOutputNominalTypes<float>("flux", 
             "A floating point value that contains the currently playing audio stream flux. "
