@@ -1,5 +1,5 @@
 cmake_minimum_required (VERSION 3.8)
-project(NodeRenderer VERSION 1.0.3 LANGUAGES CXX)
+project(NodeRenderer VERSION 1.1.0 LANGUAGES CXX)
 set(NodeRenderer_VERSION_SUFFIX "alpha")
 
 message("Setting version: ${CMAKE_PROJECT_VERSION}-${NodeRenderer_VERSION_SUFFIX}")
