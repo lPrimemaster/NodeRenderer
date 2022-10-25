@@ -72,6 +72,11 @@ add_executable(nr64
     src/render/renderer.h
     src/render/renderer.cpp
 
+    src/render/raymarch_renderer.h
+    src/render/raymarch_renderer.cpp
+    src/render/raster_renderer.h
+    src/render/raster_renderer.cpp
+
     src/math/vector.h
     src/math/vector.cpp
 

@@ -90,8 +90,10 @@ int main(int argc, char* argv[])
     AnalyticsWindow* analyticsWindow = WindowManager::GetAnalyticsWindow();
     OptionsWindow* optionsWindow = WindowManager::GetOptionsWindow();
     WindowManager::GetUpdateCheckWindow()->setGlfwWindowHandle(window);
-    Renderer::DrawList dl(window, DEF_SCREEN_PX_W, DEF_SCREEN_PX_H);
-    nodeWindow->setDrawActiveList(&dl);
+
+    Renderer::Init(window, DEF_SCREEN_PX_W, DEF_SCREEN_PX_H);
+    RasterRenderer::DrawList* dl = Renderer::GetRasterDrawList();
+    nodeWindow->setDrawActiveList(dl);
 
     nodeWindow->setWindowSize(ImVec2((float)DEF_SCREEN_PX_W - optionsWindow->getBarWidth(), (float)DEF_SCREEN_PX_H / 3.0f));
     nodeWindow->setWindowPos(ImVec2(optionsWindow->getBarWidth(), 0));
@@ -121,7 +123,7 @@ int main(int argc, char* argv[])
     {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         // Render
-        dl.render(window, nodeWindow, analyticsWindow, optionsWindow);
+        Renderer::Render(window, nodeWindow, analyticsWindow, optionsWindow);
 
         // Render the UI
         ImGui_ImplOpenGL3_NewFrame();
@@ -178,6 +180,8 @@ int main(int argc, char* argv[])
     ImGui_ImplGlfw_Shutdown();
     ImPlot::DestroyContext();
     ImGui::DestroyContext();
+
+    Renderer::CleanUp();
 
     glfwDestroyWindow(window);
     glfwTerminate();

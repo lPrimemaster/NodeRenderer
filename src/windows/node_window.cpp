@@ -3,7 +3,6 @@
 #include "../render/nodes/nodedef.h"
 #include "../render/renderer.h"
 #include "../util/base64.h"
-#include "../util/misc.inl"
 #include <chrono>
 
 // TODO: Drag rectangle and clipboard select from nodes and links 
@@ -92,7 +91,7 @@ PropertyNode* NodeWindow::createNodeDynamic(const PropertyNode::Type& t)
     }
 }
 
-void NodeWindow::setDrawActiveList(Renderer::DrawList* dl)
+void NodeWindow::setDrawActiveList(RasterRenderer::DrawList* dl)
 {
     activeDL = dl;
 }

@@ -3,8 +3,9 @@
 #include "../../imgui/imgui.h"
 #include "window.inl"
 #include "../render/nodes/node.h"
+#include "../util/misc.inl"
 
-namespace Renderer
+namespace RasterRenderer
 {
     struct DrawList;
 }
@@ -65,9 +66,9 @@ public:
         return floating_w;
     }
 
-    void setDrawActiveList(Renderer::DrawList* dl);
+    void setDrawActiveList(RasterRenderer::DrawList* dl);
 
-    inline Renderer::DrawList* getDrawActiveList() const
+    inline RasterRenderer::DrawList* getDrawActiveList() const
     {
         return activeDL;
     }
@@ -158,7 +159,7 @@ private:
     static constexpr float  NODE_SLOT_RADIUS = 5.5f;
     static constexpr ImVec2 NODE_WINDOW_PADDING = ImVec2(8.0f, 8.0f);
 
-    Renderer::DrawList* activeDL = nullptr;
+    RasterRenderer::DrawList* activeDL = nullptr;
 
     struct SelectionBuffer
     {
