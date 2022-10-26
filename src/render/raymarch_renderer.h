@@ -6,6 +6,12 @@
 #include "../math/vector.h"
 #include "../util/misc.inl"
 
+namespace Renderer
+{
+    struct ScreenRenderData;
+    struct Camera;
+}
+
 namespace RayMarchRenderer
 {
     // The raymarcher might need some kind of bvh inside the shader for complex scenes set by the user
@@ -20,7 +26,7 @@ namespace RayMarchRenderer
     // This has a little overhead cost of swapping glsl shader contexts
     struct RayMarchRendererDraw
     {
-        RayMarchRendererDraw();
+        RayMarchRendererDraw(GLFWwindow* window, Renderer::ScreenRenderData* screenRenderData, Renderer::Camera* camera);
         ~RayMarchRendererDraw();
 
         GLuint _program_render;
@@ -32,7 +38,11 @@ namespace RayMarchRenderer
         unsigned int screen_size_x;
         unsigned int screen_size_y;
 
+        Renderer::ScreenRenderData* _screen_render_data;
+        Renderer::Camera* camera;
+
         void reloadScreenTexture(GLsizei w, GLsizei h);
+        void reloadShader(const std::string& code);
 
         // Screen texture
         GLuint _target_texture;

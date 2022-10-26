@@ -27,7 +27,7 @@ namespace Utils
         if(!result)
         {
             L_ERROR("Shader compilation failed.");
-            L_WARNING("%s", buffer);
+            L_ERROR("%s", buffer);
             return 1;
         }
 
@@ -46,14 +46,14 @@ namespace Utils
 
         glGetProgramInfoLog(*program, logLength, NULL, buffer);
 
-        int nrAttributes = -1;
-        glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &nrAttributes);
-        L_TRACE("GL supported max vtx attributes: %d", nrAttributes);
+        // int nrAttributes = -1;
+        // glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &nrAttributes);
+        // L_TRACE("GL supported max vtx attributes: %d", nrAttributes);
 
         if(!result)
         {
             L_ERROR("Program linking failed.");
-            L_WARNING("%s", buffer);
+            L_ERROR("%s", buffer);
             return 1;
         }
 

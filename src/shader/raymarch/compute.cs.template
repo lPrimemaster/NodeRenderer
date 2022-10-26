@@ -2,15 +2,12 @@
 layout(local_size_x = 1, local_size_y = 1) in;
 layout(rgba32f, binding = 0) uniform image2D img_output;
 
-vec4 render(in vec2 pixel)
-{
-    $user_code
-}
+$user_code
 
 void main()
 {
     // Raymarch render the scene
-    ivec2 pixel = gl_GlobalInvocationID.xy;
+    ivec2 pixel = ivec2(gl_GlobalInvocationID.xy);
     vec4 fColor = render(pixel);
     imageStore(img_output, pixel, fColor);
 }

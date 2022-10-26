@@ -37,6 +37,7 @@ struct RenderNode final : public PropertyNode
         name = "Render Node #" + std::to_string(inc++);
         priority = PropertyNode::Priority::RENDER;
 
+        // Raster
         inputs_description["instanceCount"] = 
             "The number of instances in the current motif. "
             "Must be equal to the size of the \"worldPosition\", \"worldRotation\" and \"colors\" lists."
@@ -60,6 +61,13 @@ struct RenderNode final : public PropertyNode
         inputs_description["mesh"] = 
             "The mesh the current motif uses to render objects. "
             "If linked, must be a obj mesh file or a list of meshes (for interpolation scenarios)."
+        ;
+
+
+        // Raymarcher
+        inputs_description["shader"] = 
+            "The compute shader that renders the screen. "
+            "The user code must specify a color for each screen pixel in this mode."
         ;
 
         outputs[0]->setValue(_renderData);
@@ -99,12 +107,8 @@ struct RenderNode final : public PropertyNode
         return _render_data_changed;
     }
 
-    // TODO: This node needs a refactor
-    inline virtual void render() override
+    inline void render_raster()
     {
-        ImGui::Text("This node converts data to be rendered.");
-        ImGui::TextColored(ImVec4(0.8f, 0.7f, 0.0f, 1.0f), "Warn: Data types are not checked!");
-
         _motif_changed_internal = false;
         ImGui::BeginGroup();
 
@@ -246,7 +250,76 @@ struct RenderNode final : public PropertyNode
         }
     }
 
-    inline virtual void update() override
+    inline void render_raymarch()
+    {
+        // TODO
+    }
+
+    // TODO: This node needs a refactor
+    inline virtual void render() override
+    {
+        ImGui::Text("This node converts data to be rendered.");
+        ImGui::TextColored(ImVec4(0.8f, 0.7f, 0.0f, 1.0f), "Warn: Data types are not checked!");
+
+        static const char* const render_modes[] = { "Raster", "Raymarch" };
+
+        if(ImGui::Combo("Render Mode", &internal_render_mode, render_modes, IM_ARRAYSIZE(render_modes)))
+        {
+            internal_render_mode_changed = true;
+            _renderData._renderMode = static_cast<RenderNodeData::RenderMode>(internal_render_mode);
+            outputs[0]->setValue(_renderData);
+        }
+
+        switch (internal_render_mode)
+        {
+        case 0: // Raster
+            render_raster();
+            break;
+        
+        case 1: // Raymarcher
+            render_raymarch();
+            break;
+        }
+    }
+
+    inline void change_render_type()
+    {
+        internal_render_mode_changed = false;
+
+        // Set all possible inputs to no connection and change them
+        switch (internal_render_mode)
+        {
+        case 0: // Raster
+        {
+            disconnectInputIfNotOfType<EmptyType>("shader");
+
+            setInputsOrdered({
+                "instanceCount",
+                "worldPosition",
+                "worldRotation",
+                "mesh",
+                "colors"
+            });
+        }
+        break;
+        
+        case 1: // Raymarcher
+        {
+            disconnectInputIfNotOfType<EmptyType>("instanceCount");
+            disconnectInputIfNotOfType<EmptyType>("worldPosition");
+            disconnectInputIfNotOfType<EmptyType>("worldRotation");
+            disconnectInputIfNotOfType<EmptyType>("mesh");
+            disconnectInputIfNotOfType<EmptyType>("colors");
+
+            setInputsOrdered({
+                "shader"
+            });
+        }
+        break;
+        }
+    }
+
+    inline void update_raster()
     {
         outputs[0]->resetDataUpdate();
         _render_data_changed = false;
@@ -542,9 +615,51 @@ struct RenderNode final : public PropertyNode
         }
     }
 
+    inline void update_raymarch()
+    {
+        outputs[0]->resetDataUpdate();
+        _render_data_changed = false;
+
+        disconnectInputIfNotOfType<ShaderNodeData>("shader");
+
+        auto shaderNode = inputs_named.find("shader");
+        if(shaderNode != inputs_named.end())
+        {
+            if(shaderNode->second->dataChanged())
+            {
+                // glsl needs to reload the shader
+                _renderData._reloadShader = true;
+                _renderData._glslCode = shaderNode->second->getValue<ShaderNodeData>().generated_code;
+                outputs[0]->setValue(_renderData);
+                // TODO: If compilation fails, draw the magenta shader (and display the user the errors)
+            }
+        }
+    }
+
+    inline virtual void update() override
+    {
+        if(internal_render_mode_changed)
+        {
+            change_render_type();
+        }
+
+        switch (internal_render_mode)
+        {
+        case 0: // Raster
+            update_raster();
+            break;
+        
+        case 1: // Raymarcher
+            update_raymarch();
+            break;
+        }
+    }
+
     inline virtual ByteBuffer serialize() const override
     {
         ByteBuffer buffer = PropertyNode::serialize();
+
+        buffer.add(_renderData._renderMode);
 
         buffer.add(_renderData._fogMax);
         buffer.add(_renderData._fogMin);
@@ -563,6 +678,9 @@ struct RenderNode final : public PropertyNode
     inline virtual void deserialize(ByteBuffer& buffer) override
     {
         PropertyNode::deserialize(buffer);
+
+        buffer.get(&_renderData._renderMode);
+        internal_render_mode = static_cast<int>(_renderData._renderMode);
 
         buffer.get(&_renderData._fogMax);
         buffer.get(&_renderData._fogMin);
@@ -673,6 +791,8 @@ private:
         return min;
     }
 
+    int internal_render_mode = 0;
+    bool internal_render_mode_changed = false;
     unsigned int _instanceCountLast = 0;
     RenderNodeData _renderData;
     bool _render_data_changed = false;

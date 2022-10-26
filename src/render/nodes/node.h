@@ -84,6 +84,7 @@ struct PropertyGenericData
 
         RENDER_DATA,
         MESH_NODE_DATA,
+        SHADER_NODE_DATA,
         MESH_INTERP_LIST_DATA,
 
         LIST_FLOAT = 100,
@@ -110,6 +111,7 @@ struct PropertyGenericData
     
     VT_FRIENDLY_NAME(RenderNodeData,     "Render Data");
     VT_FRIENDLY_NAME(MeshNodeData,       "Mesh Data");
+    VT_FRIENDLY_NAME(ShaderNodeData, "Shader Data");
     VT_FRIENDLY_NAME(MeshInterpListData, "Mesh Data List");
 
     VT_FRIENDLY_NAME(std::vector<float>,        "Float List");
@@ -396,6 +398,7 @@ struct PropertyGenericData
         // Custom values for node outputs
         case ValidType::RENDER_DATA:           setValue<RenderNodeData>(*(RenderNodeData*)b.data); break;
         case ValidType::MESH_NODE_DATA:        setValue<MeshNodeData>(MeshNodeData()); break; // Mesh node data is just loaded from disk
+        case ValidType::SHADER_NODE_DATA: setValue<ShaderNodeData>(*(ShaderNodeData*)b.data); break;
         case ValidType::MESH_INTERP_LIST_DATA: setValue<MeshInterpListData>(*(MeshInterpListData*)b.data); L_ERROR("MESH_INTERP_LIST_DATA deserialization not implemented."); break; // TODO
 
         default: L_ERROR("setValueDynamic(): Received a non valid type."); break;
@@ -469,6 +472,7 @@ private:
         else if(isOfType<RenderNodeData>()) vtype = ValidType::RENDER_DATA;
         else if(isOfType<MeshNodeData>()) vtype = ValidType::MESH_NODE_DATA;
         else if(isOfType<MeshInterpListData>()) vtype = ValidType::MESH_INTERP_LIST_DATA;
+        else if(isOfType<ShaderNodeData>()) vtype = ValidType::SHADER_NODE_DATA;
 
         is_list = (static_cast<int>(vtype) >= 100);
     }
@@ -505,7 +509,8 @@ struct PropertyNode
         FEEDBACK,
         TEST,
         MESHINTERP,
-        GRAPH
+        GRAPH,
+        SHADER
     };
 
     using EmptyType = EmptyTypeDec;

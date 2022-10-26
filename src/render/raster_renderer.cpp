@@ -270,13 +270,16 @@ static void GeneratePerlin2DTex(GLsizei w, GLsizei h, unsigned char* buffer)
     }
 }
 
-RasterRenderer::DrawList::DrawList(GLFWwindow* window, const int sw, const int sh, Renderer::ScreenRenderData* screenRenderData, Renderer::Camera* camera)
+RasterRenderer::DrawList::DrawList(GLFWwindow* window, Renderer::ScreenRenderData* screenRenderData, Renderer::Camera* camera)
 {
     _screen_render_data = screenRenderData;
 
     _program_nrmpass = CreateNormalPassProgram();
     _program_sobfilter = CreateSobelFilterProgram();
     _program_fogpart = CreateFogParticleProgram();
+
+    int sw = (int)screenRenderData->screen_size[0];
+    int sh = (int)screenRenderData->screen_size[1];
     
     addInstance(new DrawInstance());
 
@@ -487,6 +490,7 @@ void RasterRenderer::DrawList::updateCameraPerspective()
 
 void RasterRenderer::DrawList::render(GLFWwindow* window, NodeWindow* nodeWindow, AnalyticsWindow* analyticsWindow, OptionsWindow* optionsWindow)
 {
+    // TODO: Pass this node as a param (no need to re-check for null and getValue all over again)
     RenderNode* outNode = dynamic_cast<RenderNode*>(nodeWindow->getRenderOutputNode());
 
     if(outNode != nullptr)

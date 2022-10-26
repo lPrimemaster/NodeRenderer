@@ -18,3 +18,4 @@
 #include "feedback_node.h"
 #include "mesh_interp_node.h"
 #include "hist_node.h"
+#include "shader_node.h"

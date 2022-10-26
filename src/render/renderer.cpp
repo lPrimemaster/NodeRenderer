@@ -1,13 +1,14 @@
 #include "renderer.h"
 #include "../../glm/glm/gtx/transform.hpp"
+#include "nodes/render_node.h"
 
 static Renderer::Camera camera(45.0f);
 static Renderer::ScreenRenderData screen_render_data;
 constexpr static Vector3 infinityVec3 = Vector3(std::numeric_limits<float>::infinity(), std::numeric_limits<float>::infinity(), std::numeric_limits<float>::infinity());
 static Vector3 mcm_motif_size = infinityVec3;
-static enum RenderMode { RASTER, RAYMARCH } render_mode = RenderMode::RASTER;
 
 static RasterRenderer::DrawList* raster_renderer = nullptr;
+static RayMarchRenderer::RayMarchRendererDraw* raymarch_renderer = nullptr;
 
 static void _key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
@@ -121,12 +122,15 @@ void Renderer::Init(GLFWwindow* window, const int sw, const int sh)
     screen_render_data.screen_halfsize[0] = sw / 2.0f;
     screen_render_data.screen_halfsize[1] = sh / 2.0f;
 
-    raster_renderer = new RasterRenderer::DrawList(window, sw, sh, &screen_render_data, &camera);
+    raster_renderer = new RasterRenderer::DrawList(window, &screen_render_data, &camera);
+
+    raymarch_renderer = new RayMarchRenderer::RayMarchRendererDraw(window, &screen_render_data, &camera);
 }
 
 void Renderer::CleanUp()
 {
     if(raster_renderer) delete raster_renderer;
+    if(raymarch_renderer) delete raymarch_renderer;
 }
 
 void Renderer::SetGlobalSceneMotif(const Vector3& motif)
@@ -147,6 +151,7 @@ void Renderer::Render(GLFWwindow* window, NodeWindow* nodeWindow, AnalyticsWindo
     {
         raster_renderer->updateFramebufferTextures();
         raster_renderer->updateCameraPerspective();
+        raymarch_renderer->reloadScreenTexture(screen_render_data.screen_size[0], screen_render_data.screen_size[1]);
 
         // Resize the node window
         nodeWindow->setWindowSize(ImVec2(screen_render_data.screen_size[0] - optionsWindow->getBarWidth(), screen_render_data.screen_size[1] / 3));
@@ -171,19 +176,37 @@ void Renderer::Render(GLFWwindow* window, NodeWindow* nodeWindow, AnalyticsWindo
     camera.update(screen_render_data.mouse_scroll, screen_render_data.mouse_delta[0], screen_render_data.mouse_delta[1], screen_render_data.cam_dir_f, now - last_time);
     last_time = now;
 
-    // Pass execution to the preferred rendering mode
-    switch (render_mode)
-    {
-    case RenderMode::RASTER:
-        raster_renderer->render(window, nodeWindow, analyticsWindow, optionsWindow);
-        break;
-    case RenderMode::RAYMARCH:
-        // TODO 
-        break;
-    default:
-        __assume(0);
-    }
 
+    RenderNode* outNode = dynamic_cast<RenderNode*>(nodeWindow->getRenderOutputNode());
+
+    if(outNode != nullptr)
+    {
+        RenderNodeData nodeData = outNode->outputs[0]->getValue<RenderNodeData>();
+
+        if(nodeData._reloadShader)
+        {
+            L_DEBUG("Reloading compute shader.");
+            raymarch_renderer->reloadShader(nodeData._glslCode);
+            outNode->outputs[0]->getValuePtr<RenderNodeData>()->_reloadShader = false;
+        }
+
+        // Pass execution to the preferred rendering mode
+        switch (nodeData._renderMode)
+        {
+        case RenderNodeData::RenderMode::RASTER:
+            raster_renderer->render(window, nodeWindow, analyticsWindow, optionsWindow);
+            break;
+        case RenderNodeData::RenderMode::RAYMARCH:
+            raymarch_renderer->render(window);
+            break;
+        default:
+            __assume(0);
+        }
+    }
+    else
+    {
+        raster_renderer->render(window, nodeWindow, analyticsWindow, optionsWindow);
+    }
 
     screen_render_data.viewport_changed = false;
 }

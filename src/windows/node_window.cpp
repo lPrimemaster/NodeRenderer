@@ -87,6 +87,7 @@ PropertyNode* NodeWindow::createNodeDynamic(const PropertyNode::Type& t)
         case PropertyNode::Type::TEST: return new TestNode();
         case PropertyNode::Type::MESHINTERP: return new MeshInterpolatorNode();
         case PropertyNode::Type::GRAPH: return new GraphNode();
+        case PropertyNode::Type::SHADER: return new ShaderNode();
         default: L_ERROR("Node Window deserialization encountered an invalid node type."); return nullptr;
     }
 }
@@ -679,6 +680,10 @@ void NodeWindow::render()
                     if (ImGui::MenuItem("Camera Node"))
                     {
                         t = PropertyNode::Type::CAMERA;
+                    }
+                    if (ImGui::MenuItem("Shader Node"))
+                    {
+                        t = PropertyNode::Type::SHADER;
                     }
                     ImGui::EndMenu();
                 }

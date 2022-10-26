@@ -21,9 +21,19 @@ struct MeshInterpListData
     bool changeParamOnly = false;
 };
 
+struct ShaderNodeData
+{
+    std::string generated_code;
+};
+
 // render_node.h output
 struct RenderNodeData
 {
+    enum class RenderMode { RASTER, RAYMARCH } _renderMode = RenderMode::RASTER;
+
+    // ++++++++++++++++++
+    // Raster render data
+    // ++++++++++++++++++
     // Instance and mesh rendering data
     unsigned int   _instanceCount = 0;
     MeshNodeData** _meshPtr = nullptr;
@@ -46,6 +56,13 @@ struct RenderNodeData
     unsigned int _motif_span = 1;
     unsigned int _motifInstances[3] = {1, 1, 1};
     bool         _motifChanged = false;
+    // ++++++++++++++++++
+
+
+    // ++++++++++++++++++++
+    // Raymarch render data
+    // ++++++++++++++++++++
+    bool _reloadShader = false;
+    std::string _glslCode;
+    // ++++++++++++++++++
 };
-
-

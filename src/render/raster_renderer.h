@@ -50,7 +50,7 @@ namespace RasterRenderer
 
     struct DrawList
     {
-        DrawList(GLFWwindow* window, const int sw, const int sh, Renderer::ScreenRenderData* screenRenderData, Renderer::Camera* camera);
+        DrawList(GLFWwindow* window, Renderer::ScreenRenderData* screenRenderData, Renderer::Camera* camera);
         ~DrawList();
 
         void render(GLFWwindow* window, NodeWindow* nodeWindow, AnalyticsWindow* analyticsWindow, OptionsWindow* optionsWindow);
